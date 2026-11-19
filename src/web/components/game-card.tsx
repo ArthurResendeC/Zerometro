@@ -30,7 +30,8 @@ export function GameCard({ item, showStatus = false }: GameCardProps) {
         </div>
       </div>
       <div className="space-y-1">
-        <p className="line-clamp-2 text-lg leading-6">{item.name}</p>
+        {/* Sempre a altura de duas linhas: tempo e barra de XP ficam alinhados entre os cards. */}
+        <p className="line-clamp-2 min-h-12 text-lg leading-6">{item.name}</p>
         <p className="text-xs text-muted-foreground">
           {played ? formatMinutes(item.minutesPlayed) : (item.releaseYear ?? "—")}
           {played && item.progress !== null && ` · ${formatPercent(item.progress)}`}
