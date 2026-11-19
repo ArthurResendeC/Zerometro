@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { GameStatus } from "@shared/domain";
 import { type Feed, type FeedGame, type FeedKey, feedTitles } from "@shared/feeds";
+import { genreLabel } from "@shared/genres";
 import { igdbGameUrl } from "@shared/igdb";
 import type { LibraryItem } from "@shared/library";
 import { GameCover } from "@/components/game-cover";
@@ -100,7 +101,7 @@ function FeedGameCard({
     game.releaseDate && formatReleaseDate(game.releaseDate, game.releasePrecision);
   const meta =
     feedKey === "trending"
-      ? [game.genres[0], game.releaseYear].filter(Boolean).join(" · ")
+      ? [game.genres[0] && genreLabel(game.genres[0]), game.releaseYear].filter(Boolean).join(" · ")
       : releaseDate;
 
   return (

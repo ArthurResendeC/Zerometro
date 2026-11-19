@@ -6,7 +6,7 @@ import {
   redirect,
   useLocation,
 } from "@tanstack/react-router";
-import { ListIcon, PlusIcon, TimerIcon } from "@/components/icons";
+import { ChartIcon, ListIcon, PlusIcon, TimerIcon } from "@/components/icons";
 import { LogSessionDialog } from "@/components/log-session-dialog";
 import { TimerBar } from "@/components/timer";
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 // menu-cursor: o ▶ piscando aparece no hover e no link da página atual (aria-current).
 const navLinkClass =
-  "menu-cursor py-2 pr-2 display-xs max-sm:pl-2 max-sm:before:hidden text-muted-foreground hover:bg-accent hover:text-foreground aria-[current=page]:text-foreground";
+  "menu-cursor py-2 pr-2 display-xs max-sm:px-1 max-sm:before:hidden text-muted-foreground hover:bg-accent hover:text-foreground aria-[current=page]:text-foreground";
 
 function RootLayout() {
   const openLogSession = useLogSessionDialog((state) => state.openNew);
@@ -83,6 +83,15 @@ function RootLayout() {
             {/* No celular, só o ícone: o texto não cabe ao lado dos botões. */}
             <ListIcon className="sm:hidden" />
             <span className="max-sm:hidden">Biblioteca</span>
+          </Link>
+          <Link
+            to="/estatisticas"
+            className={navLinkClass}
+            activeProps={{ className: "text-foreground" }}
+            aria-label="Estatísticas"
+          >
+            <ChartIcon className="sm:hidden" />
+            <span className="max-sm:hidden">Estatísticas</span>
           </Link>
           <div className="ml-auto flex items-center">
             <SoundToggle className="max-sm:size-8 sm:mr-2" />

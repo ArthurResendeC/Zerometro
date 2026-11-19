@@ -260,6 +260,13 @@ export const heatmapQuery = (year?: number) =>
     placeholderData: keepPreviousData,
   });
 
+export const breakdownQuery = (year?: number) =>
+  queryOptions({
+    queryKey: [...statsKeys.all, "breakdown", year ?? "rolling"],
+    queryFn: () => unwrap(api.stats.breakdown.$get({ query: year ? { year: String(year) } : {} })),
+    placeholderData: keepPreviousData,
+  });
+
 export const settingsQuery = () =>
   queryOptions({
     queryKey: settingsKeys.all,

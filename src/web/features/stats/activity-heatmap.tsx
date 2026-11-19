@@ -58,10 +58,16 @@ function buildWeeks(heatmap: Heatmap): HeatCell[][] {
 }
 
 /** Nome do mês na coluna da semana em que ele começa (e no começo, se couber). */
-function monthLabels(weeks: HeatCell[][], from: string): { column: number; label: string }[] {
+function monthLabels(
+  weeks: HeatCell[][],
+  from: string,
+  to: string,
+): { column: number; label: string }[] {
   const labels: { column: number; label: string }[] = [];
   weeks.forEach((week, column) => {
-    const first = week.find((cell) => cell.date >= from && cell.date.endsWith("-01"));
+    const first = week.find(
+      (cell) => cell.date >= from && cell.date <= to && cell.date.endsWith("-01"),
+    );
     if (first) labels.push({ column, label: monthFormat.format(utc(first.date)).replace(".", "") });
   });
   // Período que não começa no dia 1: rotula a primeira coluna se o próximo mês estiver longe.
@@ -81,16 +87,20 @@ interface ActivityHeatmapProps {
 
 export function ActivityHeatmap({ heatmap, actions, stale = false }: ActivityHeatmapProps) {
   const weeks = buildWeeks(heatmap);
-  const months = monthLabels(weeks, heatmap.from);
+  const months = monthLabels(weeks, heatmap.from, heatmap.to);
   const [hovered, setHovered] = useState<{ cell: HeatCell; x: number; y: number } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const period = heatmap.year ? `em ${heatmap.year}` : "nos últimos 12 meses";
 
-  // Começa mostrando o fim (semanas mais recentes) quando a grade não cabe. Para outro
-  // período, quem usa troca a `key` e o componente remonta.
+  // Quando a grade não cabe, começa mostrando hoje na borda direita (ou o fim de um ano que
+  // já passou). Para outro período, quem usa troca a `key` e o componente remonta.
   useLayoutEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollLeft = el.scrollWidth;
+    if (!el) return;
+    const today = el.querySelector<HTMLElement>("[data-today]");
+    el.scrollLeft = today
+      ? today.offsetLeft + today.offsetWidth + 8 - el.clientWidth
+      : el.scrollWidth;
   }, []);
 
   return (
@@ -122,7 +132,7 @@ export function ActivityHeatmap({ heatmap, actions, stale = false }: ActivityHea
 
         <div
           ref={scrollRef}
-          className="min-w-0 overflow-x-auto pb-2"
+          className="relative min-w-0 overflow-x-auto pb-2"
           onScroll={() => setHovered(null)}
         >
           {/* Só visual: leitores de tela recebem o resumo acima e a tabela abaixo. */}
@@ -149,6 +159,7 @@ export function ActivityHeatmap({ heatmap, actions, stale = false }: ActivityHea
               week.map((cell, weekday) => (
                 <span
                   key={cell.date}
+                  data-today={cell.date === heatmap.today || undefined}
                   style={{
                     gridRow: weekday + 2,
                     gridColumn: column + 1,

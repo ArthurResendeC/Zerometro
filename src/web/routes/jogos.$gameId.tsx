@@ -4,6 +4,7 @@ import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
 import { todayIn } from "@shared/dates";
+import { genreLabel } from "@shared/genres";
 import { type GameStatus, gameStatuses, gameStatusLabels } from "@shared/domain";
 import {
   type LibraryItem,
@@ -86,7 +87,7 @@ function GamePage() {
           <header className="space-y-2">
             <h1 className="text-[32px] leading-9">{item.name}</h1>
             <p className="text-muted-foreground">
-              {[item.releaseYear, ...item.genres].filter(Boolean).join(" · ")}
+              {[item.releaseYear, ...item.genres.map(genreLabel)].filter(Boolean).join(" · ")}
             </p>
             <div className="flex flex-wrap gap-1">
               <StatusBadge status={item.status} />
