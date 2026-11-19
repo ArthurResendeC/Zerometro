@@ -6,6 +6,8 @@ import { z } from "zod";
 import { todayIn } from "@shared/dates";
 import { type GameStatus, gameStatuses, gameStatusLabels } from "@shared/domain";
 import type { LibraryItem, UpdateLibraryEntryInput } from "@shared/library";
+import { DateInput, dateField } from "@/components/date-input";
+import { FieldErrors } from "@/components/field-errors";
 import { GameCover } from "@/components/game-cover";
 import { ArrowLeftIcon, TimerIcon, TrashIcon } from "@/components/icons";
 import { SessionsTable } from "@/components/sessions-table";
@@ -25,7 +27,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { XpBar } from "@/components/ui/progress";
@@ -287,17 +288,21 @@ function EntryForm({ item }: { item: LibraryItem }) {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <form.Field name="startedAt">
+        <form.Field
+          name="startedAt"
+          validators={{ onSubmit: dateField({ max: today, optional: true }) }}
+        >
           {(field) => (
             <div className="space-y-2">
               <Label htmlFor={field.name}>Começou em</Label>
-              <Input
+              <DateInput
                 id={field.name}
-                type="date"
                 max={today}
                 value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
+                onChange={field.handleChange}
+                aria-invalid={field.state.meta.errors.length > 0}
               />
+              <FieldErrors errors={field.state.meta.errors} />
             </div>
           )}
         </form.Field>
@@ -305,18 +310,21 @@ function EntryForm({ item }: { item: LibraryItem }) {
         <form.Subscribe selector={(s) => s.values.status}>
           {(status) =>
             status === "finished" && (
-              <form.Field name="finishedAt">
+              <form.Field
+                name="finishedAt"
+                validators={{ onSubmit: dateField({ max: today, optional: true }) }}
+              >
                 {(field) => (
                   <div className="space-y-2">
                     <Label htmlFor={field.name}>Zerou em</Label>
-                    <Input
+                    <DateInput
                       id={field.name}
-                      type="date"
                       max={today}
                       value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      placeholder="Hoje"
+                      onChange={field.handleChange}
+                      aria-invalid={field.state.meta.errors.length > 0}
                     />
+                    <FieldErrors errors={field.state.meta.errors} />
                   </div>
                 )}
               </form.Field>

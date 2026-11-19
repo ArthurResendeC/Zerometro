@@ -2,14 +2,7 @@ import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { z } from "zod";
-import {
-  DEFAULT_TIME_ZONE,
-  addDays,
-  isoDateSchema,
-  localTimeSchema,
-  todayIn,
-  zonedParts,
-} from "@shared/dates";
+import { DEFAULT_TIME_ZONE, addDays, localTimeSchema, todayIn, zonedParts } from "@shared/dates";
 import { gameStatuses, gameStatusLabels } from "@shared/domain";
 import type { LibraryItem } from "@shared/library";
 import { MAX_MINUTES_PER_DAY, type PlaySessionItem } from "@shared/sessions";
@@ -22,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DateInput, dateField } from "@/components/date-input";
 import { DurationInput } from "@/components/duration-input";
 import { FieldErrors } from "@/components/field-errors";
 import { Input } from "@/components/ui/input";
@@ -57,7 +51,7 @@ const formSchema = z
     gameId: z.string().min(1, "Escolha o jogo"),
     hours: z.number().int().min(0).max(24),
     minutes: z.number().int().min(0).max(59),
-    playedOn: isoDateSchema,
+    playedOn: dateField(),
     note: z.string().max(500),
     // Só usados no modo timer.
     startTime: z.string(),
@@ -77,7 +71,7 @@ const timerFormSchema = z.object({
   gameId: z.string(),
   hours: z.number(),
   minutes: z.number(),
-  playedOn: isoDateSchema,
+  playedOn: dateField(),
   note: z.string().max(500),
   startTime: localTimeSchema,
   endTime: localTimeSchema,
@@ -278,13 +272,13 @@ function SessionForm({ editing, initialGameId, onDone }: SessionFormProps) {
           <div className="space-y-2">
             <Label htmlFor={field.name}>Dia</Label>
             <div className="flex flex-wrap items-center">
-              <Input
+              <DateInput
                 id={field.name}
-                type="date"
                 max={today}
                 value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
+                onChange={field.handleChange}
                 aria-invalid={field.state.meta.errors.length > 0}
+                className="w-48"
               />
               <Button type="button" variant="outline" onClick={() => field.handleChange(today)}>
                 Hoje

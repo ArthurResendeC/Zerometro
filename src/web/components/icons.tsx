@@ -100,6 +100,10 @@ export const TimerIcon = pixelIcon(
     r(4, 4, 2, 1),
   "TimerIcon",
 );
+export const CalendarIcon = pixelIcon(
+  r(2, 0) + r(5, 0) + r(0, 1, 8, 2) + r(0, 3, 1, 5) + r(7, 3, 1, 5) + r(1, 7, 6, 1) + r(2, 4, 2, 2),
+  "CalendarIcon",
+);
 export const LogOutIcon = pixelIcon(
   r(0, 0, 4, 1) +
     r(0, 1, 1, 6) +
