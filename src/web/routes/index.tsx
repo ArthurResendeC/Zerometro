@@ -8,6 +8,7 @@ import { PixelFlame } from "@/components/icons";
 import { TimerButton } from "@/components/timer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { DiscoverSection } from "@/features/feeds/discover-section";
 import { formatMinutes } from "@/lib/format";
 import { libraryListQuery, statsQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -94,6 +95,8 @@ function Dashboard() {
       </section>
 
       {stats.topGames.length > 0 && <TopGames games={stats.topGames} />}
+
+      <DiscoverSection />
     </div>
   );
 }

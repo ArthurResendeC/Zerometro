@@ -39,3 +39,10 @@ export type CoverSize = "thumb" | "cover_small" | "cover_big" | "720p" | "1080p"
 export function coverUrl(imageId: string, size: CoverSize = "cover_big"): string {
   return `https://images.igdb.com/igdb/image/upload/t_${size}/${imageId}.jpg`;
 }
+
+/** Página do jogo no site do IGDB (busca pelo nome se não houver slug). */
+export function igdbGameUrl(game: { slug: string | null; name: string }): string {
+  return game.slug
+    ? `https://www.igdb.com/games/${game.slug}`
+    : `https://www.igdb.com/search?type=1&q=${encodeURIComponent(game.name)}`;
+}

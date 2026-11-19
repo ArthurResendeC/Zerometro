@@ -1,6 +1,7 @@
 // Formatação para exibição (pt-BR).
 
 import { isoDateSchema } from "@shared/dates";
+import type { ReleasePrecision } from "@shared/feeds";
 
 /** 0 → "0min", 45 → "45min", 210 → "3h 30min", 120 → "2h". */
 export function formatMinutes(minutes: number): string {
@@ -36,4 +37,28 @@ export function parseDisplayDate(text: string): string | null {
 
 export function formatPercent(ratio: number): string {
   return `${Math.round(ratio * 100)}%`;
+}
+
+const monthYear = new Intl.DateTimeFormat("pt-BR", {
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+/**
+ * Data de lançamento com a precisão que o IGDB conhece:
+ * "23/02/2027", "fev. de 2027", "3º tri. 2027" ou só "2027" (o IGDB guarda 31/12 nesse caso).
+ */
+export function formatReleaseDate(isoDate: string, precision: ReleasePrecision | null): string {
+  const [year, month] = isoDate.split("-");
+  switch (precision) {
+    case "year":
+      return year ?? isoDate;
+    case "quarter":
+      return `${Math.ceil(Number(month) / 3)}º tri. ${year}`;
+    case "month":
+      return monthYear.format(new Date(`${isoDate}T00:00:00Z`));
+    default:
+      return formatDate(isoDate);
+  }
 }

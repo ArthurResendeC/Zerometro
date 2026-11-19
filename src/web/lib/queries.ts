@@ -57,6 +57,14 @@ export const igdbSearchQuery = (q: string) =>
     placeholderData: keepPreviousData,
   });
 
+export const feedsQuery = () =>
+  queryOptions({
+    queryKey: ["feeds"],
+    queryFn: async () => (await unwrap(api.feeds.$get())).feeds,
+    // O servidor atualiza as listas 1x por dia.
+    staleTime: 60 * 60_000,
+  });
+
 function onError(error: Error) {
   toast.error(error.message);
 }
