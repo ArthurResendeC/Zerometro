@@ -6,6 +6,7 @@ import { AppError, type ApiErrorBody } from "./errors";
 import { healthRoutes } from "./routes/health";
 import { createIgdbRoutes } from "./routes/igdb";
 import { createLibraryRoutes } from "./routes/library";
+import { createSessionRoutes } from "./routes/sessions";
 import type { IgdbApi } from "./services/igdb";
 
 export interface AppDeps {
@@ -40,7 +41,8 @@ export function createApp(deps: AppDeps) {
     })
     .route("/health", healthRoutes)
     .route("/igdb", createIgdbRoutes(deps))
-    .route("/library", createLibraryRoutes(deps));
+    .route("/library", createLibraryRoutes(deps))
+    .route("/sessions", createSessionRoutes(deps));
 }
 
 export type AppType = ReturnType<typeof createApp>;
