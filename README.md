@@ -103,6 +103,7 @@ Outras tarefas (`mise tasks` lista todas):
 | `mise run db:studio`                 | abre o Drizzle Studio                       |
 | `mise run mcp:inspect`               | abre o MCP Inspector                        |
 | `mise run igdb:smoke [termo]`        | testa busca e tempo para zerar no IGDB real |
+| `mise run demo`                      | sobe com dados de exemplo em `data/demo.db` |
 
 ### Variáveis de ambiente
 
