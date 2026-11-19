@@ -4,6 +4,7 @@ import { activityActors, gameStatuses, sessionSources, ttbSources } from "../../
 import { user } from "./auth-schema";
 
 export * from "./auth-schema";
+export * from "./oauth-schema";
 
 // Datas/horas como texto ISO 8601 em UTC; datas de calendário (played_on) como YYYY-MM-DD no fuso do usuário.
 const nowIso = sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`;

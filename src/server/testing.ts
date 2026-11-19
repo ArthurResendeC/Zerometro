@@ -3,6 +3,7 @@ import { DEFAULT_TIME_ZONE } from "../shared/dates";
 import type { IgdbGameDetails } from "../shared/igdb";
 import { testUtils, type TestHelpers } from "better-auth/plugins";
 import { createApp } from "./app";
+import { createRootRoutes } from "./mcp/routes";
 import { createAuth, createAuthGateway } from "./auth";
 import { user } from "./db/schema";
 import { createTestDb, type Db } from "./db/client";
@@ -71,6 +72,7 @@ export function createTestClock(start: Date = TEST_NOW): Clock & { set: (date: D
 /** Usuário padrão dos testes de service (o dono). */
 export const TEST_USER_ID = "user-dono";
 export const TEST_EMAILS = { owner: "dono@zerometro.test", friend: "amigo@zerometro.test" };
+export const TEST_BASE_URL = "http://localhost:3000";
 export const TEST_AUTH_SECRET = "segredo-de-teste-com-mais-de-32-caracteres";
 
 /** Cria (se ainda não existir) um usuário direto no banco. */
@@ -108,18 +110,23 @@ export async function createTestApp(
   const auth = createAuth({
     db,
     secret: TEST_AUTH_SECRET,
-    baseURL: "http://localhost:3000",
+    baseURL: TEST_BASE_URL,
     google: { clientId: "test-client-id", clientSecret: "test-client-secret" },
     allowedEmails,
     plugins: [testUtils()],
   });
-  const app = createApp({
-    db,
-    auth: createAuthGateway(auth, allowedEmails),
-    igdb,
-    clock,
-    logRequests: false,
-  });
+  const deps = { db, auth: createAuthGateway(auth, allowedEmails), igdb, clock };
+  const app = createApp({ ...deps, logRequests: false });
+  const root = createRootRoutes(deps);
+  /** Mesmo roteamento do Bun.serve (index.ts), sem a SPA. */
+  const fetchRoot = (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+    const request =
+      input instanceof Request ? input : new Request(new URL(input, TEST_BASE_URL), init);
+    const { pathname } = new URL(request.url);
+    if (pathname === "/mcp") return root.mcp(request);
+    if (pathname.startsWith("/.well-known/")) return root.wellKnown(request);
+    return Promise.resolve(app.fetch(request));
+  };
   const helpers = ((await auth.$context) as unknown as { test: TestHelpers }).test;
 
   async function loginAs(email: string) {
@@ -136,6 +143,7 @@ export async function createTestApp(
   const owner = await loginAs(TEST_EMAILS.owner);
   return {
     app,
+    fetchRoot,
     db,
     igdb,
     clock,

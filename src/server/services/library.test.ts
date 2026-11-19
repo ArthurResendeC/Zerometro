@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { activityLog, games, playSessions } from "../db/schema";
-import { ConflictError, NotFoundError, ValidationError } from "../errors";
+import { AmbiguousGameError, ConflictError, NotFoundError, ValidationError } from "../errors";
 import { createFakeIgdb, createTestContext, fakeIgdbGame, TEST_TODAY } from "../testing";
 import type { ServiceContext } from "./context";
 import {
+  resolveLibraryGame,
   addToLibrary,
   applyStatusRules,
   countByStatus,
@@ -19,6 +20,9 @@ const igdb = createFakeIgdb([
   fakeIgdbGame({ igdbId: 12517, name: "Undertale", timeToBeat: null }),
   fakeIgdbGame({ igdbId: 1029, name: "The Legend of Zelda: Ocarina of Time" }),
   fakeIgdbGame({ igdbId: 9999, name: "100%_Orange" }),
+  fakeIgdbGame({ igdbId: 2048, name: "2048" }),
+  fakeIgdbGame({ igdbId: 7001, name: "Pokémon Red" }),
+  fakeIgdbGame({ igdbId: 7002, name: "Pokémon Blue" }),
 ]);
 
 let ctx: ServiceContext;
@@ -210,5 +214,53 @@ describe("applyStatusRules", () => {
         today,
       ),
     ).toThrow("antes da data de início");
+  });
+});
+
+async function add(igdbId: number) {
+  return (await addToLibrary(ctx, igdb, { igdbId, status: "backlog" })).gameId;
+}
+
+describe("resolveLibraryGame", () => {
+  test("por id (número ou texto) e por nome sem diferenciar maiúsculas e acentos", async () => {
+    const red = await add(7001);
+    expect(resolveLibraryGame(ctx, red).name).toBe("Pokémon Red");
+    expect(resolveLibraryGame(ctx, String(red)).name).toBe("Pokémon Red");
+    expect(resolveLibraryGame(ctx, "  POKEMON   red ").gameId).toBe(red);
+    expect(resolveLibraryGame(ctx, "red").gameId).toBe(red);
+  });
+
+  test("nome exato ganha de quem só contém o termo", async () => {
+    await add(114283); // Persona 5 Royal
+    const zelda = await add(1029);
+    expect(resolveLibraryGame(ctx, "the legend of zelda: ocarina of time").gameId).toBe(zelda);
+  });
+
+  test("vários candidatos → AmbiguousGameError com as opções", async () => {
+    await add(7001);
+    await add(7002);
+    try {
+      resolveLibraryGame(ctx, "pokemon");
+      throw new Error("deveria ter falhado");
+    } catch (error) {
+      expect(error).toBeInstanceOf(AmbiguousGameError);
+      expect((error as AmbiguousGameError).options.map((o) => o.name).toSorted()).toEqual([
+        "Pokémon Blue",
+        "Pokémon Red",
+      ]);
+    }
+  });
+
+  test("nome só com dígitos que não é id cai na busca por nome", async () => {
+    const game = await add(2048);
+    expect(game).not.toBe(2048);
+    expect(resolveLibraryGame(ctx, "2048").gameId).toBe(game);
+  });
+
+  test("sem candidato → NotFoundError; vazio → ValidationError", async () => {
+    await add(7001);
+    expect(() => resolveLibraryGame(ctx, "zelda")).toThrow(NotFoundError);
+    expect(() => resolveLibraryGame(ctx, 42)).toThrow(NotFoundError);
+    expect(() => resolveLibraryGame(ctx, "   ")).toThrow(ValidationError);
   });
 });

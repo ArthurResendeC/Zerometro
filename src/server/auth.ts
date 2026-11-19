@@ -1,6 +1,8 @@
+import { mcp, requireMcpAuth } from "@better-auth/mcp";
 import { betterAuth, type BetterAuthPlugin } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError } from "better-auth/api";
+import { jwt } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 import type { Db } from "./db/client";
 import {
@@ -10,12 +12,22 @@ import {
   libraryEntries,
   playSessions,
   session,
+  oauthSchema,
   user,
   verification,
 } from "./db/schema";
 
 // Login com Google via Better Auth. Usuários e sessões ficam no próprio SQLite;
 // só entra quem está em ALLOWED_EMAILS (o primeiro da lista é o dono da instância).
+// A mesma Better Auth é o servidor OAuth 2.1 dos clientes MCP (plugin `mcp`): o conector
+// do Claude se registra sozinho, o usuário entra com o Google e autoriza em /autorizar.
+
+/** Telas do front usadas no fluxo OAuth dos clientes MCP. */
+export const OAUTH_LOGIN_PAGE = "/entrar";
+export const OAUTH_CONSENT_PAGE = "/autorizar";
+
+/** Identificador do recurso protegido (RFC 8707): a URL pública do endpoint MCP. */
+export const mcpResourceFor = (baseURL: string) => `${baseURL}/mcp`;
 
 export interface AuthConfig {
   db: Db;
@@ -53,7 +65,7 @@ export function createAuth(config: AuthConfig) {
     secret: config.secret,
     database: drizzleAdapter(config.db, {
       provider: "sqlite",
-      schema: { user, session, account, verification },
+      schema: { user, session, account, verification, ...oauthSchema },
     }),
     socialProviders: config.google
       ? { google: { ...config.google, prompt: "select_account" } }
@@ -93,7 +105,23 @@ export function createAuth(config: AuthConfig) {
         },
       },
     },
-    plugins: config.plugins ?? [],
+    // O /token do plugin jwt devolveria um JWT da sessão do site: não pode servir de access token.
+    disabledPaths: ["/token"],
+    plugins: [
+      jwt({ disableSettingJwtHeader: true }),
+      mcp({
+        loginPage: OAUTH_LOGIN_PAGE,
+        consentPage: OAUTH_CONSENT_PAGE,
+        resource: mcpResourceFor(config.baseURL),
+        // Conectores (claude.ai, Claude Code...) se registram sozinhos (RFC 7591). Registrar
+        // não dá acesso a nada: o token só sai depois do login de um convidado e do consentimento.
+        allowDynamicClientRegistration: true,
+        allowUnauthenticatedClientRegistration: true,
+        // claude.ai usa callback https; Claude Code e Inspector, http://localhost.
+        clientRegistrationDefaultApplicationType: "infer",
+      }),
+      ...(config.plugins ?? []),
+    ],
   });
 }
 
@@ -105,10 +133,19 @@ export interface AuthGateway {
   handler: (request: Request) => Promise<Response>;
   /** Usuário logado (e ainda convidado) dono da requisição, ou null. */
   getUserId: (headers: Headers) => Promise<string | null>;
+  /**
+   * Protege o endpoint MCP: valida o access token (assinatura, emissor, audiência = /mcp,
+   * validade) e entrega o id do usuário, se ele ainda for convidado. Sem token → 401 com o
+   * `WWW-Authenticate` que leva o cliente à descoberta OAuth.
+   */
+  protectMcp: (
+    handler: (request: Request, userId: string) => Promise<Response>,
+  ) => (request: Request) => Promise<Response>;
 }
 
 export function createAuthGateway(auth: Auth, allowedEmails: string[]): AuthGateway {
   const allowed = new Set(allowedEmails.map(normalizeEmail));
+  const resource = mcpResourceFor(auth.options.baseURL as string);
   return {
     handler: (request) => auth.handler(request),
     getUserId: async (headers) => {
@@ -116,6 +153,29 @@ export function createAuthGateway(auth: Auth, allowedEmails: string[]): AuthGate
       if (!current || !allowed.has(normalizeEmail(current.user.email))) return null;
       return current.user.id;
     },
+    protectMcp: (handler) =>
+      requireMcpAuth(
+        auth,
+        async (request, claims) => {
+          const found = claims.sub
+            ? await (await auth.$context).internalAdapter.findUserById(claims.sub)
+            : null;
+          // Saiu da lista de convidados: o token (que vale até 1h) para de funcionar na hora.
+          if (!found || !allowed.has(normalizeEmail(found.email))) {
+            return Response.json(
+              {
+                error: {
+                  code: NOT_INVITED,
+                  message: "Esse e-mail não está na lista de convidados",
+                },
+              },
+              { status: 403 },
+            );
+          }
+          return handler(request, found.id);
+        },
+        { resource },
+      ),
   };
 }
 

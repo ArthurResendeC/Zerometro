@@ -3,6 +3,7 @@ import { createApp } from "./app";
 import { createAuth, createAuthGateway, parseEmailList, resolvePublicUrl } from "./auth";
 import { db } from "./db";
 import { runMigrations } from "./db/client";
+import { createRootRoutes } from "./mcp/routes";
 import { createIgdbFromEnv } from "./services/igdb";
 import index from "../web/index.html";
 
@@ -41,18 +42,23 @@ const auth = createAuth({
   allowedEmails,
 });
 
-const app = createApp({
+const deps = {
   db,
   auth: createAuthGateway(auth, allowedEmails),
   igdb: createIgdbFromEnv(db, env),
   clock: { now: () => new Date(), timeZone: env.TZ },
-});
+};
+const app = createApp(deps);
+const root = createRootRoutes(deps);
 
-// Um único processo: API (Hono) em /api/*, SPA (HTML import do Bun) no resto.
+// Um único processo: API (Hono) em /api/*, MCP em /mcp, descoberta OAuth em /.well-known/*
+// e a SPA (HTML import do Bun) no resto.
 const server = Bun.serve({
   port: env.PORT,
   routes: {
     "/api/*": (req) => app.fetch(req),
+    "/mcp": root.mcp,
+    "/.well-known/*": root.wellKnown,
     "/*": index,
   },
   development: !isProduction && { hmr: true, console: true },

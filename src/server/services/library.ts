@@ -11,7 +11,7 @@ import {
   type UpdateLibraryEntryResult,
 } from "../../shared/library";
 import { games, libraryEntries, playSessions } from "../db/schema";
-import { ConflictError, NotFoundError, ValidationError } from "../errors";
+import { AmbiguousGameError, ConflictError, NotFoundError, ValidationError } from "../errors";
 import { logActivity } from "./activity";
 import type { ServiceContext, UserScope } from "./context";
 import { ensureGame } from "./games";
@@ -31,6 +31,46 @@ export function getLibraryItem(scope: UserScope, gameId: number): LibraryItem {
   const [item] = selectItems(scope, [eq(games.id, gameId)]);
   if (!item) throw new NotFoundError(`Jogo ${gameId} não está na biblioteca`);
   return item;
+}
+
+/** Minúsculas e sem acento, para comparar nomes ("Pokémon" = "pokemon"). */
+const normalizeName = (name: string) =>
+  name
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
+
+/**
+ * Acha um jogo da biblioteca pelo id ou pelo nome (usado pelo MCP: "joguei Persona").
+ * Nome exato (sem diferenciar maiúsculas e acentos) ganha; senão, vale um único nome que
+ * contenha o termo. Mais de um candidato → AmbiguousGameError com as opções, sem chutar.
+ */
+export function resolveLibraryGame(scope: UserScope, ref: string | number): LibraryItem {
+  if (typeof ref === "number") return getLibraryItem(scope, ref);
+  // Texto só com dígitos é tentado como id; se não for, segue como nome (ex.: "2048").
+  if (/^\d+$/.test(ref.trim())) {
+    const [byId] = selectItems(scope, [eq(games.id, Number(ref))]);
+    if (byId) return byId;
+  }
+
+  const term = normalizeName(ref);
+  if (!term) throw new ValidationError("Informe o nome ou o id do jogo");
+  const items = listLibrary(scope);
+  const exact = items.filter((item) => normalizeName(item.name) === term);
+  const candidates =
+    exact.length > 0 ? exact : items.filter((item) => normalizeName(item.name).includes(term));
+
+  const [only] = candidates;
+  if (candidates.length === 1 && only) return only;
+  if (candidates.length === 0) {
+    throw new NotFoundError(`Nenhum jogo da biblioteca com "${ref}" no nome`);
+  }
+  throw new AmbiguousGameError(
+    `"${ref}" bate com ${candidates.length} jogos: ${candidates.map((c) => `${c.name} (id ${c.gameId})`).join(", ")}. Use o id.`,
+    candidates.map(({ gameId, name }) => ({ gameId, name })),
+  );
 }
 
 export function countByStatus({ db, userId }: UserScope): StatusCounts {

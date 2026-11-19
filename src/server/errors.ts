@@ -32,6 +32,16 @@ export class TimerActiveError extends AppError {
   }
 }
 
+/** O nome do jogo bate com mais de um da biblioteca: quem chamou precisa escolher. */
+export class AmbiguousGameError extends AppError {
+  constructor(
+    message: string,
+    readonly options: { gameId: number; name: string }[],
+  ) {
+    super(409, "ambiguous_game", message);
+  }
+}
+
 export class ValidationError extends AppError {
   constructor(message: string) {
     super(400, "invalid_input", message);

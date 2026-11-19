@@ -17,7 +17,6 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   /** E-mails convidados, separados por vírgula; o primeiro é o dono. */
   ALLOWED_EMAILS: z.string().default(""),
-  MCP_TOKEN: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
