@@ -252,6 +252,14 @@ export const statsQuery = () =>
     queryFn: () => unwrap(api.stats.$get()),
   });
 
+/** Sem ano: os últimos 12 meses. Fica sob statsKeys.all, então é invalidado junto com as stats. */
+export const heatmapQuery = (year?: number) =>
+  queryOptions({
+    queryKey: [...statsKeys.all, "heatmap", year ?? "rolling"],
+    queryFn: () => unwrap(api.stats.heatmap.$get({ query: year ? { year: String(year) } : {} })),
+    placeholderData: keepPreviousData,
+  });
+
 export const settingsQuery = () =>
   queryOptions({
     queryKey: settingsKeys.all,

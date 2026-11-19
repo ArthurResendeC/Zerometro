@@ -9,9 +9,10 @@ import { TimerButton } from "@/components/timer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DiscoverSection } from "@/features/feeds/discover-section";
+import { ActivityHeatmap } from "@/features/stats/activity-heatmap";
 import { WeeksChart } from "@/features/stats/weeks-chart";
 import { formatMinutes } from "@/lib/format";
-import { libraryListQuery, statsQuery } from "@/lib/queries";
+import { heatmapQuery, libraryListQuery, statsQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 const playingQuery = libraryListQuery({ status: "playing" });
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/")({
     Promise.all([
       context.queryClient.ensureQueryData(playingQuery),
       context.queryClient.ensureQueryData(statsQuery()),
+      context.queryClient.ensureQueryData(heatmapQuery()),
     ]),
   component: Dashboard,
 });
@@ -28,6 +30,7 @@ export const Route = createFileRoute("/")({
 function Dashboard() {
   const { data: playing } = useSuspenseQuery(playingQuery);
   const { data: stats } = useSuspenseQuery(statsQuery());
+  const { data: heatmap } = useSuspenseQuery(heatmapQuery());
 
   return (
     <div className="space-y-10">
@@ -59,6 +62,7 @@ function Dashboard() {
           />
         </div>
         <WeeksChart weeks={stats.weeks} />
+        <ActivityHeatmap heatmap={heatmap} />
       </section>
 
       <section className="space-y-4">
