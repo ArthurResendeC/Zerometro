@@ -1,7 +1,7 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import type { Stats, StreakStats, WeekStats } from "@shared/stats";
+import type { Stats, StreakStats } from "@shared/stats";
 import { GameCard, GameGrid } from "@/components/game-card";
 import { GameCover } from "@/components/game-cover";
 import { PixelFlame } from "@/components/icons";
@@ -9,6 +9,7 @@ import { TimerButton } from "@/components/timer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DiscoverSection } from "@/features/feeds/discover-section";
+import { WeeksChart } from "@/features/stats/weeks-chart";
 import { formatMinutes } from "@/lib/format";
 import { libraryListQuery, statsQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -139,54 +140,6 @@ function StreakCard({ streak }: { streak: StreakStats }) {
           mín. {formatMinutes(streak.minMinutes)}/dia
         </Link>
       </p>
-    </Card>
-  );
-}
-
-const weekLabel = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "2-digit",
-  timeZone: "UTC",
-});
-
-/** Barras simples das últimas 8 semanas (gráficos completos entram na fase 2). */
-function WeeksChart({ weeks }: { weeks: WeekStats[] }) {
-  const max = Math.max(...weeks.map((w) => w.minutes), 1);
-
-  return (
-    <Card className="gap-3">
-      <p className="display-xs text-muted-foreground">Últimas 8 semanas</p>
-      <ol className="flex h-32 items-end gap-2 border-b-4 border-border bg-[repeating-linear-gradient(0deg,transparent_0_31px,var(--muted)_31px_32px)]">
-        {weeks.map((week, i) => {
-          const current = i === weeks.length - 1;
-          const label = `Semana de ${weekLabel.format(new Date(`${week.weekStart}T00:00:00Z`))}`;
-          return (
-            <li
-              key={week.weekStart}
-              className="group relative flex h-full flex-1 flex-col justify-end"
-              title={`${label}: ${formatMinutes(week.minutes)}`}
-            >
-              <span className="sr-only">
-                {label}: {formatMinutes(week.minutes)}
-              </span>
-              <div
-                className={cn(
-                  "mx-auto min-h-1 w-full max-w-12",
-                  current ? "bg-primary" : "bg-chart-2/60 group-hover:bg-chart-2",
-                )}
-                style={{ height: `${(week.minutes / max) * 100}%` }}
-              />
-            </li>
-          );
-        })}
-      </ol>
-      <div className="flex gap-2 text-xs text-muted-foreground tabular-nums" aria-hidden>
-        {weeks.map((week) => (
-          <span key={week.weekStart} className="flex-1 text-center max-sm:even:invisible">
-            {weekLabel.format(new Date(`${week.weekStart}T00:00:00Z`))}
-          </span>
-        ))}
-      </div>
     </Card>
   );
 }
