@@ -72,7 +72,7 @@ run = "railway config plan"
 
 [tasks."deploy:apply"]
 description = "Aplica .railway/railway.ts no projeto da Railway vinculado (pede confirmação)"
-run = "railway config apply"
+run = "railway config apply --yes"
 
 [tasks."db:generate"]
 description = "Gera uma migration a partir do schema do Drizzle"
