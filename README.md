@@ -1,12 +1,68 @@
-# 🎮 Zerômetro
+<p align="center">
+  <img src="docs/readme/banner.png" alt="Zerômetro: quanto falta pra zerar? Backlog, timer, ofensiva e IA" width="100%">
+</p>
 
-> Quanto falta pra zerar?
+<p align="center">
+  <img src="https://img.shields.io/badge/Bun-1.4-ff7a1a?style=flat-square&labelColor=1c1a29&logo=bun&logoColor=f4ecdc" alt="Bun 1.4">
+  <img src="https://img.shields.io/badge/React-TanStack-3ec7e0?style=flat-square&labelColor=1c1a29&logo=react&logoColor=f4ecdc" alt="React + TanStack">
+  <img src="https://img.shields.io/badge/SQLite-Drizzle-6bd66b?style=flat-square&labelColor=1c1a29&logo=sqlite&logoColor=f4ecdc" alt="SQLite + Drizzle">
+  <img src="https://img.shields.io/badge/IA-MCP-c49bff?style=flat-square&labelColor=1c1a29&logo=anthropic&logoColor=f4ecdc" alt="Servidor MCP">
+  <img src="https://img.shields.io/badge/licen%C3%A7a-MIT-ffd23f?style=flat-square&labelColor=1c1a29" alt="Licença MIT">
+</p>
 
 Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa de quanto falta para zerar cada jogo. Também dá para consultar tudo por IA através de um servidor **MCP** ("comecei a jogar", "joguei 2h ontem", "zerei").
 
 > 🧪 **Projeto de exemplo, feito para cada um hospedar o seu.** O Zerômetro é um projeto pessoal publicado como referência. A minha instância é privada: só entram os e-mails convidados (`ALLOWED_EMAILS`), então ela não serve como serviço público. Para usar, faça um fork e suba a sua (veja [Rodando localmente](#-rodando-localmente) e [Deploy](#-deploy-railway)).
 
 > 🚧 **Em desenvolvimento.** A seção abaixo separa o que já funciona do que ainda falta.
+
+---
+
+## 📸 Telas
+
+<p align="center">
+  <img src="docs/readme/inicio.png" alt="Início: ofensiva de 12 dias, tempo de hoje, médias, gráfico das últimas 8 semanas, jogos em andamento com barra de progresso e os mais jogados do mês" width="100%">
+  <br>
+  <sub><b>Início</b> · ofensiva, médias, as últimas 8 semanas, o que está jogando agora (com o timer rodando no topo) e os mais jogados do mês</sub>
+</p>
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/readme/biblioteca.png" alt="Biblioteca em grade de cartuchos, com abas por status e barra de XP de progresso">
+      <br><sub><b>Biblioteca</b> · cartuchos por status, com o progresso estimado como barra de XP</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/readme/jogo.png" alt="Página do Elden Ring com tempo jogado, tempos para zerar do IGDB e histórico de sessões">
+      <br><sub><b>Jogo</b> · tempo jogado contra os tempos do IGDB e o histórico de sessões</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/readme/registrar-sessao.png" alt="Modal de registrar sessão com jogo, duração, dia e nota">
+      <br><sub><b>Registrar sessão</b> · "joguei 1h30 ontem", com atalhos de duração e de dia</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/readme/adicionar.png" alt="Busca de jogos no IGDB, mostrando quais já estão na biblioteca">
+      <br><sub><b>Adicionar jogo</b> · busca no IGDB, já indicando o que está na biblioteca</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/readme/celular.png" alt="Início e biblioteca no celular">
+      <br><sub><b>No celular</b> · o mesmo app, pensado para registrar do sofá</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/readme/entrar.png" alt="Tela de login com Google">
+      <br><sub><b>Login</b> · Google, só para convidados</sub>
+      <br><br>
+      <img src="docs/readme/ajustes.png" alt="Ajustes: mínimo diário da ofensiva, aviso de sessão longa e efeitos sonoros" width="60%">
+      <br><sub><b>Ajustes</b> · mínimo da ofensiva, aviso de sessão longa e sons 8 bits</sub>
+    </td>
+  </tr>
+</table>
+
+<sub>Prints com os dados de exemplo de <code>mise run demo</code>. Capas e tempos para zerar: IGDB.</sub>
 
 ---
 
