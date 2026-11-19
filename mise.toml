@@ -92,3 +92,7 @@ depends = ["fmt:check", "lint", "typecheck", "test"]
 [tasks."mcp:inspect"]
 description = "Abre o MCP Inspector"
 run = "npx @modelcontextprotocol/inspector"
+
+[tasks."igdb:smoke"]
+description = "Testa busca e tempo para zerar no IGDB real (ex.: mise run igdb:smoke ocarina of time)"
+run = "bun scripts/igdb-smoke.ts"

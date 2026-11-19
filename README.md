@@ -82,14 +82,15 @@ mise run dev                 # http://localhost:3000
 
 Outras tarefas (`mise tasks` lista todas):
 
-| Tarefa                               | O que faz                               |
-| ------------------------------------ | --------------------------------------- |
-| `mise run check`                     | formatação + lint + typecheck + testes  |
-| `mise run fmt` / `mise run lint:fix` | formata (oxfmt) e corrige lint (oxlint) |
-| `mise run build` / `mise run start`  | build de produção em `dist/` e execução |
-| `mise run db:generate`               | gera migration a partir do schema       |
-| `mise run db:studio`                 | abre o Drizzle Studio                   |
-| `mise run mcp:inspect`               | abre o MCP Inspector                    |
+| Tarefa                               | O que faz                                   |
+| ------------------------------------ | ------------------------------------------- |
+| `mise run check`                     | formatação + lint + typecheck + testes      |
+| `mise run fmt` / `mise run lint:fix` | formata (oxfmt) e corrige lint (oxlint)     |
+| `mise run build` / `mise run start`  | build de produção em `dist/` e execução     |
+| `mise run db:generate`               | gera migration a partir do schema           |
+| `mise run db:studio`                 | abre o Drizzle Studio                       |
+| `mise run mcp:inspect`               | abre o MCP Inspector                        |
+| `mise run igdb:smoke [termo]`        | testa busca e tempo para zerar no IGDB real |
 
 ### Variáveis de ambiente
 

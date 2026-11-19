@@ -1,6 +1,10 @@
 import { env } from "./env";
-import { app } from "./app";
+import { createApp } from "./app";
+import { db } from "./db";
+import { createIgdbFromEnv } from "./services/igdb";
 import index from "../web/index.html";
+
+const app = createApp({ db, igdb: createIgdbFromEnv(db, env) });
 
 // Um único processo: API (Hono) em /api/*, SPA (HTML import do Bun) no resto.
 const server = Bun.serve({
