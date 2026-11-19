@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { isoDateSchema, localTimeSchema } from "../../shared/dates";
 import { gameStatusLabels, gameStatusSchema } from "../../shared/domain";
+import { feedKeys, feedTitles } from "../../shared/feeds";
 import { type LibraryItem, priorMinutesSchema } from "../../shared/library";
 import { type LogSessionResult, noteSchema } from "../../shared/sessions";
 import type { AppDeps } from "../app";
@@ -21,7 +22,7 @@ import { getActiveSession, startTimer, stopTimer } from "../services/timer";
 // Servidor MCP do Zerômetro: tools finas por cima dos `services/` (as mesmas regras da API
 // REST), sempre no escopo do usuário dono do access token e com actor "mcp".
 
-export type McpDeps = Pick<AppDeps, "db" | "igdb" | "clock">;
+export type McpDeps = Pick<AppDeps, "db" | "igdb" | "feeds" | "clock">;
 
 const gameRefSchema = z
   .union([z.number().int().positive(), z.string().trim().min(1)])
@@ -97,6 +98,46 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
       annotations: { ...readOnly, openWorldHint: true },
     },
     ({ query, limit }) => run(async () => ({ results: await deps.igdb.searchGames(query, limit) })),
+  );
+
+  server.registerTool(
+    "get_feeds",
+    {
+      title: "Listas do IGDB (bem avaliados, em alta, próximos)",
+      description:
+        'As listas da tela inicial, atualizadas 1x por dia a partir do IGDB: top_rated (lançamentos dos últimos meses com melhor nota da crítica), trending (mais visitados no IGDB) e upcoming (próximos lançamentos por expectativa). Cada jogo diz se já está na biblioteca do usuário. Ex.: "o que está em alta?", "o que lança em breve?". Para adicionar um, use add_game com o igdbId.',
+      inputSchema: z.object({
+        list: z.enum(feedKeys).optional().describe("Só uma das listas; omita para todas"),
+        limit: z.number().int().min(1).max(20).default(10).describe("Jogos por lista"),
+      }),
+      annotations: readOnly,
+    },
+    ({ list, limit }) =>
+      run(async () => {
+        const inLibrary = new Map(listLibrary(ctx()).map((item) => [item.igdbId, item]));
+        const feeds = (await deps.feeds.getFeeds()).filter((f) => !list || f.key === list);
+        return {
+          lists: feeds.map((feed) => ({
+            list: feed.key,
+            title: feedTitles[feed.key],
+            updatedAt: feed.updatedAt,
+            games: feed.games.slice(0, limit).map((game) => {
+              const entry = inLibrary.get(game.igdbId);
+              return {
+                igdbId: game.igdbId,
+                name: game.name,
+                releaseDate: game.releaseDate,
+                releasePrecision: game.releasePrecision,
+                criticRating: game.criticRating,
+                hypes: game.hypes,
+                genres: game.genres,
+                platforms: game.platforms,
+                inLibrary: entry ? { gameId: entry.gameId, status: entry.status } : null,
+              };
+            }),
+          })),
+        };
+      }),
   );
 
   server.registerTool(

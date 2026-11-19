@@ -5,6 +5,7 @@ import { activityLog, user } from "../db/schema";
 import {
   createFakeIgdb,
   createTestApp,
+  fakeFeedGame,
   fakeIgdbGame,
   mockGoogleLogin,
   TEST_BASE_URL,
@@ -18,12 +19,17 @@ import {
 const REDIRECT_URI = "https://claude.ai/api/mcp/auth_callback";
 const MCP_URL = `${TEST_BASE_URL}/mcp`;
 
-const igdb = createFakeIgdb([
-  fakeIgdbGame(),
-  fakeIgdbGame({ igdbId: 12517, name: "Undertale", timeToBeat: null }),
-  fakeIgdbGame({ igdbId: 1, name: "Pokémon Red" }),
-  fakeIgdbGame({ igdbId: 2, name: "Pokémon Blue" }),
-]);
+const igdb = createFakeIgdb(
+  [
+    fakeIgdbGame(),
+    fakeIgdbGame({ igdbId: 12517, name: "Undertale", timeToBeat: null }),
+    fakeIgdbGame({ igdbId: 1, name: "Pokémon Red" }),
+    fakeIgdbGame({ igdbId: 2, name: "Pokémon Blue" }),
+  ],
+  {
+    trending: [fakeFeedGame(), fakeFeedGame({ igdbId: 999, name: "Novidade" })],
+  },
+);
 
 type TestApp = Awaited<ReturnType<typeof createTestApp>>;
 let t: TestApp;
@@ -258,6 +264,7 @@ describe("tools", () => {
       .map((tool) => tool.name);
     expect(readOnly.toSorted()).toEqual([
       "get_active_session",
+      "get_feeds",
       "get_game",
       "get_stats",
       "list_library",
@@ -293,6 +300,13 @@ describe("tools", () => {
     expect(sessions.data.sessions).toHaveLength(1);
 
     expect((await callJson(client, "get_active_session")).data).toEqual({ active: null });
+
+    const feeds = await callJson(client, "get_feeds", { list: "trending" });
+    expect(feeds.data.lists).toHaveLength(1);
+    expect(feeds.data.lists[0].games).toMatchObject([
+      { name: "Persona 5 Royal", inLibrary: { gameId: 1 } },
+      { name: "Novidade", inLibrary: null },
+    ]);
 
     const search = await callJson(client, "search_igdb", { query: "undertale" });
     expect(search.data.results[0]).toMatchObject({ igdbId: 12517, name: "Undertale" });

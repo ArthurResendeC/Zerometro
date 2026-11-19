@@ -191,7 +191,7 @@ O Zerômetro expõe um servidor MCP em `/mcp` (Streamable HTTP). O login é OAut
 claude mcp add --transport http zerometro https://<seu-domínio>/mcp
 ```
 
-**Tools disponíveis (leitura):** `search_igdb`, `list_library`, `get_game`, `get_stats`, `list_sessions`, `get_active_session`. O jogo pode ser passado pelo id ou pelo nome (sem diferenciar acentos); se o nome for ambíguo, a tool devolve as opções.
+**Tools disponíveis (leitura):** `search_igdb`, `get_feeds` (as listas da tela inicial: bem avaliados, em alta e próximos), `list_library`, `get_game`, `get_stats`, `list_sessions`, `get_active_session`. O jogo pode ser passado pelo id ou pelo nome (sem diferenciar acentos); se o nome for ambíguo, a tool devolve as opções.
 
 **Tools de escrita:** `start_session` / `stop_session` (o mesmo timer do site), `log_session` (sessão já jogada, ex.: "joguei 2h ontem"), `add_game` (pelo igdbId achado com `search_igdb`, opcionalmente com o tempo já jogado), `set_status` e `set_prior_playtime` (tempo jogado antes do Zerômetro, ex.: "já tenho 39h de Witcher 3"). Tudo fica no histórico de atividade com actor `mcp`.
 
