@@ -26,7 +26,7 @@ function play(playedOn: string, minutes: number, gameId = persona) {
   logSession(ctx, { gameId, minutes, playedOn });
 }
 
-const stats = (streakMinMinutes = 30) => getStats(ctx.db, { today: TEST_TODAY, streakMinMinutes });
+const stats = (streakMinMinutes = 30) => getStats(ctx, { today: TEST_TODAY, streakMinMinutes });
 
 describe("ofensiva", () => {
   test("sem sessões, tudo zerado", () => {

@@ -60,7 +60,7 @@ describe("logSession", () => {
     const result = logSession(ctx, { gameId: zelda.gameId, minutes: 45, playedOn: "2026-11-17" });
 
     expect(result.statusChangedTo).toBe("playing");
-    expect(getLibraryItem(ctx.db, zelda.gameId)).toMatchObject({
+    expect(getLibraryItem(ctx, zelda.gameId)).toMatchObject({
       status: "playing",
       startedAt: "2026-11-17",
     });
@@ -96,11 +96,11 @@ describe("listSessions", () => {
     logSession(ctx, { gameId: undertale, minutes: 30, playedOn: "2026-11-16" });
     logSession(ctx, { gameId: persona, minutes: 40, playedOn: "2026-11-19" });
 
-    expect(listSessions(ctx.db, { gameId: persona }).map((s) => s.minutes)).toEqual([40, 20, 10]);
+    expect(listSessions(ctx, { gameId: persona }).map((s) => s.minutes)).toEqual([40, 20, 10]);
     expect(
-      listSessions(ctx.db, { from: "2026-11-15", to: "2026-11-16" }).map((s) => s.minutes),
+      listSessions(ctx, { from: "2026-11-15", to: "2026-11-16" }).map((s) => s.minutes),
     ).toEqual([30, 20]);
-    expect(listSessions(ctx.db, { limit: 1 })).toHaveLength(1);
+    expect(listSessions(ctx, { limit: 1 })).toHaveLength(1);
   });
 });
 
@@ -130,7 +130,7 @@ describe("updateSession / deleteSession", () => {
     const { session } = logSession(ctx, { gameId: persona, minutes: 30 });
 
     expect(deleteSession(ctx, session.id).id).toBe(session.id);
-    expect(listSessions(ctx.db)).toHaveLength(0);
+    expect(listSessions(ctx)).toHaveLength(0);
     expect(() => deleteSession(ctx, session.id)).toThrow(NotFoundError);
   });
 });

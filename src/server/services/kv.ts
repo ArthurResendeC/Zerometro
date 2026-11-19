@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import type { Db, DbOrTx } from "../db/client";
 import { kv } from "../db/schema";
 
-export function getKv(db: Db, key: string): string | null {
+export function getKv(db: DbOrTx, key: string): string | null {
   return db.select({ value: kv.value }).from(kv).where(eq(kv.key, key)).get()?.value ?? null;
 }
 

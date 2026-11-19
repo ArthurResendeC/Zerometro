@@ -5,10 +5,16 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   DATABASE_PATH: z.string().min(1).default("./data/zerometro.db"),
   TZ: z.string().min(1).default("America/Sao_Paulo"),
-  // Obrigatórios nas etapas seguintes (IGDB, auth, MCP); opcionais por enquanto.
   IGDB_CLIENT_ID: z.string().optional(),
   IGDB_CLIENT_SECRET: z.string().optional(),
-  APP_PASSWORD: z.string().optional(),
+  // Login (Better Auth + Google). O segredo assina os cookies de sessão.
+  BETTER_AUTH_SECRET: z.string().min(32, "Use pelo menos 32 caracteres").optional(),
+  /** URL pública do site (padrão: http://localhost:PORT). */
+  BETTER_AUTH_URL: z.url().optional(),
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  /** E-mails convidados, separados por vírgula; o primeiro é o dono. */
+  ALLOWED_EMAILS: z.string().default(""),
   MCP_TOKEN: z.string().optional(),
 });
 

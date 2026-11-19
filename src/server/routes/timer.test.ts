@@ -12,47 +12,47 @@ function post(body: unknown): RequestInit {
 
 describe("/api/timer", () => {
   test("começar, conflito com outro jogo, parar", async () => {
-    const { app, clock } = createTestApp();
-    const added = await app.request("/api/library", post({ igdbId: 114283, status: "playing" }));
+    const { request, clock } = await createTestApp();
+    const added = await request("/api/library", post({ igdbId: 114283, status: "playing" }));
     const { item } = (await added.json()) as { item: { gameId: number } };
 
-    expect(await (await app.request("/api/timer")).json()).toMatchObject({ active: null });
+    expect(await (await request("/api/timer")).json()).toMatchObject({ active: null });
 
-    const started = await app.request("/api/timer/start", post({ gameId: item.gameId }));
+    const started = await request("/api/timer/start", post({ gameId: item.gameId }));
     expect(started.status).toBe(201);
-    expect((await app.request("/api/timer/start", post({ gameId: item.gameId }))).status).toBe(200);
+    expect((await request("/api/timer/start", post({ gameId: item.gameId }))).status).toBe(200);
 
-    const otherGame = await app.request("/api/timer/start", post({ gameId: 999 }));
+    const otherGame = await request("/api/timer/start", post({ gameId: 999 }));
     expect(otherGame.status).toBe(404);
 
     clock.set(new Date("2026-11-19T19:00:00Z"));
-    const stopped = await app.request("/api/timer/stop", post({}));
+    const stopped = await request("/api/timer/stop", post({}));
     expect(await stopped.json()).toMatchObject({ discarded: false, session: { minutes: 60 } });
 
-    const none = await app.request("/api/timer/stop", post({}));
+    const none = await request("/api/timer/stop", post({}));
     expect(none.status).toBe(404);
   });
 
   test("409 timer_active ao começar outro jogo", async () => {
-    const { app } = createTestApp({
+    const { request } = await createTestApp({
       igdb: createFakeIgdb([fakeIgdbGame(), fakeIgdbGame({ igdbId: 12517, name: "Undertale" })]),
     });
     const add = async (igdbId: number) => {
-      const res = await app.request("/api/library", post({ igdbId, status: "playing" }));
+      const res = await request("/api/library", post({ igdbId, status: "playing" }));
       return ((await res.json()) as { item: { gameId: number } }).item.gameId;
     };
     const persona = await add(114283);
     const undertale = await add(12517);
 
-    await app.request("/api/timer/start", post({ gameId: persona }));
-    const conflict = await app.request("/api/timer/start", post({ gameId: undertale }));
+    await request("/api/timer/start", post({ gameId: persona }));
+    const conflict = await request("/api/timer/start", post({ gameId: undertale }));
     expect(conflict.status).toBe(409);
     expect(((await conflict.json()) as ApiErrorBody).error).toMatchObject({
       code: "timer_active",
       message: "Você já está jogando Persona 5 Royal desde 15:00",
     });
 
-    const switched = await app.request(
+    const switched = await request(
       "/api/timer/start",
       post({ gameId: undertale, replaceActive: true }),
     );
@@ -63,8 +63,8 @@ describe("/api/timer", () => {
   });
 
   test("endTime inválido → 400", async () => {
-    const { app } = createTestApp();
-    const res = await app.request("/api/timer/stop", post({ endTime: "25:00" }));
+    const { request } = await createTestApp();
+    const res = await request("/api/timer/stop", post({ endTime: "25:00" }));
     expect(res.status).toBe(400);
     expect(((await res.json()) as ApiErrorBody).error.code).toBe("invalid_input");
   });

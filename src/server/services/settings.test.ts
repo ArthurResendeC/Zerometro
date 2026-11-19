@@ -7,7 +7,7 @@ import { getSettings, updateSettings } from "./settings";
 
 describe("settings", () => {
   test("padrão: ofensiva a partir de 30min", () => {
-    expect(getSettings(createTestContext().db)).toEqual({
+    expect(getSettings(createTestContext())).toEqual({
       streakMinMinutes: 30,
       longSessionMinutes: 360,
     });
@@ -19,17 +19,17 @@ describe("settings", () => {
       streakMinMinutes: 45,
       longSessionMinutes: 360,
     });
-    expect(getSettings(ctx.db).streakMinMinutes).toBe(45);
+    expect(getSettings(ctx).streakMinMinutes).toBe(45);
     expect(ctx.db.select().from(activityLog).all()).toMatchObject([
       { action: "settings.update", payload: { streakMinMinutes: 45 } },
     ]);
   });
 
   test("valor salvo inválido ou JSON quebrado cai no padrão", () => {
-    const { db } = createTestContext();
-    setKv(db, "settings", JSON.stringify({ streakMinMinutes: 5 }));
-    expect(getSettings(db)).toEqual(DEFAULT_SETTINGS);
-    setKv(db, "settings", "{oops");
-    expect(getSettings(db)).toEqual(DEFAULT_SETTINGS);
+    const ctx = createTestContext();
+    setKv(ctx.db, `settings:${ctx.userId}`, JSON.stringify({ streakMinMinutes: 5 }));
+    expect(getSettings(ctx)).toEqual(DEFAULT_SETTINGS);
+    setKv(ctx.db, `settings:${ctx.userId}`, "{oops");
+    expect(getSettings(ctx)).toEqual(DEFAULT_SETTINGS);
   });
 });

@@ -1,6 +1,9 @@
 import { sql } from "drizzle-orm";
 import { uniqueIndex, check, index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { activityActors, gameStatuses, sessionSources, ttbSources } from "../../shared/domain";
+import { user } from "./auth-schema";
+
+export * from "./auth-schema";
 
 // Datas/horas como texto ISO 8601 em UTC; datas de calendário (played_on) como YYYY-MM-DD no fuso do usuário.
 const nowIso = sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`;
@@ -12,7 +15,12 @@ const updatedAt = () =>
     .default(nowIso)
     .$onUpdate(() => new Date().toISOString());
 
-/** Cache dos metadados do IGDB. */
+const userId = () =>
+  text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" });
+
+/** Cache dos metadados do IGDB (compartilhado entre usuários). */
 export const games = sqliteTable("games", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   igdbId: integer("igdb_id").notNull().unique(),
@@ -31,14 +39,14 @@ export const games = sqliteTable("games", {
   updatedAt: updatedAt(),
 });
 
-/** Minha relação com cada jogo (no máximo uma entrada por jogo). */
+/** A relação de cada usuário com um jogo (no máximo uma entrada por usuário e jogo). */
 export const libraryEntries = sqliteTable(
   "library_entries",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: userId(),
     gameId: integer("game_id")
       .notNull()
-      .unique()
       .references(() => games.id, { onDelete: "cascade" }),
     status: text("status", { enum: gameStatuses }).notNull(),
     platformPlayed: text("platform_played"),
@@ -50,7 +58,8 @@ export const libraryEntries = sqliteTable(
     updatedAt: updatedAt(),
   },
   (t) => [
-    index("library_entries_status_idx").on(t.status),
+    uniqueIndex("library_entries_user_game_idx").on(t.userId, t.gameId),
+    index("library_entries_user_status_idx").on(t.userId, t.status),
     check("library_entries_rating_range", sql`${t.rating} is null or ${t.rating} between 1 and 10`),
   ],
 );
@@ -60,6 +69,7 @@ export const playSessions = sqliteTable(
   "play_sessions",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: userId(),
     gameId: integer("game_id")
       .notNull()
       .references(() => games.id, { onDelete: "cascade" }),
@@ -76,17 +86,17 @@ export const playSessions = sqliteTable(
     updatedAt: updatedAt(),
   },
   (t) => [
-    index("play_sessions_played_on_idx").on(t.playedOn),
-    index("play_sessions_game_played_on_idx").on(t.gameId, t.playedOn),
+    index("play_sessions_user_played_on_idx").on(t.userId, t.playedOn),
+    index("play_sessions_user_game_played_on_idx").on(t.userId, t.gameId, t.playedOn),
     check("play_sessions_minutes_positive", sql`${t.minutes} is null or ${t.minutes} > 0`),
     // Sessão ativa (timer rodando) = início sem fim, e só ela tem minutos nulos.
     check(
       "play_sessions_active_shape",
       sql`(${t.minutes} is null) = (${t.startedAt} is not null and ${t.endedAt} is null)`,
     ),
-    // No máximo uma sessão ativa: todas têm a mesma chave (1) no índice parcial.
+    // No máximo uma sessão ativa por usuário (índice único parcial).
     uniqueIndex("play_sessions_one_active_idx")
-      .on(sql`(${t.endedAt} is null)`)
+      .on(t.userId)
       .where(sql`${t.startedAt} is not null and ${t.endedAt} is null`),
   ],
 );
@@ -96,6 +106,7 @@ export const activityLog = sqliteTable(
   "activity_log",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
     actor: text("actor", { enum: activityActors }).notNull(),
     action: text("action").notNull(),
     payload: text("payload", { mode: "json" }).$type<Record<string, unknown>>(),
@@ -104,7 +115,7 @@ export const activityLog = sqliteTable(
   (t) => [index("activity_log_created_at_idx").on(t.createdAt)],
 );
 
-/** Chave-valor para estado interno (token do IGDB, último sync etc.). */
+/** Chave-valor para estado interno (token do IGDB, ajustes por usuário em `settings:<userId>`). */
 export const kv = sqliteTable("kv", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),

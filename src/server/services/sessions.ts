@@ -9,11 +9,11 @@ import {
   type PlaySessionItem,
   type UpdateSessionInput,
 } from "../../shared/sessions";
-import type { Db, DbOrTx } from "../db/client";
+import type { DbOrTx } from "../db/client";
 import { games, libraryEntries, playSessions } from "../db/schema";
 import { NotFoundError, ValidationError } from "../errors";
 import { logActivity } from "./activity";
-import type { ServiceContext } from "./context";
+import type { ServiceContext, UserScope } from "./context";
 
 /** Registrar uma sessão desses status indica que voltei a jogar. */
 const RESUMES_PLAYING: ReadonlySet<GameStatus> = new Set(["backlog", "wishlist", "paused"]);
@@ -24,8 +24,11 @@ const isClosed = isNotNull(playSessions.minutes);
 // ---------------------------------------------------------------------------
 // Leitura
 
-export function listSessions(db: Db, query: ListSessionsQuery = {}): PlaySessionItem[] {
-  const filters: SQL[] = [isClosed];
+export function listSessions(
+  { db, userId }: UserScope,
+  query: ListSessionsQuery = {},
+): PlaySessionItem[] {
+  const filters: SQL[] = [eq(playSessions.userId, userId), isClosed];
   if (query.gameId) filters.push(eq(playSessions.gameId, query.gameId));
   if (query.from) filters.push(gte(playSessions.playedOn, query.from));
   if (query.to) filters.push(lte(playSessions.playedOn, query.to));
@@ -37,9 +40,9 @@ export function listSessions(db: Db, query: ListSessionsQuery = {}): PlaySession
     .all();
 }
 
-export function getSession(db: DbOrTx, id: number): PlaySessionItem {
+export function getSession({ db, userId }: UserScope, id: number): PlaySessionItem {
   const session = selectSessions(db)
-    .where(and(eq(playSessions.id, id), isClosed))
+    .where(and(eq(playSessions.id, id), eq(playSessions.userId, userId), isClosed))
     .get();
   if (!session) throw new NotFoundError(`Sessão ${id} não encontrada`);
   return session;
@@ -67,8 +70,12 @@ function selectSessions(db: DbOrTx) {
 }
 
 /** Minutos jogados num dia (todos os jogos), opcionalmente ignorando uma sessão. */
-export function minutesOnDay(db: DbOrTx, playedOn: string, excludeSessionId?: number): number {
-  const filters = [eq(playSessions.playedOn, playedOn)];
+export function minutesOnDay(
+  { db, userId }: UserScope,
+  playedOn: string,
+  excludeSessionId?: number,
+): number {
+  const filters = [eq(playSessions.userId, userId), eq(playSessions.playedOn, playedOn)];
   if (excludeSessionId) filters.push(ne(playSessions.id, excludeSessionId));
   return (
     db
@@ -79,12 +86,12 @@ export function minutesOnDay(db: DbOrTx, playedOn: string, excludeSessionId?: nu
   );
 }
 
-export function minutesOnGame(db: DbOrTx, gameId: number): number {
+export function minutesOnGame({ db, userId }: UserScope, gameId: number): number {
   return (
     db
       .select({ total: sql<number>`coalesce(sum(${playSessions.minutes}), 0)` })
       .from(playSessions)
-      .where(eq(playSessions.gameId, gameId))
+      .where(and(eq(playSessions.userId, userId), eq(playSessions.gameId, gameId)))
       .get()?.total ?? 0
   );
 }
@@ -96,7 +103,7 @@ export interface LibraryEntryRef {
   startedAt: string | null;
 }
 
-export function findLibraryEntry(db: DbOrTx, gameId: number): LibraryEntryRef {
+export function findLibraryEntry({ db, userId }: UserScope, gameId: number): LibraryEntryRef {
   const entry = db
     .select({
       gameId: libraryEntries.gameId,
@@ -106,7 +113,7 @@ export function findLibraryEntry(db: DbOrTx, gameId: number): LibraryEntryRef {
     })
     .from(libraryEntries)
     .innerJoin(games, eq(games.id, libraryEntries.gameId))
-    .where(eq(libraryEntries.gameId, gameId))
+    .where(and(eq(libraryEntries.userId, userId), eq(libraryEntries.gameId, gameId)))
     .get();
   if (!entry) throw new NotFoundError(`Jogo ${gameId} não está na biblioteca`);
   return entry;
@@ -123,14 +130,16 @@ export function logSession(
   const playedOn = input.playedOn ?? ctx.today;
   const source = options.source ?? (ctx.actor === "mcp" ? "mcp" : "manual");
   assertNotFuture(playedOn, ctx.today);
-  const entry = findLibraryEntry(ctx.db, input.gameId);
+  const entry = findLibraryEntry(ctx, input.gameId);
 
   return ctx.db.transaction((tx) => {
-    assertDayCapacity(tx, playedOn, input.minutes);
+    const scope = { db: tx, userId: ctx.userId };
+    assertDayCapacity(scope, playedOn, input.minutes);
 
     const { id } = tx
       .insert(playSessions)
       .values({
+        userId: ctx.userId,
         gameId: input.gameId,
         playedOn,
         minutes: input.minutes,
@@ -140,9 +149,9 @@ export function logSession(
       .returning({ id: playSessions.id })
       .get();
 
-    const statusChangedTo = resumePlaying(tx, entry, playedOn);
+    const statusChangedTo = resumePlaying(scope, entry, playedOn);
 
-    logActivity(tx, ctx.actor, "session.log", {
+    logActivity(tx, ctx, "session.log", {
       sessionId: id,
       gameId: input.gameId,
       name: entry.name,
@@ -152,9 +161,9 @@ export function logSession(
     });
 
     return {
-      session: getSession(tx, id),
-      dayTotalMinutes: minutesOnDay(tx, playedOn),
-      gameTotalMinutes: minutesOnGame(tx, input.gameId),
+      session: getSession(scope, id),
+      dayTotalMinutes: minutesOnDay(scope, playedOn),
+      gameTotalMinutes: minutesOnGame(scope, input.gameId),
       statusChangedTo,
     };
   });
@@ -165,7 +174,7 @@ export function updateSession(
   id: number,
   patch: UpdateSessionInput,
 ): PlaySessionItem {
-  const current = getSession(ctx.db, id);
+  const current = getSession(ctx, id);
   const changes = current.startedAt
     ? timerSessionChanges(ctx, current, patch)
     : manualSessionChanges(current, patch);
@@ -174,19 +183,23 @@ export function updateSession(
   assertNotFuture(playedOn, ctx.today);
 
   return ctx.db.transaction((tx) => {
-    assertDayCapacity(tx, playedOn, minutes, id);
+    const scope = { db: tx, userId: ctx.userId };
+    assertDayCapacity(scope, playedOn, minutes, id);
     const set = {
       ...changes,
       ...(patch.note !== undefined && { note: patch.note || null }),
     };
-    tx.update(playSessions).set(set).where(eq(playSessions.id, id)).run();
-    logActivity(tx, ctx.actor, "session.update", {
+    tx.update(playSessions)
+      .set(set)
+      .where(and(eq(playSessions.id, id), eq(playSessions.userId, ctx.userId)))
+      .run();
+    logActivity(tx, ctx, "session.update", {
       sessionId: id,
       gameId: current.gameId,
       name: current.gameName,
       changes: set,
     });
-    return getSession(tx, id);
+    return getSession(scope, id);
   });
 }
 
@@ -241,10 +254,12 @@ function timerSessionChanges(
 }
 
 export function deleteSession(ctx: ServiceContext, id: number): PlaySessionItem {
-  const session = getSession(ctx.db, id);
+  const session = getSession(ctx, id);
   ctx.db.transaction((tx) => {
-    tx.delete(playSessions).where(eq(playSessions.id, id)).run();
-    logActivity(tx, ctx.actor, "session.delete", { ...session });
+    tx.delete(playSessions)
+      .where(and(eq(playSessions.id, id), eq(playSessions.userId, ctx.userId)))
+      .run();
+    logActivity(tx, ctx, "session.delete", { ...session });
   });
   return session;
 }
@@ -254,14 +269,14 @@ export function deleteSession(ctx: ServiceContext, id: number): PlaySessionItem 
 
 /** Jogar algo em Próximos/Desejos/Pausado move para Jogando. Retorna o novo status, se mudou. */
 export function resumePlaying(
-  tx: DbOrTx,
+  { db, userId }: UserScope,
   entry: LibraryEntryRef,
   playedOn: string,
 ): GameStatus | null {
   if (!RESUMES_PLAYING.has(entry.status)) return null;
-  tx.update(libraryEntries)
+  db.update(libraryEntries)
     .set({ status: "playing", startedAt: entry.startedAt ?? playedOn })
-    .where(eq(libraryEntries.gameId, entry.gameId))
+    .where(and(eq(libraryEntries.userId, userId), eq(libraryEntries.gameId, entry.gameId)))
     .run();
   return "playing";
 }
@@ -296,12 +311,12 @@ function assertNotFuture(playedOn: string, today: string) {
 
 /** Um dia tem 24h: evita erros como registrar horas no lugar de minutos. */
 export function assertDayCapacity(
-  db: DbOrTx,
+  scope: UserScope,
   playedOn: string,
   minutes: number,
   excludeId?: number,
 ) {
-  const total = minutesOnDay(db, playedOn, excludeId) + minutes;
+  const total = minutesOnDay(scope, playedOn, excludeId) + minutes;
   if (total > MAX_MINUTES_PER_DAY) {
     throw new ValidationError(
       `Isso daria ${Math.round(total / 6) / 10}h jogadas em ${playedOn}, mais que 24h no dia`,

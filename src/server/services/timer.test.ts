@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { createTestDb, type Db } from "../db/client";
 import { NotFoundError, TimerActiveError, ValidationError } from "../errors";
-import { createFakeIgdb, createTestClock, fakeIgdbGame } from "../testing";
+import {
+  createFakeIgdb,
+  createTestClock,
+  createTestUser,
+  fakeIgdbGame,
+  TEST_USER_ID,
+} from "../testing";
 import { createContext } from "./context";
 import { addToLibrary, getLibraryItem } from "./library";
 import { listSessions, logSession, updateSession } from "./sessions";
@@ -20,10 +26,11 @@ let db: Db;
 let clock: ReturnType<typeof createTestClock>;
 let persona: number;
 let undertale: number;
-const ctx = () => createContext(db, clock, "web");
+const ctx = () => createContext(db, clock, "web", TEST_USER_ID);
 
 beforeEach(async () => {
   db = createTestDb();
+  createTestUser(db);
   clock = createTestClock(at("2026-11-19T15:00"));
   persona = (await addToLibrary(ctx(), igdb, { igdbId: 114283, status: "backlog" })).gameId;
   undertale = (await addToLibrary(ctx(), igdb, { igdbId: 12517, status: "playing" })).gameId;
@@ -43,7 +50,7 @@ describe("start/stop", () => {
       playedOn: "2026-11-19",
       startedAt: "2026-11-19T18:00:00.000Z",
     });
-    expect(getLibraryItem(db, persona)).toMatchObject({
+    expect(getLibraryItem(ctx(), persona)).toMatchObject({
       status: "playing",
       startedAt: "2026-11-19",
     });
@@ -53,9 +60,9 @@ describe("start/stop", () => {
     startTimer(ctx(), { gameId: undertale });
     clock.set(at("2026-11-19T16:30"));
 
-    expect(listSessions(db)).toEqual([]);
-    expect(getLibraryItem(db, undertale).minutesPlayed).toBe(0);
-    expect(getStats(db, { today: "2026-11-19", streakMinMinutes: 30 }).todayMinutes).toBe(0);
+    expect(listSessions(ctx())).toEqual([]);
+    expect(getLibraryItem(ctx(), undertale).minutesPlayed).toBe(0);
+    expect(getStats(ctx(), { today: "2026-11-19", streakMinMinutes: 30 }).todayMinutes).toBe(0);
 
     const stopped = stopTimer(ctx(), { note: "rota pacifista" });
     expect(stopped).toMatchObject({
@@ -71,8 +78,8 @@ describe("start/stop", () => {
         endedAt: "2026-11-19T19:30:00.000Z",
       },
     });
-    expect(getActiveSession(db)).toBeNull();
-    expect(getLibraryItem(db, undertale).minutesPlayed).toBe(90);
+    expect(getActiveSession(ctx())).toBeNull();
+    expect(getLibraryItem(ctx(), undertale).minutesPlayed).toBe(90);
   });
 
   test("menos de 1 minuto é descartado (clique sem querer)", () => {
@@ -80,8 +87,8 @@ describe("start/stop", () => {
     clock.set(new Date(clock.now().getTime() + 50_000));
 
     expect(stopTimer(ctx(), {})).toEqual({ discarded: true, gameName: "Undertale" });
-    expect(getActiveSession(db)).toBeNull();
-    expect(listSessions(db)).toEqual([]);
+    expect(getActiveSession(ctx())).toBeNull();
+    expect(listSessions(ctx())).toEqual([]);
   });
 
   test("virada da meia-noite: conta no dia em que começou", () => {
@@ -112,7 +119,7 @@ describe("start/stop", () => {
     clock.set(at("2026-11-19T10:00"));
 
     expect(() => stopTimer(ctx(), {})).toThrow("ajuste o horário de fim");
-    expect(getActiveSession(db)).not.toBeNull();
+    expect(getActiveSession(ctx())).not.toBeNull();
   });
 
   test("o dia continua limitado a 24h somando registros manuais", () => {
@@ -149,7 +156,7 @@ describe("um timer por vez", () => {
   test("cancelar descarta sem registrar; sem timer → 404", () => {
     startTimer(ctx(), { gameId: undertale });
     expect(cancelTimer(ctx()).gameName).toBe("Undertale");
-    expect(listSessions(db)).toEqual([]);
+    expect(listSessions(ctx())).toEqual([]);
     expect(() => cancelTimer(ctx())).toThrow(NotFoundError);
     expect(() => stopTimer(ctx(), {})).toThrow(NotFoundError);
   });

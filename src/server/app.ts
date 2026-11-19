@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+import type { AuthGateway } from "./auth";
+import type { AppEnv } from "./lib/hono";
 import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
 import type { Db } from "./db/client";
@@ -15,6 +17,8 @@ import type { IgdbApi } from "./services/igdb";
 
 export interface AppDeps {
   db: Db;
+  /** Login (Better Auth) e resolução do usuário da requisição; injetável para testes. */
+  auth: AuthGateway;
   igdb: IgdbApi;
   /** Relógio e fuso do usuário; injetável para testes. */
   clock: Clock;
@@ -23,33 +27,49 @@ export interface AppDeps {
 }
 
 export function createApp(deps: AppDeps) {
-  const app = new Hono().basePath("/api");
+  const app = new Hono<AppEnv>().basePath("/api");
   if (deps.logRequests ?? true) app.use(logger());
 
   // Rotas encadeadas para o cliente RPC (`hc<AppType>`) inferir os tipos.
-  return app
-    .onError((error, c) => {
-      if (error instanceof HTTPException) return error.getResponse();
-      if (error instanceof AppError) {
-        if (error.status >= 500) console.error(error);
+  return (
+    app
+      .onError((error, c) => {
+        if (error instanceof HTTPException) return error.getResponse();
+        if (error instanceof AppError) {
+          if (error.status >= 500) console.error(error);
+          return c.json<ApiErrorBody>(
+            { error: { code: error.code, message: error.message } },
+            error.status,
+          );
+        }
+        console.error(error);
         return c.json<ApiErrorBody>(
-          { error: { code: error.code, message: error.message } },
-          error.status,
+          { error: { code: "internal_error", message: "Erro interno" } },
+          500,
         );
-      }
-      console.error(error);
-      return c.json<ApiErrorBody>(
-        { error: { code: "internal_error", message: "Erro interno" } },
-        500,
-      );
-    })
-    .route("/health", healthRoutes)
-    .route("/igdb", createIgdbRoutes(deps))
-    .route("/library", createLibraryRoutes(deps))
-    .route("/sessions", createSessionRoutes(deps))
-    .route("/stats", createStatsRoutes(deps))
-    .route("/settings", createSettingsRoutes(deps))
-    .route("/timer", createTimerRoutes(deps));
+      })
+      .route("/health", healthRoutes)
+      // Login, callback do Google, logout etc. (públicas).
+      .on(["GET", "POST"], "/auth/*", (c) => deps.auth.handler(c.req.raw))
+      // Daqui para baixo, só com sessão válida de um convidado.
+      .use(async (c, next) => {
+        const userId = await deps.auth.getUserId(c.req.raw.headers);
+        if (!userId) {
+          return c.json<ApiErrorBody>(
+            { error: { code: "unauthorized", message: "Entre para continuar" } },
+            401,
+          );
+        }
+        c.set("userId", userId);
+        await next();
+      })
+      .route("/igdb", createIgdbRoutes(deps))
+      .route("/library", createLibraryRoutes(deps))
+      .route("/sessions", createSessionRoutes(deps))
+      .route("/stats", createStatsRoutes(deps))
+      .route("/settings", createSettingsRoutes(deps))
+      .route("/timer", createTimerRoutes(deps))
+  );
 }
 
 export type AppType = ReturnType<typeof createApp>;

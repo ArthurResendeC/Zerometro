@@ -28,7 +28,7 @@ beforeEach(() => {
 });
 
 function addSession(gameId: number, playedOn: string, minutes: number) {
-  ctx.db.insert(playSessions).values({ gameId, playedOn, minutes }).run();
+  ctx.db.insert(playSessions).values({ userId: ctx.userId, gameId, playedOn, minutes }).run();
 }
 
 describe("addToLibrary", () => {
@@ -72,11 +72,11 @@ describe("listLibrary", () => {
     await addToLibrary(ctx, igdb, { igdbId: 12517, status: "backlog" });
     await addToLibrary(ctx, igdb, { igdbId: 1029, status: "backlog" });
 
-    expect(listLibrary(ctx.db, { status: "backlog" }).map((i) => i.name)).toEqual([
+    expect(listLibrary(ctx, { status: "backlog" }).map((i) => i.name)).toEqual([
       "The Legend of Zelda: Ocarina of Time",
       "Undertale",
     ]);
-    expect(listLibrary(ctx.db, { q: "ZELDA" }).map((i) => i.name)).toEqual([
+    expect(listLibrary(ctx, { q: "ZELDA" }).map((i) => i.name)).toEqual([
       "The Legend of Zelda: Ocarina of Time",
     ]);
   });
@@ -85,8 +85,8 @@ describe("listLibrary", () => {
     await addToLibrary(ctx, igdb, { igdbId: 9999, status: "backlog" });
     await addToLibrary(ctx, igdb, { igdbId: 12517, status: "backlog" });
 
-    expect(listLibrary(ctx.db, { q: "%_" }).map((i) => i.name)).toEqual(["100%_Orange"]);
-    expect(listLibrary(ctx.db, { q: "_" }).map((i) => i.name)).toEqual(["100%_Orange"]);
+    expect(listLibrary(ctx, { q: "%_" }).map((i) => i.name)).toEqual(["100%_Orange"]);
+    expect(listLibrary(ctx, { q: "_" }).map((i) => i.name)).toEqual(["100%_Orange"]);
   });
 
   test("soma o tempo jogado, calcula progresso e ordena por jogado recentemente", async () => {
@@ -97,7 +97,7 @@ describe("listLibrary", () => {
     addSession(persona.gameId, "2026-11-18", 90);
     addSession(undertale.gameId, "2026-11-19", 30);
 
-    const items = listLibrary(ctx.db);
+    const items = listLibrary(ctx);
 
     expect(items.map((i) => i.name)).toEqual([
       "Undertale",
@@ -118,7 +118,7 @@ describe("listLibrary", () => {
     await addToLibrary(ctx, igdb, { igdbId: 12517, status: "backlog" });
     await addToLibrary(ctx, igdb, { igdbId: 1029, status: "backlog" });
 
-    expect(countByStatus(ctx.db)).toEqual({
+    expect(countByStatus(ctx)).toEqual({
       playing: 1,
       finished: 0,
       backlog: 2,
@@ -145,7 +145,7 @@ describe("updateLibraryEntry", () => {
 
     updateLibraryEntry({ ...ctx, actor: "mcp" }, gameId, { notes: "" });
 
-    expect(getLibraryItem(ctx.db, gameId).notes).toBeNull();
+    expect(getLibraryItem(ctx, gameId).notes).toBeNull();
     expect(ctx.db.select().from(activityLog).all().at(-1)).toMatchObject({
       actor: "mcp",
       action: "library.update",
@@ -158,12 +158,12 @@ describe("updateLibraryEntry", () => {
 });
 
 describe("removeFromLibrary", () => {
-  test("apaga jogo e sessões e devolve o resumo", async () => {
+  test("tira o jogo da biblioteca, apaga as sessões e devolve o resumo", async () => {
     const { gameId } = await addToLibrary(ctx, igdb, { igdbId: 114283, status: "playing" });
     addSession(gameId, "2026-11-18", 90);
     addSession(gameId, "2026-11-19", 45);
 
-    expect(previewRemoval(ctx.db, gameId)).toEqual({
+    expect(previewRemoval(ctx, gameId)).toEqual({
       gameId,
       name: "Persona 5 Royal",
       sessionsCount: 2,
@@ -172,8 +172,9 @@ describe("removeFromLibrary", () => {
 
     removeFromLibrary(ctx, gameId);
 
-    expect(listLibrary(ctx.db)).toHaveLength(0);
-    expect(ctx.db.select().from(games).all()).toHaveLength(0);
+    expect(listLibrary(ctx)).toHaveLength(0);
+    // O jogo continua no cache do IGDB (compartilhado entre usuários).
+    expect(ctx.db.select().from(games).all()).toHaveLength(1);
     expect(ctx.db.select().from(playSessions).all()).toHaveLength(0);
     expect(ctx.db.select().from(activityLog).all().at(-1)?.action).toBe("library.remove");
   });

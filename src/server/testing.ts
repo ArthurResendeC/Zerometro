@@ -1,7 +1,10 @@
 // Helpers de teste compartilhados.
 import { DEFAULT_TIME_ZONE } from "../shared/dates";
 import type { IgdbGameDetails } from "../shared/igdb";
+import { testUtils, type TestHelpers } from "better-auth/plugins";
 import { createApp } from "./app";
+import { createAuth, createAuthGateway } from "./auth";
+import { user } from "./db/schema";
 import { createTestDb, type Db } from "./db/client";
 import type { Clock, ServiceContext } from "./services/context";
 import type { IgdbApi } from "./services/igdb";
@@ -62,22 +65,83 @@ export function createTestClock(start: Date = TEST_NOW): Clock & { set: (date: D
   };
 }
 
-export function createTestApp(
-  overrides: { db?: Db; igdb?: IgdbApi; clock?: ReturnType<typeof createTestClock> } = {},
-) {
-  const db = overrides.db ?? createTestDb();
-  const igdb = overrides.igdb ?? createFakeIgdb();
-  const clock = overrides.clock ?? createTestClock();
-  return { app: createApp({ db, igdb, clock, logRequests: false }), db, igdb, clock };
+// ---------------------------------------------------------------------------
+// Usuários e login
+
+/** Usuário padrão dos testes de service (o dono). */
+export const TEST_USER_ID = "user-dono";
+export const TEST_EMAILS = { owner: "dono@zerometro.test", friend: "amigo@zerometro.test" };
+export const TEST_AUTH_SECRET = "segredo-de-teste-com-mais-de-32-caracteres";
+
+/** Cria (se ainda não existir) um usuário direto no banco. */
+export function createTestUser(db: Db, id: string = TEST_USER_ID): string {
+  const email = id === TEST_USER_ID ? TEST_EMAILS.owner : `${id}@zerometro.test`;
+  db.insert(user).values({ id, name: id, email }).onConflictDoNothing().run();
+  return id;
 }
 
 export function createTestContext(overrides: Partial<ServiceContext> = {}): ServiceContext {
+  const db = overrides.db ?? createTestDb();
+  const userId = createTestUser(db, overrides.userId);
   return {
-    db: overrides.db ?? createTestDb(),
     now: TEST_NOW,
     timeZone: DEFAULT_TIME_ZONE,
     today: TEST_TODAY,
     actor: "web",
     ...overrides,
+    db,
+    userId,
+  };
+}
+
+/**
+ * App completo com Better Auth de verdade (plugin testUtils) num banco em memória.
+ * `request` já vai logado como o dono; `loginAs` cria e loga outro convidado.
+ */
+export async function createTestApp(
+  overrides: { db?: Db; igdb?: IgdbApi; clock?: ReturnType<typeof createTestClock> } = {},
+) {
+  const db = overrides.db ?? createTestDb();
+  const igdb = overrides.igdb ?? createFakeIgdb();
+  const clock = overrides.clock ?? createTestClock();
+  const allowedEmails = [TEST_EMAILS.owner, TEST_EMAILS.friend];
+  const auth = createAuth({
+    db,
+    secret: TEST_AUTH_SECRET,
+    baseURL: "http://localhost:3000",
+    allowedEmails,
+    plugins: [testUtils()],
+  });
+  const app = createApp({
+    db,
+    auth: createAuthGateway(auth, allowedEmails),
+    igdb,
+    clock,
+    logRequests: false,
+  });
+  const helpers = ((await auth.$context) as unknown as { test: TestHelpers }).test;
+
+  async function loginAs(email: string) {
+    const created = await helpers.saveUser(helpers.createUser({ email, name: email }));
+    const { headers } = await helpers.login({ userId: created.id });
+    const request = (path: string, init: RequestInit = {}) => {
+      const merged = new Headers(init.headers);
+      for (const [key, value] of headers) merged.set(key, value);
+      return app.request(path, { ...init, headers: merged });
+    };
+    return { userId: created.id, headers, request };
+  }
+
+  const owner = await loginAs(TEST_EMAILS.owner);
+  return {
+    app,
+    db,
+    igdb,
+    clock,
+    auth,
+    helpers,
+    loginAs,
+    userId: owner.userId,
+    request: owner.request,
   };
 }

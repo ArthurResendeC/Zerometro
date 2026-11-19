@@ -9,42 +9,42 @@ import {
   type StatusCounts,
   type UpdateLibraryEntryInput,
 } from "../../shared/library";
-import type { Db } from "../db/client";
 import { games, libraryEntries, playSessions } from "../db/schema";
 import { ConflictError, NotFoundError, ValidationError } from "../errors";
 import { logActivity } from "./activity";
-import type { ServiceContext } from "./context";
+import type { ServiceContext, UserScope } from "./context";
 import { ensureGame } from "./games";
 import type { IgdbApi } from "./igdb";
 
 // ---------------------------------------------------------------------------
 // Leitura
 
-export function listLibrary(db: Db, query: LibraryListQuery = {}): LibraryItem[] {
+export function listLibrary(scope: UserScope, query: LibraryListQuery = {}): LibraryItem[] {
   const filters: SQL[] = [];
   if (query.status) filters.push(eq(libraryEntries.status, query.status));
   if (query.q) filters.push(sql`${games.name} like ${`%${escapeLike(query.q)}%`} escape '\\'`);
-  return selectItems(db, filters);
+  return selectItems(scope, filters);
 }
 
-export function getLibraryItem(db: Db, gameId: number): LibraryItem {
-  const [item] = selectItems(db, [eq(games.id, gameId)]);
+export function getLibraryItem(scope: UserScope, gameId: number): LibraryItem {
+  const [item] = selectItems(scope, [eq(games.id, gameId)]);
   if (!item) throw new NotFoundError(`Jogo ${gameId} não está na biblioteca`);
   return item;
 }
 
-export function countByStatus(db: Db): StatusCounts {
+export function countByStatus({ db, userId }: UserScope): StatusCounts {
   const counts = Object.fromEntries(gameStatuses.map((s) => [s, 0])) as StatusCounts;
   const rows = db
     .select({ status: libraryEntries.status, count: sql<number>`count(*)` })
     .from(libraryEntries)
+    .where(eq(libraryEntries.userId, userId))
     .groupBy(libraryEntries.status)
     .all();
   for (const row of rows) counts[row.status] = row.count;
   return counts;
 }
 
-function selectItems(db: Db, filters: SQL[]): LibraryItem[] {
+function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
   const totals = db
     .select({
       gameId: playSessions.gameId,
@@ -53,7 +53,8 @@ function selectItems(db: Db, filters: SQL[]): LibraryItem[] {
       lastPlayedOn: sql<string>`max(${playSessions.playedOn})`.as("last_played_on"),
     })
     .from(playSessions)
-    .where(isNotNull(playSessions.minutes)) // ignora o timer rodando
+    // Só sessões encerradas do usuário (ignora o timer rodando).
+    .where(and(eq(playSessions.userId, userId), isNotNull(playSessions.minutes)))
     .groupBy(playSessions.gameId)
     .as("totals");
 
@@ -68,7 +69,7 @@ function selectItems(db: Db, filters: SQL[]): LibraryItem[] {
     .from(libraryEntries)
     .innerJoin(games, eq(games.id, libraryEntries.gameId))
     .leftJoin(totals, eq(totals.gameId, games.id))
-    .where(and(...filters))
+    .where(and(eq(libraryEntries.userId, userId), ...filters))
     // Jogados recentemente primeiro; depois os mexidos por último.
     .orderBy(
       sql`${totals.lastPlayedOn} desc nulls last`,
@@ -121,7 +122,7 @@ export async function addToLibrary(
   const existing = ctx.db
     .select({ status: libraryEntries.status })
     .from(libraryEntries)
-    .where(eq(libraryEntries.gameId, game.id))
+    .where(and(eq(libraryEntries.userId, ctx.userId), eq(libraryEntries.gameId, game.id)))
     .get();
   if (existing) {
     throw new ConflictError(
@@ -133,20 +134,21 @@ export async function addToLibrary(
   ctx.db.transaction((tx) => {
     tx.insert(libraryEntries)
       .values({
+        userId: ctx.userId,
         gameId: game.id,
         status: input.status,
         platformPlayed: input.platformPlayed ?? null,
         ...dates,
       })
       .run();
-    logActivity(tx, ctx.actor, "library.add", {
+    logActivity(tx, ctx, "library.add", {
       gameId: game.id,
       name: game.name,
       status: input.status,
     });
   });
 
-  return getLibraryItem(ctx.db, game.id);
+  return getLibraryItem(ctx, game.id);
 }
 
 export function updateLibraryEntry(
@@ -154,7 +156,7 @@ export function updateLibraryEntry(
   gameId: number,
   patch: UpdateLibraryEntryInput,
 ): LibraryItem {
-  const current = getLibraryItem(ctx.db, gameId);
+  const current = getLibraryItem(ctx, gameId);
   const dates = applyStatusRules(current, patch, ctx.today);
 
   const changes = {
@@ -166,20 +168,23 @@ export function updateLibraryEntry(
   };
 
   ctx.db.transaction((tx) => {
-    tx.update(libraryEntries).set(changes).where(eq(libraryEntries.gameId, gameId)).run();
-    logActivity(tx, ctx.actor, "library.update", {
+    tx.update(libraryEntries)
+      .set(changes)
+      .where(and(eq(libraryEntries.userId, ctx.userId), eq(libraryEntries.gameId, gameId)))
+      .run();
+    logActivity(tx, ctx, "library.update", {
       gameId,
       name: current.name,
       changes,
     });
   });
 
-  return getLibraryItem(ctx.db, gameId);
+  return getLibraryItem(ctx, gameId);
 }
 
 /** O que seria apagado ao remover o jogo (usado para confirmação no site e no MCP). */
-export function previewRemoval(db: Db, gameId: number): RemovalSummary {
-  const item = getLibraryItem(db, gameId);
+export function previewRemoval(scope: UserScope, gameId: number): RemovalSummary {
+  const item = getLibraryItem(scope, gameId);
   return {
     gameId,
     name: item.name,
@@ -190,11 +195,16 @@ export function previewRemoval(db: Db, gameId: number): RemovalSummary {
 
 /** Remove o jogo da biblioteca junto com todas as sessões dele. */
 export function removeFromLibrary(ctx: ServiceContext, gameId: number): RemovalSummary {
-  const summary = previewRemoval(ctx.db, gameId);
+  const summary = previewRemoval(ctx, gameId);
   ctx.db.transaction((tx) => {
-    // Apagar o jogo leva a entrada e as sessões junto (ON DELETE CASCADE).
-    tx.delete(games).where(eq(games.id, gameId)).run();
-    logActivity(tx, ctx.actor, "library.remove", { ...summary });
+    // O jogo continua no cache do IGDB (`games`, compartilhado); saem só os dados do usuário.
+    tx.delete(playSessions)
+      .where(and(eq(playSessions.userId, ctx.userId), eq(playSessions.gameId, gameId)))
+      .run();
+    tx.delete(libraryEntries)
+      .where(and(eq(libraryEntries.userId, ctx.userId), eq(libraryEntries.gameId, gameId)))
+      .run();
+    logActivity(tx, ctx, "library.remove", { ...summary });
   });
   return summary;
 }

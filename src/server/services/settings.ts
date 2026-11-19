@@ -4,16 +4,15 @@ import {
   settingsSchema,
   type UpdateSettingsInput,
 } from "../../shared/settings";
-import type { Db } from "../db/client";
 import { logActivity } from "./activity";
-import type { ServiceContext } from "./context";
+import type { ServiceContext, UserScope } from "./context";
 import { getKv, setKv } from "./kv";
 
-const SETTINGS_KEY = "settings";
+const settingsKey = (userId: string) => `settings:${userId}`;
 
-/** Ajustes salvos por cima dos padrões; campos inválidos ou ausentes caem no padrão. */
-export function getSettings(db: Db): Settings {
-  const raw = getKv(db, SETTINGS_KEY);
+/** Ajustes do usuário por cima dos padrões; campos inválidos ou ausentes caem no padrão. */
+export function getSettings({ db, userId }: UserScope): Settings {
+  const raw = getKv(db, settingsKey(userId));
   if (!raw) return DEFAULT_SETTINGS;
   const settings = { ...DEFAULT_SETTINGS };
   let stored: Record<string, unknown> = {};
@@ -30,10 +29,10 @@ export function getSettings(db: Db): Settings {
 }
 
 export function updateSettings(ctx: ServiceContext, patch: UpdateSettingsInput): Settings {
-  const settings = { ...getSettings(ctx.db), ...patch };
+  const settings = { ...getSettings(ctx), ...patch };
   ctx.db.transaction((tx) => {
-    setKv(tx, SETTINGS_KEY, JSON.stringify(settings));
-    logActivity(tx, ctx.actor, "settings.update", patch);
+    setKv(tx, settingsKey(ctx.userId), JSON.stringify(settings));
+    logActivity(tx, ctx, "settings.update", patch);
   });
   return settings;
 }

@@ -1,12 +1,15 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { createTestDb, type Db } from "./client";
-import { games, libraryEntries, playSessions } from "./schema";
+import { games, libraryEntries, playSessions, user } from "./schema";
+
+const U = "user-1";
 
 let db: Db;
 
 beforeEach(() => {
   db = createTestDb();
+  db.insert(user).values({ id: U, name: "Dono", email: "dono@zerometro.test" }).run();
 });
 
 function insertGame() {
@@ -38,8 +41,10 @@ describe("schema", () => {
 
   test("apagar o jogo apaga entrada e sessões em cascata", () => {
     const game = insertGame();
-    db.insert(libraryEntries).values({ gameId: game.id, status: "playing" }).run();
-    db.insert(playSessions).values({ gameId: game.id, playedOn: "2026-11-19", minutes: 90 }).run();
+    db.insert(libraryEntries).values({ userId: U, gameId: game.id, status: "playing" }).run();
+    db.insert(playSessions)
+      .values({ userId: U, gameId: game.id, playedOn: "2026-11-19", minutes: 90 })
+      .run();
 
     db.delete(games).where(eq(games.id, game.id)).run();
 
@@ -47,29 +52,58 @@ describe("schema", () => {
     expect(db.select().from(playSessions).all()).toHaveLength(0);
   });
 
-  test("um jogo só pode ter uma entrada na biblioteca", () => {
+  test("cada usuário tem no máximo uma entrada por jogo", () => {
     const game = insertGame();
-    db.insert(libraryEntries).values({ gameId: game.id, status: "backlog" }).run();
+    db.insert(libraryEntries).values({ userId: U, gameId: game.id, status: "backlog" }).run();
 
     expect(() =>
-      db.insert(libraryEntries).values({ gameId: game.id, status: "playing" }).run(),
+      db.insert(libraryEntries).values({ userId: U, gameId: game.id, status: "playing" }).run(),
     ).toThrow();
+
+    db.insert(user).values({ id: "user-2", name: "Amigo", email: "amigo@zerometro.test" }).run();
+    db.insert(libraryEntries)
+      .values({ userId: "user-2", gameId: game.id, status: "playing" })
+      .run();
+    expect(db.select().from(libraryEntries).all()).toHaveLength(2);
+  });
+
+  test("apagar o usuário apaga só os dados dele", () => {
+    const game = insertGame();
+    db.insert(libraryEntries).values({ userId: U, gameId: game.id, status: "playing" }).run();
+    db.insert(playSessions)
+      .values({ userId: U, gameId: game.id, playedOn: "2026-11-19", minutes: 30 })
+      .run();
+
+    db.delete(user).where(eq(user.id, U)).run();
+
+    expect(db.select().from(libraryEntries).all()).toHaveLength(0);
+    expect(db.select().from(playSessions).all()).toHaveLength(0);
+    expect(db.select().from(games).all()).toHaveLength(1); // cache do IGDB fica
   });
 
   test("rejeita minutos <= 0 e nota fora de 1..10", () => {
     const game = insertGame();
 
     expect(() =>
-      db.insert(playSessions).values({ gameId: game.id, playedOn: "2026-11-19", minutes: 0 }).run(),
+      db
+        .insert(playSessions)
+        .values({ userId: U, gameId: game.id, playedOn: "2026-11-19", minutes: 0 })
+        .run(),
     ).toThrow();
     expect(() =>
-      db.insert(libraryEntries).values({ gameId: game.id, status: "finished", rating: 11 }).run(),
+      db
+        .insert(libraryEntries)
+        .values({ userId: U, gameId: game.id, status: "finished", rating: 11 })
+        .run(),
     ).toThrow();
   });
 
   test("rejeita sessão de jogo inexistente (foreign key)", () => {
     expect(() =>
-      db.insert(playSessions).values({ gameId: 999, playedOn: "2026-11-19", minutes: 30 }).run(),
+      db
+        .insert(playSessions)
+        .values({ userId: U, gameId: 999, playedOn: "2026-11-19", minutes: 30 })
+        .run(),
     ).toThrow();
   });
 
