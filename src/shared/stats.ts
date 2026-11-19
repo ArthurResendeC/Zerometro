@@ -110,3 +110,44 @@ export interface PeriodBreakdown {
   /** Jogos mais jogados no período. */
   games: TopGame[];
 }
+
+// ---------------------------------------------------------------------------
+// Ritmo: quando e por quanto tempo eu jogo
+
+export interface WeekdayStat {
+  /** 0 = segunda … 6 = domingo. */
+  weekday: number;
+  minutes: number;
+  /** Média por ocorrência desse dia da semana no período (contando os dias sem jogar). */
+  avgMinutes: number;
+}
+
+export interface HourStat {
+  /** Hora local de início da faixa (0–23). */
+  hour: number;
+  minutes: number;
+}
+
+/** Faixas de duração das sessões, em minutos: [min, max). */
+export const sessionLengthBuckets = [
+  { min: 0, max: 30 },
+  { min: 30, max: 60 },
+  { min: 60, max: 120 },
+  { min: 120, max: 180 },
+  { min: 180, max: null },
+] as const;
+
+export interface Rhythm {
+  from: string;
+  to: string;
+  year: number | null;
+  weekdays: WeekdayStat[];
+  /** Minutos em cada hora do dia, só das sessões de timer (as únicas com horário). */
+  hours: HourStat[];
+  timerSessions: number;
+  /** Quantas sessões em cada faixa de `sessionLengthBuckets`. */
+  sessionLengths: number[];
+  sessions: number;
+  /** Duração mediana das sessões, em minutos (null sem sessões). */
+  medianSessionMinutes: number | null;
+}

@@ -3,7 +3,8 @@ import { createFakeIgdb, createTestContext, fakeIgdbGame, TEST_TODAY } from "../
 import type { ServiceContext } from "./context";
 import { addToLibrary } from "./library";
 import { logSession } from "./sessions";
-import { getHeatmap, getPeriodBreakdown, getStats } from "./stats";
+import { playSessions } from "../db/schema";
+import { getHeatmap, getPeriodBreakdown, getRhythm, getStats, spreadOverHours } from "./stats";
 
 // TEST_TODAY = 2026-11-19, uma quinta-feira (semana começa na segunda, 16).
 
@@ -210,5 +211,62 @@ describe("detalhamento do período", () => {
     const old = getPeriodBreakdown(ctx, { today: TEST_TODAY, year: 2025 });
     expect(old).toMatchObject({ totalMinutes: 500, year: 2025 });
     expect(old.genres).toEqual([{ genre: "Role-playing (RPG)", minutes: 500, games: 1 }]);
+  });
+});
+
+describe("ritmo", () => {
+  test("médias por dia da semana, horas do timer e durações das sessões", () => {
+    play("2026-11-09", 30); // segunda
+    play("2026-11-16", 60); // segunda
+    play("2026-11-17", 20); // terça
+    // Timer das 20:30 às 22:15 em São Paulo (UTC-3), na quarta 18.
+    ctx.db
+      .insert(playSessions)
+      .values({
+        userId: ctx.userId,
+        gameId: persona,
+        playedOn: "2026-11-18",
+        minutes: 105,
+        startedAt: "2026-11-18T23:30:00.000Z",
+        endedAt: "2026-11-19T01:15:00.000Z",
+        source: "timer",
+      })
+      .run();
+
+    const r = getRhythm(ctx, { today: TEST_TODAY, timeZone: "America/Sao_Paulo" });
+
+    // De 09/11 (primeiro dia jogado) a 19/11: duas segundas, duas quartas, duas quintas…
+    expect(r.weekdays[0]).toEqual({ weekday: 0, minutes: 90, avgMinutes: 45 });
+    expect(r.weekdays[2]).toEqual({ weekday: 2, minutes: 105, avgMinutes: 53 });
+    expect(r.weekdays[3]).toEqual({ weekday: 3, minutes: 0, avgMinutes: 0 });
+    expect(r.hours.filter((h) => h.minutes > 0)).toEqual([
+      { hour: 20, minutes: 30 },
+      { hour: 21, minutes: 60 },
+      { hour: 22, minutes: 15 },
+    ]);
+    expect(r.timerSessions).toBe(1);
+    expect(r.sessionLengths).toEqual([1, 1, 2, 0, 0]);
+    expect(r).toMatchObject({ sessions: 4, medianSessionMinutes: 45 });
+  });
+
+  test("sem sessões", () => {
+    const r = getRhythm(ctx, { today: TEST_TODAY, timeZone: "America/Sao_Paulo" });
+    expect(r).toMatchObject({ sessions: 0, timerSessions: 0, medianSessionMinutes: null });
+    expect(r.weekdays.every((w) => w.avgMinutes === 0)).toBe(true);
+  });
+});
+
+describe("spreadOverHours", () => {
+  test("corta nas viradas de hora locais, inclusive em fuso de meia hora", () => {
+    const buckets = Array.from({ length: 24 }, () => 0);
+    // 10:00Z = 15:30 em Kolkata (UTC+5:30); 1h10min até 16:40.
+    spreadOverHours(
+      new Date("2026-11-19T10:00:00Z"),
+      new Date("2026-11-19T11:10:00Z"),
+      "Asia/Kolkata",
+      buckets,
+    );
+    expect(buckets[15]).toBe(30);
+    expect(buckets[16]).toBe(40);
   });
 });

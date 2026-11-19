@@ -3,7 +3,7 @@ import type { AppDeps } from "../app";
 import { getSettings } from "../services/settings";
 import { statsPeriodSchema } from "../../shared/stats";
 import { validate } from "../lib/validate";
-import { getHeatmap, getPeriodBreakdown, getStats } from "../services/stats";
+import { getHeatmap, getPeriodBreakdown, getRhythm, getStats } from "../services/stats";
 
 export function createStatsRoutes(deps: AppDeps) {
   return createRouter()
@@ -22,5 +22,10 @@ export function createStatsRoutes(deps: AppDeps) {
       const ctx = webContext(deps, c);
       const { year } = c.req.valid("query");
       return c.json(getPeriodBreakdown(ctx, { today: ctx.today, year }));
+    })
+    .get("/rhythm", validate("query", statsPeriodSchema), (c) => {
+      const ctx = webContext(deps, c);
+      const { year } = c.req.valid("query");
+      return c.json(getRhythm(ctx, { today: ctx.today, timeZone: ctx.timeZone, year }));
     });
 }

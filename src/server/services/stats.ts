@@ -1,10 +1,12 @@
 import { and, desc, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
-import { addDays, diffInDays, startOfWeek } from "../../shared/dates";
+import { addDays, diffInDays, startOfWeek, zonedParts } from "../../shared/dates";
+import { sessionLengthBuckets } from "../../shared/stats";
 import type {
   GenreStat,
   Heatmap,
   PeriodBreakdown,
   PeriodStats,
+  Rhythm,
   Stats,
   StatsPeriod,
   StreakStats,
@@ -305,4 +307,107 @@ function playedYears({ db, userId }: UserScope, currentYear: number): number[] {
     .where(and(eq(playSessions.userId, userId), isNotNull(playSessions.minutes)))
     .all();
   return [...new Set([currentYear, ...rows.map((r) => Number(r.year))])].toSorted((a, b) => b - a);
+}
+
+// ---------------------------------------------------------------------------
+// Ritmo
+
+/** Dia da semana de uma data de calendário: 0 = segunda … 6 = domingo. */
+function weekdayOf(isoDate: string): number {
+  return (new Date(`${isoDate}T00:00:00Z`).getUTCDay() + 6) % 7;
+}
+
+export function getRhythm(
+  scope: UserScope,
+  { today, timeZone, year }: { today: string; timeZone: string } & StatsPeriod,
+): Rhythm {
+  const { from, to } = statsPeriodRange(today, year);
+  const rows = closedSessions(scope, from, to);
+
+  // Médias por dia da semana: dias do período desde o primeiro jogado até hoje (ou o fim).
+  const weekdayMinutes = Array.from({ length: 7 }, () => 0);
+  for (const row of rows) weekdayMinutes[weekdayOf(row.playedOn)]! += row.minutes;
+  const firstDay = firstPlayedOn(scope);
+  const start = firstDay && firstDay > from ? firstDay : from;
+  const end = to > today ? today : to;
+  const occurrences = Array.from({ length: 7 }, () => 0);
+  if (start <= end) {
+    for (let day = start; day <= end; day = addDays(day, 1)) occurrences[weekdayOf(day)]! += 1;
+  }
+
+  // Horas do dia: cada sessão de timer é repartida pelas horas locais que ela cobre.
+  const hourMinutes = Array.from({ length: 24 }, () => 0);
+  let timerSessions = 0;
+  for (const row of rows) {
+    if (!row.startedAt || !row.endedAt) continue;
+    timerSessions += 1;
+    spreadOverHours(new Date(row.startedAt), new Date(row.endedAt), timeZone, hourMinutes);
+  }
+
+  const lengths = rows.map((r) => r.minutes).toSorted((a, b) => a - b);
+  return {
+    from,
+    to,
+    year: year ?? null,
+    weekdays: weekdayMinutes.map((minutes, weekday) => ({
+      weekday,
+      minutes,
+      avgMinutes: occurrences[weekday] ? Math.round(minutes / occurrences[weekday]) : 0,
+    })),
+    hours: hourMinutes.map((minutes, hour) => ({ hour, minutes: Math.round(minutes) })),
+    timerSessions,
+    sessionLengths: sessionLengthBuckets.map(
+      ({ min, max }) => lengths.filter((m) => m >= min && (max === null || m < max)).length,
+    ),
+    sessions: lengths.length,
+    medianSessionMinutes: median(lengths),
+  };
+}
+
+interface SessionRow {
+  playedOn: string;
+  minutes: number;
+  startedAt: string | null;
+  endedAt: string | null;
+}
+
+function closedSessions({ db, userId }: UserScope, from: string, to: string): SessionRow[] {
+  return db
+    .select({
+      playedOn: playSessions.playedOn,
+      minutes: sql<number>`${playSessions.minutes}`,
+      startedAt: playSessions.startedAt,
+      endedAt: playSessions.endedAt,
+    })
+    .from(playSessions)
+    .where(
+      and(
+        eq(playSessions.userId, userId),
+        gte(playSessions.playedOn, from),
+        lte(playSessions.playedOn, to),
+        isNotNull(playSessions.minutes),
+      ),
+    )
+    .all();
+}
+
+/** Soma em `buckets[hora local]` os minutos de [start, end), cortando nas viradas de hora. */
+export function spreadOverHours(start: Date, end: Date, timeZone: string, buckets: number[]): void {
+  let cursor = start.getTime();
+  const stop = end.getTime();
+  while (cursor < stop) {
+    const { time } = zonedParts(new Date(cursor), timeZone);
+    const [hour, minute] = time.split(":").map(Number) as [number, number];
+    const seconds = new Date(cursor).getUTCSeconds() * 1000 + new Date(cursor).getUTCMilliseconds();
+    const nextHour = cursor + (60 - minute) * 60_000 - seconds;
+    const until = Math.min(nextHour, stop);
+    buckets[hour]! += (until - cursor) / 60_000;
+    cursor = until;
+  }
+}
+
+function median(sorted: number[]): number | null {
+  if (sorted.length === 0) return null;
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid]! : Math.round((sorted[mid - 1]! + sorted[mid]!) / 2);
 }

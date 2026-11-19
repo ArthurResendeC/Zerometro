@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Settings } from "../../shared/settings";
-import type { Heatmap, PeriodBreakdown, Stats } from "../../shared/stats";
+import type { Heatmap, PeriodBreakdown, Rhythm, Stats } from "../../shared/stats";
 import { createTestApp } from "../testing";
 
 function patch(body: unknown): RequestInit {
@@ -59,5 +59,13 @@ describe("/api/settings e /api/stats", () => {
       totalMinutes: 0,
     });
     expect((await request("/api/stats/breakdown?year=1999")).status).toBe(400);
+  });
+
+  test("ritmo", async () => {
+    const { request } = await createTestApp();
+    const rhythm = (await (await request("/api/stats/rhythm")).json()) as Rhythm;
+    expect(rhythm.weekdays).toHaveLength(7);
+    expect(rhythm.hours).toHaveLength(24);
+    expect(rhythm).toMatchObject({ sessions: 0, sessionLengths: [0, 0, 0, 0, 0] });
   });
 });
