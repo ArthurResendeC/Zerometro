@@ -19,9 +19,10 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
   - heatmap anual estilo GitHub
   - horas por jogo e por semana
 - **Tempo para zerar:** história, história + extras e 100%, com o progresso estimado de cada jogo
-- **Servidor MCP:** adicionar jogos, mudar status e registrar tempo jogado conversando com uma IA (ex.: *"joguei 2h de Persona hoje"*)
+- **Servidor MCP:** adicionar jogos, mudar status e registrar tempo jogado conversando com uma IA (ex.: _"joguei 2h de Persona hoje"_)
 
 ### Planejado
+
 - [ ] Registro automático pela presença do Discord (via [Lanyard](https://github.com/Phineas/lanyard))
 - [ ] Sincronização de tempo jogado da Steam
 - [ ] Retrospectiva do ano
@@ -31,18 +32,18 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 
 ## 🧱 Stack
 
-| Camada | Tecnologia |
-| --- | --- |
-| Runtime | [Bun](https://bun.sh) |
-| API | [Hono](https://hono.dev) |
-| Banco | SQLite (`bun:sqlite`) + [Drizzle ORM](https://orm.drizzle.team) |
-| Frontend | React + TypeScript |
-| Rotas / dados / forms / tabelas | [TanStack](https://tanstack.com) Router, Query, Form e Table |
-| UI | [shadcn/ui](https://ui.shadcn.com) + Tailwind CSS |
-| Estado de UI | Zustand |
-| Validação | Zod (compartilhado entre API, frontend e MCP) |
-| IA | [Model Context Protocol](https://modelcontextprotocol.io) (Streamable HTTP) |
-| Dados de jogos | [IGDB API](https://api-docs.igdb.com) |
+| Camada                          | Tecnologia                                                                  |
+| ------------------------------- | --------------------------------------------------------------------------- |
+| Runtime                         | [Bun](https://bun.sh)                                                       |
+| API                             | [Hono](https://hono.dev)                                                    |
+| Banco                           | SQLite (`bun:sqlite`) + [Drizzle ORM](https://orm.drizzle.team)             |
+| Frontend                        | React + TypeScript                                                          |
+| Rotas / dados / forms / tabelas | [TanStack](https://tanstack.com) Router, Query, Form e Table                |
+| UI                              | [shadcn/ui](https://ui.shadcn.com) + Tailwind CSS                           |
+| Estado de UI                    | Zustand                                                                     |
+| Validação                       | Zod (compartilhado entre API, frontend e MCP)                               |
+| IA                              | [Model Context Protocol](https://modelcontextprotocol.io) (Streamable HTTP) |
+| Dados de jogos                  | [IGDB API](https://api-docs.igdb.com)                                       |
 
 Um único processo Bun serve a API, o servidor MCP e o frontend.
 
@@ -63,7 +64,8 @@ src/
 ## 🚀 Rodando localmente
 
 ### Pré-requisitos
-- [mise](https://mise.jdx.dev): instala as versões certas do Bun e do Node e centraliza variáveis de ambiente e tarefas no `mise.toml`
+
+- [mise](https://mise.jdx.dev): instala as versões certas do Bun, Node, oxlint e oxfmt e centraliza variáveis de ambiente e tarefas no `mise.toml`
 - Credenciais do IGDB: crie um app no [Twitch Developer Console](https://dev.twitch.tv/console/apps) para obter `client_id` e `client_secret`
 
 ### Passos
@@ -80,27 +82,28 @@ mise run dev                 # http://localhost:3000
 
 Outras tarefas (`mise tasks` lista todas):
 
-| Tarefa | O que faz |
-| --- | --- |
-| `mise run check` | typecheck + testes |
-| `mise run build` / `mise run start` | build de produção em `dist/` e execução |
-| `mise run db:generate` | gera migration a partir do schema |
-| `mise run db:studio` | abre o Drizzle Studio |
-| `mise run mcp:inspect` | abre o MCP Inspector |
+| Tarefa                               | O que faz                               |
+| ------------------------------------ | --------------------------------------- |
+| `mise run check`                     | formatação + lint + typecheck + testes  |
+| `mise run fmt` / `mise run lint:fix` | formata (oxfmt) e corrige lint (oxlint) |
+| `mise run build` / `mise run start`  | build de produção em `dist/` e execução |
+| `mise run db:generate`               | gera migration a partir do schema       |
+| `mise run db:studio`                 | abre o Drizzle Studio                   |
+| `mise run mcp:inspect`               | abre o MCP Inspector                    |
 
 ### Variáveis de ambiente
 
 Os padrões ficam no `[env]` do `mise.toml`; valores locais e segredos vão no `.env` (carregado pelo mise, não versionado).
 
-| Variável | Descrição |
-| --- | --- |
-| `IGDB_CLIENT_ID` | Client ID do app na Twitch |
-| `IGDB_CLIENT_SECRET` | Client Secret do app na Twitch |
-| `APP_PASSWORD` | Senha de acesso ao painel |
-| `MCP_TOKEN` | Token bearer para o servidor MCP |
-| `DATABASE_PATH` | Caminho do arquivo SQLite (padrão: `data/zerometro.db` na raiz do projeto) |
-| `PORT` | Porta do servidor (padrão: `3000`) |
-| `TZ` | Fuso usado nas estatísticas (padrão: `America/Sao_Paulo`) |
+| Variável             | Descrição                                                                  |
+| -------------------- | -------------------------------------------------------------------------- |
+| `IGDB_CLIENT_ID`     | Client ID do app na Twitch                                                 |
+| `IGDB_CLIENT_SECRET` | Client Secret do app na Twitch                                             |
+| `APP_PASSWORD`       | Senha de acesso ao painel                                                  |
+| `MCP_TOKEN`          | Token bearer para o servidor MCP                                           |
+| `DATABASE_PATH`      | Caminho do arquivo SQLite (padrão: `data/zerometro.db` na raiz do projeto) |
+| `PORT`               | Porta do servidor (padrão: `3000`)                                         |
+| `TZ`                 | Fuso usado nas estatísticas (padrão: `America/Sao_Paulo`)                  |
 
 ---
 

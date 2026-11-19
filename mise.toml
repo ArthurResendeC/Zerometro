@@ -4,7 +4,9 @@
 
 [tools]
 bun = "1.4.4"
-node = "lts" # só para ferramentas via npx (ex.: MCP Inspector)
+node = "lts" # usado pelo oxfmt (backend npm) e pelo npx (ex.: MCP Inspector)
+oxlint = "1.94.0"
+oxfmt = "0.79.0"
 
 [env]
 # Padrões; sobrescreva no .env (não versionado)
@@ -67,9 +69,25 @@ run = "bunx tsc --noEmit"
 description = "Testes"
 run = "bun test"
 
+[tasks.lint]
+description = "Lint com oxlint"
+run = "oxlint --deny-warnings"
+
+[tasks."lint:fix"]
+description = "Lint com correções automáticas"
+run = "oxlint --fix"
+
+[tasks.fmt]
+description = "Formata o código com oxfmt"
+run = "oxfmt"
+
+[tasks."fmt:check"]
+description = "Verifica a formatação sem alterar arquivos"
+run = "oxfmt --check"
+
 [tasks.check]
-description = "Typecheck + testes"
-depends = ["typecheck", "test"]
+description = "Formatação + lint + typecheck + testes"
+depends = ["fmt:check", "lint", "typecheck", "test"]
 
 [tasks."mcp:inspect"]
 description = "Abre o MCP Inspector"
