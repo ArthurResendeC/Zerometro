@@ -50,7 +50,7 @@ run = "bun index.js"
 
 [tasks."db:generate"]
 description = "Gera uma migration a partir do schema do Drizzle"
-run = "bunx drizzle-kit generate"
+run = "bunx --bun drizzle-kit generate"
 
 [tasks."db:migrate"]
 description = "Aplica as migrations pendentes"
@@ -58,7 +58,7 @@ run = "bun src/server/db/migrate.ts"
 
 [tasks."db:studio"]
 description = "Abre o Drizzle Studio"
-run = "bunx drizzle-kit studio"
+run = "bunx --bun drizzle-kit studio"
 
 [tasks.typecheck]
 description = "Checagem de tipos"
