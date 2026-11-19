@@ -267,6 +267,13 @@ export const breakdownQuery = (year?: number) =>
     placeholderData: keepPreviousData,
   });
 
+export const rhythmQuery = (year?: number) =>
+  queryOptions({
+    queryKey: [...statsKeys.all, "rhythm", year ?? "rolling"],
+    queryFn: () => unwrap(api.stats.rhythm.$get({ query: year ? { year: String(year) } : {} })),
+    placeholderData: keepPreviousData,
+  });
+
 export const settingsQuery = () =>
   queryOptions({
     queryKey: settingsKeys.all,

@@ -8,7 +8,8 @@ import { Card } from "@/components/ui/card";
 import { NativeSelect } from "@/components/ui/native-select";
 import { ActivityHeatmap } from "@/features/stats/activity-heatmap";
 import { BarList } from "@/features/stats/bar-list";
-import { breakdownQuery, heatmapQuery } from "@/lib/queries";
+import { RhythmSection } from "@/features/stats/rhythm-section";
+import { breakdownQuery, heatmapQuery, rhythmQuery } from "@/lib/queries";
 
 const GENRES_SHOWN = 8;
 
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/estatisticas")({
     Promise.all([
       context.queryClient.ensureQueryData(heatmapQuery(deps.year)),
       context.queryClient.ensureQueryData(breakdownQuery(deps.year)),
+      context.queryClient.ensureQueryData(rhythmQuery(deps.year)),
     ]),
   component: StatsPage,
 });
@@ -33,6 +35,7 @@ function StatsPage() {
   const navigate = Route.useNavigate();
   const { data: heatmap } = useSuspenseQuery(heatmapQuery(year));
   const { data: breakdown } = useSuspenseQuery(breakdownQuery(year));
+  const { data: rhythm } = useSuspenseQuery(rhythmQuery(year));
   const period = year ? `em ${year}` : "nos últimos 12 meses";
 
   return (
@@ -65,6 +68,8 @@ function StatsPage() {
         <GenresCard breakdown={breakdown} />
         <GamesCard breakdown={breakdown} />
       </div>
+
+      <RhythmSection rhythm={rhythm} />
     </div>
   );
 }

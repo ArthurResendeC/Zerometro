@@ -200,17 +200,20 @@ export function ActivityHeatmap({ heatmap, actions, stale = false }: ActivityHea
         </div>
       )}
 
-      <table className="sr-only">
-        <caption>Dias jogados {period}</caption>
-        <tbody>
-          {heatmap.days.map((day) => (
-            <tr key={day.date}>
-              <th scope="row">{dayFormat.format(utc(day.date))}</th>
-              <td>{formatMinutes(day.minutes)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {/* sr-only numa div: em <table> a altura de 1px e o overflow não valem. */}
+      <div className="sr-only">
+        <table>
+          <caption>Dias jogados {period}</caption>
+          <tbody>
+            {heatmap.days.map((day) => (
+              <tr key={day.date}>
+                <th scope="row">{dayFormat.format(utc(day.date))}</th>
+                <td>{formatMinutes(day.minutes)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </Card>
   );
 }
