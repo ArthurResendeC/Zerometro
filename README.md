@@ -2,31 +2,42 @@
 
 > Quanto falta pra zerar?
 
-Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa de quanto falta para zerar cada jogo. Tudo também pode ser controlado por IA através de um servidor **MCP**.
+Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa de quanto falta para zerar cada jogo. A ideia é também controlar tudo por IA através de um servidor **MCP** (ainda não implementado).
 
-> 🚧 **Em desenvolvimento.** Este README descreve o que o projeto está construindo; alguns itens ainda não existem.
+> 🧪 **Projeto de exemplo, feito para cada um hospedar o seu.** O Zerômetro é um projeto pessoal publicado como referência. A minha instância é privada: só entram os e-mails convidados (`ALLOWED_EMAILS`), então ela não serve como serviço público. Para usar, faça um fork e suba a sua (veja [Rodando localmente](#-rodando-localmente) e [Deploy](#-deploy-railway)).
+
+> 🚧 **Em desenvolvimento.** A seção abaixo separa o que já funciona do que ainda falta.
 
 ---
 
 ## ✨ Funcionalidades
 
+### Já funciona
+
+- **Login com Google** (Better Auth) restrito a uma lista de convidados; cada pessoa só vê os próprios dados
 - **Biblioteca por status:** jogando, zerados, próximos, lista de desejos, pausados e abandonados
-- **Dados do IGDB:** busca de jogos com capa, plataformas, gêneros e ano de lançamento
-- **Registro de sessões:** quanto tempo joguei, em qual dia e qual jogo
-- **Estatísticas:**
-  - 🔥 ofensiva atual e recorde (dias seguidos jogando)
-  - média diária e semanal
-  - heatmap anual estilo GitHub
-  - horas por jogo e por semana
+- **Dados do IGDB:** busca de jogos com capa, plataformas, gêneros, ano e tempo para zerar
+- **Registro de sessões:** manual ("joguei 2h ontem") ou pelo **timer** ("Comecei a jogar" / "Parei"), que roda no servidor e não se perde ao fechar a aba
+- **Estatísticas:** 🔥 ofensiva atual e recorde (com mínimo diário configurável), hoje, média diária e semanal, gráfico das últimas 8 semanas e jogos mais jogados
 - **Tempo para zerar:** história, história + extras e 100%, com o progresso estimado de cada jogo
-- **Servidor MCP:** adicionar jogos, mudar status e registrar tempo jogado conversando com uma IA (ex.: _"joguei 2h de Persona hoje"_)
+- **Efeitos sonoros 8 bits** (desligados por padrão): ao começar e parar sessões, zerar jogos e bater marcos da ofensiva, com volume nos ajustes
+- **Deploy na Railway** como código (`.railway/railway.ts`) + imagem Docker
 
-### Planejado
+### Ainda falta
 
-- [ ] Registro automático pela presença do Discord (via [Lanyard](https://github.com/Phineas/lanyard))
-- [ ] Sincronização de tempo jogado da Steam
-- [ ] Retrospectiva do ano
+- [ ] **Servidor MCP** (`/mcp`) para controlar o app por IA (ver [Usando com IA](#-usando-com-ia-mcp))
+- [ ] Tela inicial com listas do IGDB: lançamentos bem avaliados, em alta e próximos lançamentos
+- [ ] Heatmap anual estilo GitHub e gráficos com Recharts
+- [ ] Kanban da biblioteca com arrastar e soltar (o hook já existe: `useMoveGameStatus`)
+- [ ] Metas anuais (ex.: zerar 20 jogos no ano) e o som de "meta batida"
+- [ ] Previsão do backlog ("no seu ritmo, você termina a fila em março")
+- [ ] Recomendações a partir dos jogos que você zerou e gostou
+- [ ] Histórico de atividade na interface (o que foi mudado pelo site e pela IA)
+- [ ] Backup do SQLite (Litestream para um bucket S3/R2)
 - [ ] PWA
+- [ ] Retrospectiva do ano
+- [ ] Alertas de lançamento da lista de desejos
+- [ ] Sincronização de tempo jogado da Steam
 
 ---
 
@@ -45,16 +56,15 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 | IA                              | [Model Context Protocol](https://modelcontextprotocol.io) (Streamable HTTP) |
 | Dados de jogos                  | [IGDB API](https://api-docs.igdb.com)                                       |
 
-Um único processo Bun serve a API, o servidor MCP e o frontend.
+Um único processo Bun serve a API e o frontend (e, quando existir, o servidor MCP).
 
 ```
 src/
   server/
     routes/    # REST (/api/*) consumido pelo frontend
-    mcp/       # tools do servidor MCP (/mcp)
-    services/  # regras de negócio, usadas por REST e MCP
+    mcp/       # tools do servidor MCP (/mcp), ainda não implementado
+    services/  # regras de negócio, usadas por REST e (no futuro) pelo MCP
     db/        # schema e migrations
-    jobs/      # tarefas agendadas
   web/         # SPA React
   shared/      # schemas Zod e tipos compartilhados
 ```
@@ -67,15 +77,16 @@ src/
 
 - [mise](https://mise.jdx.dev): instala as versões certas do Bun, Node, oxlint e oxfmt e centraliza variáveis de ambiente e tarefas no `mise.toml`
 - Credenciais do IGDB: crie um app no [Twitch Developer Console](https://dev.twitch.tv/console/apps) para obter `client_id` e `client_secret`
+- Um cliente OAuth do Google, para o login: no [Google Cloud Console](https://console.cloud.google.com) → Google Auth Platform → Clients, crie um "Web application" com a origem `http://localhost:3000` e o redirect `http://localhost:3000/api/auth/callback/google`
 
 ### Passos
 
 ```bash
-git clone https://github.com/<seu-usuario>/zerometro.git
+git clone https://github.com/<seu-usuario>/zerometro.git   # o seu fork
 cd zerometro
 mise trust && mise install   # Bun e Node nas versões do mise.toml
 mise run install             # dependências
-cp .env.example .env         # preencha as variáveis
+cp .env.example .env         # preencha as variáveis (inclusive o seu e-mail em ALLOWED_EMAILS)
 mise run db:migrate
 mise run dev                 # http://localhost:3000
 ```
@@ -96,38 +107,26 @@ Outras tarefas (`mise tasks` lista todas):
 
 Os padrões ficam no `[env]` do `mise.toml`; valores locais e segredos vão no `.env` (carregado pelo mise, não versionado).
 
-| Variável             | Descrição                                                                  |
-| -------------------- | -------------------------------------------------------------------------- |
-| `IGDB_CLIENT_ID`     | Client ID do app na Twitch                                                 |
-| `IGDB_CLIENT_SECRET` | Client Secret do app na Twitch                                             |
-| `APP_PASSWORD`       | Senha de acesso ao painel                                                  |
-| `MCP_TOKEN`          | Token bearer para o servidor MCP                                           |
-| `DATABASE_PATH`      | Caminho do arquivo SQLite (padrão: `data/zerometro.db` na raiz do projeto) |
-| `PORT`               | Porta do servidor (padrão: `3000`)                                         |
-| `TZ`                 | Fuso usado nas estatísticas (padrão: `America/Sao_Paulo`)                  |
+| Variável                                    | Descrição                                                                             |
+| ------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET`     | Credenciais do app na Twitch                                                          |
+| `BETTER_AUTH_SECRET`                        | Assina os cookies de sessão (`openssl rand -base64 32`); obrigatório em produção      |
+| `BETTER_AUTH_URL`                           | URL pública do site (padrão: domínio da Railway ou `http://localhost:$PORT`)          |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Cliente OAuth do Google para o login                                                  |
+| `ALLOWED_EMAILS`                            | E-mails convidados, separados por vírgula; o primeiro é o dono. Vazio = ninguém entra |
+| `DATABASE_PATH`                             | Caminho do arquivo SQLite (padrão: `data/zerometro.db` na raiz do projeto)            |
+| `PORT`                                      | Porta do servidor (padrão: `3000`)                                                    |
+| `TZ`                                        | Fuso usado nas estatísticas (padrão: `America/Sao_Paulo`)                             |
 
 ---
 
 ## 🤖 Usando com IA (MCP)
 
-O Zerômetro expõe um servidor MCP em `/mcp`. Com ele, um cliente como o Claude pode ler e alterar a sua biblioteca.
+> ⚠️ **Ainda não implementado.** Hoje não existe nada em `/mcp`: a rota cai na SPA. Por isso conectar o Zerômetro como conector no Claude falha na etapa de login.
 
-**Tools disponíveis:** `search_igdb`, `list_library`, `get_game`, `get_stats`, `list_sessions`, `add_game`, `set_status`, `log_session`, `update_session`, `update_game_entry`, `remove_game`, `delete_session`
+O plano é expor um servidor MCP em `/mcp` (Streamable HTTP), com o mesmo login do site via OAuth, para um cliente como o Claude ler e alterar a sua biblioteca (ex.: _"comecei a jogar Ocarina"_, _"joguei 2h de Persona ontem"_, _"zerei o Ocarina, nota 9"_).
 
-Ações destrutivas só são executadas com confirmação explícita.
-
-Exemplo de configuração no Claude Code:
-
-```bash
-claude mcp add --transport http zerometro https://seu-dominio/mcp \
-  --header "Authorization: Bearer $MCP_TOKEN"
-```
-
-Para inspecionar as tools localmente:
-
-```bash
-npx @modelcontextprotocol/inspector
-```
+**Tools planejadas:** `search_igdb`, `list_library`, `get_game`, `get_stats`, `list_sessions`, `get_active_session`, `start_session`, `stop_session`, `log_session`, `add_game`, `set_status`, `update_session`, `update_game_entry`, `remove_game`, `delete_session`. As destrutivas só vão executar com confirmação explícita.
 
 ---
 
@@ -146,7 +145,7 @@ npx @modelcontextprotocol/inspector
 
 ## 🚀 Deploy (Railway)
 
-A infraestrutura está em [`.railway/railway.ts`](.railway/railway.ts) ([IaC da Railway](https://docs.railway.com/infrastructure-as-code)): um serviço `web` buildado pelo [`Dockerfile`](Dockerfile) a partir da `main` no GitHub, com um volume em `/data` para o SQLite (uma réplica só). As migrations rodam no boot do servidor, porque o volume não fica montado no build nem no pre-deploy.
+Estes passos sobem **a sua** instância, no seu projeto da Railway e com os seus segredos. A infraestrutura está em [`.railway/railway.ts`](.railway/railway.ts) ([IaC da Railway](https://docs.railway.com/infrastructure-as-code)): um serviço `web` buildado pelo [`Dockerfile`](Dockerfile) a partir da `main` no GitHub, com um volume em `/data` para o SQLite (uma réplica só). As migrations rodam no boot do servidor, porque o volume não fica montado no build nem no pre-deploy.
 
 Testar a imagem localmente (precisa do Docker):
 
