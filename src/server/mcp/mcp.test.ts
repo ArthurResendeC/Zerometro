@@ -266,6 +266,7 @@ describe("tools", () => {
       "get_active_session",
       "get_feeds",
       "get_game",
+      "get_period_stats",
       "get_stats",
       "list_library",
       "list_sessions",
@@ -295,6 +296,11 @@ describe("tools", () => {
 
     const stats = await callJson(client, "get_stats");
     expect(stats.data).toMatchObject({ todayMinutes: 45 });
+
+    const period = await callJson(client, "get_period_stats", {});
+    expect(period.data).toMatchObject({ totalMinutes: 45, playedDays: 1, sessions: 1 });
+    expect(period.data.topGames[0]).toMatchObject({ name: "Persona 5 Royal", minutes: 45 });
+    expect(period.data.weekdays).toHaveLength(7);
 
     const sessions = await callJson(client, "list_sessions", { game: 1 });
     expect(sessions.data.sessions).toHaveLength(1);

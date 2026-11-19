@@ -3,7 +3,9 @@ import { z } from "zod";
 import { isoDateSchema, localTimeSchema } from "../../shared/dates";
 import { gameStatusLabels, gameStatusSchema } from "../../shared/domain";
 import { feedKeys, feedTitles } from "../../shared/feeds";
+import { genreLabel } from "../../shared/genres";
 import { type LibraryItem, priorMinutesSchema } from "../../shared/library";
+import { sessionLengthBuckets } from "../../shared/stats";
 import { type LogSessionResult, noteSchema } from "../../shared/sessions";
 import type { AppDeps } from "../app";
 import { AppError, TimerActiveError } from "../errors";
@@ -16,7 +18,7 @@ import {
 } from "../services/library";
 import { listSessions, logSession } from "../services/sessions";
 import { getSettings } from "../services/settings";
-import { getStats } from "../services/stats";
+import { getHeatmap, getPeriodBreakdown, getRecords, getRhythm, getStats } from "../services/stats";
 import { getActiveSession, startTimer, stopTimer } from "../services/timer";
 
 // Servidor MCP do Zerômetro: tools finas por cima dos `services/` (as mesmas regras da API
@@ -192,7 +194,7 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     {
       title: "Estatísticas",
       description:
-        "Ofensiva (dias seguidos jogando o mínimo diário) atual e recorde, minutos jogados hoje e na semana, médias dos últimos 30 dias e por semana, e os jogos mais jogados no último mês.",
+        "Ofensiva (dias seguidos jogando o mínimo diário) atual e recorde, minutos jogados hoje e na semana, médias dos últimos 30 dias e por semana, e os jogos mais jogados no último mês. Para um ano ou os últimos 12 meses (gêneros, horários, recordes, zerados), use get_period_stats.",
       inputSchema: z.object({}),
       annotations: readOnly,
     },
@@ -204,6 +206,69 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
           streakMinMinutes: getSettings(scope).streakMinMinutes,
         });
         return stats;
+      }),
+  );
+
+  server.registerTool(
+    "get_period_stats",
+    {
+      title: "Estatísticas de um período",
+      description:
+        "Estatísticas dos últimos 12 meses (padrão) ou de um ano: total jogado e dias jogados, gêneros e jogos mais jogados, média por dia da semana (0 = segunda), minutos por hora do dia (só sessões de timer), sessões por faixa de duração, recordes (maior sessão, melhor dia e semana), zerados no período e o ritmo comparado ao tempo da história no IGDB (paceRatio 1.2 = 20% a mais).",
+      inputSchema: z.object({
+        year: z
+          .number()
+          .int()
+          .min(2000)
+          .max(2100)
+          .optional()
+          .describe("Ano de calendário; sem ano, os últimos 12 meses"),
+      }),
+      annotations: readOnly,
+    },
+    ({ year }) =>
+      run(() => {
+        const scope = ctx();
+        const { today, timeZone } = scope;
+        const heatmap = getHeatmap(scope, {
+          today,
+          streakMinMinutes: getSettings(scope).streakMinMinutes,
+          year,
+        });
+        const breakdown = getPeriodBreakdown(scope, { today, year });
+        const rhythm = getRhythm(scope, { today, timeZone, year });
+        const records = getRecords(scope, { today, year });
+        return {
+          today,
+          from: heatmap.from,
+          to: heatmap.to,
+          yearsWithData: heatmap.years,
+          totalMinutes: heatmap.totalMinutes,
+          playedDays: heatmap.playedDays,
+          genres: breakdown.genres.map(({ genre, minutes, games }) => ({
+            genre: genreLabel(genre),
+            minutes,
+            games,
+          })),
+          topGames: breakdown.games,
+          weekdays: rhythm.weekdays,
+          // Só as horas com tempo, para não ocupar contexto à toa.
+          hours: rhythm.hours.filter((h) => h.minutes > 0),
+          timerSessions: rhythm.timerSessions,
+          sessionLengths: sessionLengthBuckets.map(({ min, max }, i) => ({
+            minMinutes: min,
+            maxMinutes: max,
+            sessions: rhythm.sessionLengths[i] ?? 0,
+          })),
+          sessions: rhythm.sessions,
+          medianSessionMinutes: rhythm.medianSessionMinutes,
+          longestSession: records.longestSession,
+          bestDay: records.bestDay,
+          bestWeek: records.bestWeek,
+          finished: records.finished,
+          finishedByMonth: records.finishedByMonth.filter((m) => m.count > 0),
+          paceRatio: records.paceRatio,
+        };
       }),
   );
 
