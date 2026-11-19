@@ -2,6 +2,7 @@
 import type { IgdbGameDetails } from "../shared/igdb";
 import { createApp } from "./app";
 import { createTestDb, type Db } from "./db/client";
+import type { ServiceContext } from "./services/context";
 import type { IgdbApi } from "./services/igdb";
 
 export function fakeIgdbGame(overrides: Partial<IgdbGameDetails> = {}): IgdbGameDetails {
@@ -43,8 +44,16 @@ export function createFakeIgdb(catalog: IgdbGameDetails[] = [fakeIgdbGame()]): I
   };
 }
 
-export function createTestApp(overrides: { db?: Db; igdb?: IgdbApi } = {}) {
+/** "Hoje" fixo nos testes. */
+export const TEST_TODAY = "2026-11-19";
+
+export function createTestApp(overrides: { db?: Db; igdb?: IgdbApi; today?: string } = {}) {
   const db = overrides.db ?? createTestDb();
   const igdb = overrides.igdb ?? createFakeIgdb();
-  return { app: createApp({ db, igdb, logRequests: false }), db, igdb };
+  const today = overrides.today ?? TEST_TODAY;
+  return { app: createApp({ db, igdb, today: () => today, logRequests: false }), db, igdb };
+}
+
+export function createTestContext(overrides: Partial<ServiceContext> = {}): ServiceContext {
+  return { db: overrides.db ?? createTestDb(), today: TEST_TODAY, actor: "web", ...overrides };
 }

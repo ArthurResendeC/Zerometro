@@ -5,11 +5,14 @@ import type { Db } from "./db/client";
 import { AppError, type ApiErrorBody } from "./errors";
 import { healthRoutes } from "./routes/health";
 import { createIgdbRoutes } from "./routes/igdb";
+import { createLibraryRoutes } from "./routes/library";
 import type { IgdbApi } from "./services/igdb";
 
 export interface AppDeps {
   db: Db;
   igdb: IgdbApi;
+  /** "Hoje" (YYYY-MM-DD) no fuso do usuário; injetável para testes. */
+  today: () => string;
   /** Log de requisições (desligado nos testes). */
   logRequests?: boolean;
 }
@@ -36,7 +39,8 @@ export function createApp(deps: AppDeps) {
       );
     })
     .route("/health", healthRoutes)
-    .route("/igdb", createIgdbRoutes(deps));
+    .route("/igdb", createIgdbRoutes(deps))
+    .route("/library", createLibraryRoutes(deps));
 }
 
 export type AppType = ReturnType<typeof createApp>;

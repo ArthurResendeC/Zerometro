@@ -19,6 +19,18 @@ export class NotFoundError extends AppError {
   }
 }
 
+export class ConflictError extends AppError {
+  constructor(message: string) {
+    super(409, "conflict", message);
+  }
+}
+
+export class ValidationError extends AppError {
+  constructor(message: string) {
+    super(400, "invalid_input", message);
+  }
+}
+
 export class IgdbError extends AppError {
   constructor(message: string, options?: ErrorOptions) {
     super(502, "igdb_error", message, options);

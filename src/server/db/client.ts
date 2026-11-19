@@ -21,6 +21,9 @@ export function createDb(path: string) {
 }
 
 export type Db = ReturnType<typeof createDb>;
+/** Transação do Drizzle (mesma API de escrita do Db). */
+export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+export type DbOrTx = Db | Tx;
 
 export function runMigrations(db: Db, migrationsFolder: string = MIGRATIONS_FOLDER) {
   migrate(db, { migrationsFolder });
