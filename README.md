@@ -82,7 +82,7 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 
 ### Ainda falta
 
-- [ ] **Tools de edição e remoção no MCP** (editar/apagar sessão, editar/remover jogo, com confirmação)
+- [x] ~**Tools de edição e remoção no MCP** (editar/apagar sessão, editar/remover jogo, com confirmação)~
 - [ ] Tela inicial com listas do IGDB: lançamentos bem avaliados, em alta e próximos lançamentos
 - [ ] Heatmap anual estilo GitHub e gráficos com Recharts
 - [ ] Kanban da biblioteca com arrastar e soltar (o hook já existe: `useMoveGameStatus`)
