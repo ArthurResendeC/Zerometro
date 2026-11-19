@@ -1,6 +1,14 @@
 import { and, desc, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
 import { addDays, diffInDays, startOfWeek } from "../../shared/dates";
-import type { PeriodStats, Stats, StreakStats, TopGame, WeekStats } from "../../shared/stats";
+import type {
+  Heatmap,
+  HeatmapQuery,
+  PeriodStats,
+  Stats,
+  StreakStats,
+  TopGame,
+  WeekStats,
+} from "../../shared/stats";
 import type { UserScope } from "./context";
 import { games, playSessions } from "../db/schema";
 import { getSettings } from "./settings";
@@ -207,4 +215,50 @@ function topGames({ db, userId }: UserScope, from: string, to: string): TopGame[
     .orderBy(desc(minutes), games.name)
     .limit(TOP_GAMES)
     .all();
+}
+
+// ---------------------------------------------------------------------------
+// Heatmap
+
+/**
+ * Minutos por dia para o heatmap: um ano de calendário ou, sem ano, os últimos 12 meses
+ * (as 53 colunas do GitHub: da segunda-feira de 52 semanas atrás até hoje).
+ * Tempo anterior ao Zerômetro não entra: não tem dia.
+ */
+export function getHeatmap(
+  scope: UserScope,
+  { today, streakMinMinutes, year }: StatsOptions & HeatmapQuery,
+): Heatmap {
+  const currentYear = Number(today.slice(0, 4));
+  const from = year ? `${year}-01-01` : addDays(startOfWeek(today), -7 * 52);
+  const lastDay = year ? `${year}-12-31` : today;
+  const to = lastDay > today ? today : lastDay;
+
+  const days =
+    from > to
+      ? []
+      : [...minutesByDay(scope, from, to)]
+          .map(([date, minutes]) => ({ date, minutes }))
+          .toSorted((a, b) => a.date.localeCompare(b.date));
+
+  return {
+    from,
+    to: lastDay,
+    today,
+    year: year ?? null,
+    days,
+    totalMinutes: days.reduce((sum, d) => sum + d.minutes, 0),
+    playedDays: days.length,
+    streakMinMinutes,
+    years: playedYears(scope, currentYear),
+  };
+}
+
+function playedYears({ db, userId }: UserScope, currentYear: number): number[] {
+  const rows = db
+    .selectDistinct({ year: sql<string>`substr(${playSessions.playedOn}, 1, 4)` })
+    .from(playSessions)
+    .where(and(eq(playSessions.userId, userId), isNotNull(playSessions.minutes)))
+    .all();
+  return [...new Set([currentYear, ...rows.map((r) => Number(r.year))])].toSorted((a, b) => b - a);
 }

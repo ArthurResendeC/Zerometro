@@ -3,7 +3,7 @@ import { createFakeIgdb, createTestContext, fakeIgdbGame, TEST_TODAY } from "../
 import type { ServiceContext } from "./context";
 import { addToLibrary } from "./library";
 import { logSession } from "./sessions";
-import { getStats } from "./stats";
+import { getHeatmap, getStats } from "./stats";
 
 // TEST_TODAY = 2026-11-19, uma quinta-feira (semana começa na segunda, 16).
 
@@ -27,6 +27,8 @@ function play(playedOn: string, minutes: number, gameId = persona) {
 }
 
 const stats = (streakMinMinutes = 30) => getStats(ctx, { today: TEST_TODAY, streakMinMinutes });
+const heatmap = (year?: number) =>
+  getHeatmap(ctx, { today: TEST_TODAY, streakMinMinutes: 30, year });
 
 describe("ofensiva", () => {
   test("sem sessões, tudo zerado", () => {
@@ -146,5 +148,39 @@ describe("totais e médias", () => {
       ["Undertale", 90],
       ["Persona 5 Royal", 70],
     ]);
+  });
+});
+
+describe("heatmap", () => {
+  test("sem ano: as 53 semanas até hoje, só os dias jogados, em ordem", () => {
+    play("2025-11-16", 60); // domingo antes da primeira coluna: fora
+    play("2025-11-17", 45); // segunda-feira de 52 semanas atrás: primeira coluna
+    play("2026-11-19", 20);
+    play("2026-11-19", 10, undertale);
+    play("2026-03-02", 90);
+
+    const h = heatmap();
+
+    expect(h).toMatchObject({ from: "2025-11-17", to: TEST_TODAY, today: TEST_TODAY, year: null });
+    expect(h.days).toEqual([
+      { date: "2025-11-17", minutes: 45 },
+      { date: "2026-03-02", minutes: 90 },
+      { date: "2026-11-19", minutes: 30 },
+    ]);
+    expect(h).toMatchObject({ totalMinutes: 165, playedDays: 3, streakMinMinutes: 30 });
+  });
+
+  test("com ano: o ano inteiro (até 31/12) e os anos com sessões para o seletor", () => {
+    play("2025-12-31", 60);
+    play("2026-01-01", 30);
+    play("2024-06-10", 15);
+
+    const h = heatmap(2025);
+
+    expect(h).toMatchObject({ from: "2025-01-01", to: "2025-12-31", year: 2025 });
+    expect(h.days).toEqual([{ date: "2025-12-31", minutes: 60 }]);
+    expect(h.years).toEqual([2026, 2025, 2024]);
+    expect(heatmap(2026).to).toBe("2026-12-31");
+    expect(heatmap(2030)).toMatchObject({ days: [], totalMinutes: 0 });
   });
 });

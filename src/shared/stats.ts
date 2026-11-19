@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 // Contrato das estatísticas (dashboard e tool `get_stats` do MCP).
 
 export interface StreakStats {
@@ -55,4 +57,34 @@ export interface Stats {
   weeks: WeekStats[];
   /** Jogos mais jogados nos últimos 30 dias. */
   topGames: TopGame[];
+}
+
+// ---------------------------------------------------------------------------
+// Heatmap (estilo GitHub)
+
+export const heatmapQuerySchema = z.object({
+  /** Ano de calendário; sem ano, os últimos 12 meses até hoje. */
+  year: z.coerce.number().int().min(2000).max(2100).optional(),
+});
+export type HeatmapQuery = z.infer<typeof heatmapQuerySchema>;
+
+export interface HeatmapDay {
+  date: string;
+  minutes: number;
+}
+
+export interface Heatmap {
+  /** Primeiro e último dia do período (YYYY-MM-DD), ambos inclusos. */
+  from: string;
+  to: string;
+  today: string;
+  year: number | null;
+  /** Só os dias com tempo jogado, em ordem. */
+  days: HeatmapDay[];
+  totalMinutes: number;
+  playedDays: number;
+  /** Mínimo diário da ofensiva (o primeiro degrau da escala de cor). */
+  streakMinMinutes: number;
+  /** Anos com alguma sessão, mais o atual (para o seletor), do mais recente ao mais antigo. */
+  years: number[];
 }

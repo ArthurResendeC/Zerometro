@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Settings } from "../../shared/settings";
-import type { Stats } from "../../shared/stats";
+import type { Heatmap, Stats } from "../../shared/stats";
 import { createTestApp } from "../testing";
 
 function patch(body: unknown): RequestInit {
@@ -34,5 +34,17 @@ describe("/api/settings e /api/stats", () => {
     expect(res.status).toBe(200);
     const stats = (await res.json()) as Stats;
     expect(stats.streak).toMatchObject({ minMinutes: 15, current: 0, todayRemainingMinutes: 15 });
+  });
+
+  test("heatmap aceita um ano opcional", async () => {
+    const { request } = await createTestApp();
+
+    const rolling = (await (await request("/api/stats/heatmap")).json()) as Heatmap;
+    expect(rolling).toMatchObject({ year: null, from: "2025-11-17", days: [] });
+
+    const year = (await (await request("/api/stats/heatmap?year=2025")).json()) as Heatmap;
+    expect(year).toMatchObject({ year: 2025, from: "2025-01-01", to: "2025-12-31" });
+
+    expect((await request("/api/stats/heatmap?year=abc")).status).toBe(400);
   });
 });
