@@ -102,6 +102,7 @@ export interface LibraryEntryRef {
   name: string;
   status: GameStatus;
   startedAt: string | null;
+  finishedAt: string | null;
 }
 
 export function findLibraryEntry({ db, userId }: UserScope, gameId: number): LibraryEntryRef {
@@ -111,6 +112,7 @@ export function findLibraryEntry({ db, userId }: UserScope, gameId: number): Lib
       name: games.name,
       status: libraryEntries.status,
       startedAt: libraryEntries.startedAt,
+      finishedAt: libraryEntries.finishedAt,
     })
     .from(libraryEntries)
     .innerJoin(games, eq(games.id, libraryEntries.gameId))
@@ -151,7 +153,7 @@ export function logSession(
       .returning({ id: playSessions.id })
       .get();
 
-    const statusChangedTo = resumePlaying(scope, entry, playedOn);
+    const statusChangedTo = applySessionToEntry(scope, entry, playedOn);
 
     logActivity(tx, ctx, "session.log", {
       sessionId: id,
@@ -196,6 +198,11 @@ export function updateSession(
       .set(set)
       .where(and(eq(playSessions.id, id), eq(playSessions.userId, ctx.userId)))
       .run();
+    if (playedOn !== current.playedOn) {
+      applySessionToEntry(scope, findLibraryEntry(scope, current.gameId), playedOn, {
+        resume: false,
+      });
+    }
     logActivity(tx, ctx, "session.update", {
       sessionId: id,
       gameId: current.gameId,
@@ -270,18 +277,29 @@ export function deleteSession(ctx: ServiceContext, id: number): PlaySessionItem 
 // ---------------------------------------------------------------------------
 // Regras (também usadas pelo timer)
 
-/** Jogar algo em Próximos/Desejos/Pausado move para Jogando. Retorna o novo status, se mudou. */
-export function resumePlaying(
+/**
+ * Efeitos de uma sessão na entrada da biblioteca:
+ * - jogar algo em Próximos/Desejos/Pausado move para Jogando (só com `resume`, o padrão);
+ * - uma sessão antes do "começou em" (ou sem início registrado) puxa o início para o dia dela,
+ *   desde que não passe da data de término (replay de um jogo zerado não mexe no início).
+ * Retorna o novo status, se mudou.
+ */
+export function applySessionToEntry(
   { db, userId }: UserScope,
   entry: LibraryEntryRef,
   playedOn: string,
+  { resume = true }: { resume?: boolean } = {},
 ): GameStatus | null {
-  if (!RESUMES_PLAYING.has(entry.status)) return null;
+  const status = resume && RESUMES_PLAYING.has(entry.status) ? "playing" : null;
+  const pullsStart =
+    (entry.startedAt === null || playedOn < entry.startedAt) &&
+    (entry.finishedAt === null || playedOn <= entry.finishedAt);
+  if (!status && !pullsStart) return null;
   db.update(libraryEntries)
-    .set({ status: "playing", startedAt: entry.startedAt ?? playedOn })
+    .set({ ...(status && { status }), ...(pullsStart && { startedAt: playedOn }) })
     .where(and(eq(libraryEntries.userId, userId), eq(libraryEntries.gameId, entry.gameId)))
     .run();
-  return "playing";
+  return status;
 }
 
 /** Primeira ocorrência do horário local `time` depois de `after` (no máximo 24h depois). */

@@ -13,6 +13,7 @@ import { NotFoundError, TimerActiveError } from "../errors";
 import { logActivity } from "./activity";
 import type { ServiceContext, UserScope } from "./context";
 import {
+  applySessionToEntry,
   assertDayCapacity,
   assertNotAfterNow,
   findLibraryEntry,
@@ -20,7 +21,6 @@ import {
   minutesOnDay,
   minutesOnGame,
   nextOccurrence,
-  resumePlaying,
   sessionMinutes,
 } from "./sessions";
 import { currentStreak } from "./stats";
@@ -90,7 +90,7 @@ export function startTimer(ctx: ServiceContext, input: StartTimerInput): StartTi
       .returning({ id: playSessions.id })
       .get();
 
-    const statusChangedTo = resumePlaying(scope, entry, ctx.today);
+    const statusChangedTo = applySessionToEntry(scope, entry, ctx.today);
     logActivity(tx, ctx, "timer.start", {
       sessionId: id,
       gameId: input.gameId,

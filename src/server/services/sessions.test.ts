@@ -4,7 +4,7 @@ import { activityLog } from "../db/schema";
 import { NotFoundError, ValidationError } from "../errors";
 import { createFakeIgdb, createTestContext, fakeIgdbGame, TEST_TODAY } from "../testing";
 import type { ServiceContext } from "./context";
-import { addToLibrary, getLibraryItem } from "./library";
+import { addToLibrary, getLibraryItem, updateLibraryEntry } from "./library";
 import { deleteSession, listSessions, logSession, updateSession } from "./sessions";
 
 const igdb = createFakeIgdb([
@@ -82,6 +82,31 @@ describe("logSession", () => {
     });
   });
 
+  test('sessão anterior ao início puxa o "começou em" para o dia dela', () => {
+    // Adicionado como Jogando: começa hoje.
+    expect(getLibraryItem(ctx, persona).startedAt).toBe(TEST_TODAY);
+
+    logSession(ctx, { gameId: persona, minutes: 60, playedOn: addDays(TEST_TODAY, -1) });
+    logSession(ctx, { gameId: persona, minutes: 60, playedOn: addDays(TEST_TODAY, -7) });
+    logSession(ctx, { gameId: persona, minutes: 60, playedOn: addDays(TEST_TODAY, -3) });
+
+    expect(getLibraryItem(ctx, persona).startedAt).toBe(addDays(TEST_TODAY, -7));
+  });
+
+  test("zerado: sessão antes do término preenche o início; replay depois não mexe", () => {
+    updateLibraryEntry(ctx, undertale, { finishedAt: addDays(TEST_TODAY, -10) });
+
+    logSession(ctx, { gameId: undertale, minutes: 30 }); // replay hoje
+    expect(getLibraryItem(ctx, undertale).startedAt).toBeNull();
+
+    logSession(ctx, { gameId: undertale, minutes: 30, playedOn: addDays(TEST_TODAY, -12) });
+    expect(getLibraryItem(ctx, undertale)).toMatchObject({
+      status: "finished",
+      startedAt: addDays(TEST_TODAY, -12),
+      finishedAt: addDays(TEST_TODAY, -10),
+    });
+  });
+
   test("grava atividade", () => {
     logSession(ctx, { gameId: persona, minutes: 20 });
     expect(ctx.db.select().from(activityLog).all().at(-1)).toMatchObject({
@@ -131,6 +156,12 @@ describe("updateSession / deleteSession", () => {
     });
 
     expect(updated).toMatchObject({ minutes: 90, playedOn: "2026-11-18", note: null });
+  });
+
+  test('mudar a sessão para antes do início puxa o "começou em"', () => {
+    const { session } = logSession(ctx, { gameId: persona, minutes: 60 });
+    updateSession(ctx, session.id, { playedOn: addDays(TEST_TODAY, -5) });
+    expect(getLibraryItem(ctx, persona).startedAt).toBe(addDays(TEST_TODAY, -5));
   });
 
   test("o limite diário ignora a própria sessão ao editar", () => {
