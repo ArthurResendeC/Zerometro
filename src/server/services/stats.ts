@@ -3,6 +3,7 @@ import { addDays, diffInDays, startOfWeek } from "../../shared/dates";
 import type { PeriodStats, Stats, StreakStats, TopGame, WeekStats } from "../../shared/stats";
 import type { UserScope } from "./context";
 import { games, playSessions } from "../db/schema";
+import { getSettings } from "./settings";
 
 const WEEKS_SHOWN = 8;
 const TOP_GAMES = 5;
@@ -66,6 +67,17 @@ function streaks({ db, userId }: UserScope, minMinutes: number): StreakRow[] {
   `);
 }
 
+/** A ofensiva mais recente, se ainda estiver viva (terminou hoje ou ontem). */
+function aliveStreak(rows: StreakRow[], today: string): StreakRow | undefined {
+  const latest = rows[0];
+  return latest && latest.end >= addDays(today, -1) ? latest : undefined;
+}
+
+/** Ofensiva atual com o mínimo diário dos ajustes do usuário. */
+export function currentStreak(scope: UserScope, today: string): number {
+  return aliveStreak(streaks(scope, getSettings(scope).streakMinMinutes), today)?.days ?? 0;
+}
+
 function streakStats(
   { db, userId }: UserScope,
   today: string,
@@ -73,8 +85,7 @@ function streakStats(
   minMinutes: number,
 ): StreakStats {
   const rows = streaks({ db, userId }, minMinutes);
-  const latest = rows[0];
-  const alive = latest && latest.end >= addDays(today, -1);
+  const alive = aliveStreak(rows, today);
   // Em empate, o recorde mais recente.
   const best = rows.reduce<StreakRow | undefined>(
     (acc, row) => (acc && acc.days >= row.days ? acc : row),
@@ -83,8 +94,8 @@ function streakStats(
   const todayCounts = todayMinutes >= minMinutes;
 
   return {
-    current: alive ? latest.days : 0,
-    currentStartedOn: alive ? latest.start : null,
+    current: alive?.days ?? 0,
+    currentStartedOn: alive?.start ?? null,
     best: best?.days ?? 0,
     bestFrom: best?.start ?? null,
     bestTo: best?.end ?? null,

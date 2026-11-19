@@ -14,6 +14,7 @@ import { games, libraryEntries, playSessions } from "../db/schema";
 import { NotFoundError, ValidationError } from "../errors";
 import { logActivity } from "./activity";
 import type { ServiceContext, UserScope } from "./context";
+import { currentStreak } from "./stats";
 
 /** Registrar uma sessão desses status indica que voltei a jogar. */
 const RESUMES_PLAYING: ReadonlySet<GameStatus> = new Set(["backlog", "wishlist", "paused"]);
@@ -131,6 +132,7 @@ export function logSession(
   const source = options.source ?? (ctx.actor === "mcp" ? "mcp" : "manual");
   assertNotFuture(playedOn, ctx.today);
   const entry = findLibraryEntry(ctx, input.gameId);
+  const streakBefore = currentStreak(ctx, ctx.today);
 
   return ctx.db.transaction((tx) => {
     const scope = { db: tx, userId: ctx.userId };
@@ -165,6 +167,7 @@ export function logSession(
       dayTotalMinutes: minutesOnDay(scope, playedOn),
       gameTotalMinutes: minutesOnGame(scope, input.gameId),
       statusChangedTo,
+      streak: { before: streakBefore, current: currentStreak(scope, ctx.today) },
     };
   });
 }

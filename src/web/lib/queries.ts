@@ -1,6 +1,6 @@
 import { keepPreviousData, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { gameStatusLabels } from "@shared/domain";
+import { type GameStatus, gameStatusLabels } from "@shared/domain";
 import type { AddToLibraryInput, LibraryListQuery, UpdateLibraryEntryInput } from "@shared/library";
 import type {
   ListSessionsQuery,
@@ -10,6 +10,10 @@ import type {
 } from "@shared/sessions";
 import type { UpdateSettingsInput } from "@shared/settings";
 import type { StartTimerInput, StopTimerInput, StopTimerResult } from "@shared/timer";
+import type { UpdateLibraryEntryResult } from "@shared/library";
+import { reachedStreakMilestone } from "@/features/audio/sound-events";
+import type { SoundName } from "@/features/audio/sounds";
+import { useSound } from "@/features/audio/use-sound";
 import { ApiError, api, unwrap } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
 import { formatMinutes } from "@/lib/format";
@@ -70,17 +74,47 @@ export function useAddToLibrary() {
   });
 }
 
+function patchLibraryEntry(gameId: number, patch: UpdateLibraryEntryInput) {
+  return unwrap(api.library[":gameId"].$patch({ param: { gameId: String(gameId) }, json: patch }));
+}
+
+/** Sons de uma mudança na biblioteca, pelo que o servidor confirmou. */
+function libraryChangeSounds({ item, previousStatus }: UpdateLibraryEntryResult): SoundName[] {
+  const finishedNow = item.status === "finished" && previousStatus !== "finished";
+  // TODO(audio): metas anuais ainda não existem. Quando existirem, a API deve devolver os zerados
+  // do ano antes/depois e a meta; se passou de abaixo para igual ou acima dela → "goal-reached".
+  return finishedNow ? ["game-finished"] : [];
+}
+
+/** Formulário da página do jogo (select de status, nota, datas...). */
 export function useUpdateLibraryEntry(gameId: number) {
   const queryClient = useQueryClient();
+  const { playMostImportant } = useSound();
   return useMutation({
-    mutationFn: async (patch: UpdateLibraryEntryInput) =>
-      (
-        await unwrap(
-          api.library[":gameId"].$patch({ param: { gameId: String(gameId) }, json: patch }),
-        )
-      ).item,
-    onSuccess: (item) => {
-      queryClient.setQueryData(libraryKeys.item(gameId), item);
+    mutationFn: (patch: UpdateLibraryEntryInput) => patchLibraryEntry(gameId, patch),
+    onSuccess: (result) => {
+      playMostImportant(libraryChangeSounds(result));
+      queryClient.setQueryData(libraryKeys.item(gameId), result.item);
+      return queryClient.invalidateQueries({ queryKey: libraryKeys.all });
+    },
+    onError,
+  });
+}
+
+/**
+ * Muda o status de qualquer jogo (um hook para vários jogos), para o kanban da biblioteca.
+ * TODO(audio): o kanban (drag-and-drop com dnd-kit) ainda não existe; ao soltar um card numa
+ * coluna, chame `mutate({ gameId, status })`. O som de "zerado" já sai daqui.
+ */
+export function useMoveGameStatus() {
+  const queryClient = useQueryClient();
+  const { playMostImportant } = useSound();
+  return useMutation({
+    mutationFn: ({ gameId, status }: { gameId: number; status: GameStatus }) =>
+      patchLibraryEntry(gameId, { status }),
+    onSuccess: (result) => {
+      playMostImportant(libraryChangeSounds(result));
+      queryClient.setQueryData(libraryKeys.item(result.item.gameId), result.item);
       return queryClient.invalidateQueries({ queryKey: libraryKeys.all });
     },
     onError,
@@ -127,6 +161,14 @@ export const sessionsQuery = (filters: ListSessionsQuery = {}) =>
       ).sessions,
   });
 
+/** Sons de uma sessão gravada (timer parado ou registro manual). */
+function sessionSavedSounds(result: LogSessionResult): SoundName[] {
+  return [
+    "session-stop",
+    ...(reachedStreakMilestone(result.streak) ? ["streak-milestone" as const] : []),
+  ];
+}
+
 function toastSessionSaved(result: LogSessionResult) {
   const { session, dayTotalMinutes, statusChangedTo } = result;
   toast.success(`${formatMinutes(session.minutes)} de ${session.gameName} registrados`, {
@@ -151,9 +193,11 @@ function invalidateGameData(queryClient: ReturnType<typeof useQueryClient>) {
 
 export function useLogSession() {
   const queryClient = useQueryClient();
+  const { playMostImportant } = useSound();
   return useMutation({
     mutationFn: (input: LogSessionInput) => unwrap(api.sessions.$post({ json: input })),
     onSuccess: (result) => {
+      playMostImportant(sessionSavedSounds(result));
       toastSessionSaved(result);
       return invalidateGameData(queryClient);
     },
@@ -239,11 +283,18 @@ export const timerQuery = () =>
 
 export function useStartTimer() {
   const queryClient = useQueryClient();
+  const { playMostImportant } = useSound();
   const mutation = useMutation({
     mutationFn: (input: StartTimerInput) => unwrap(api.timer.start.$post({ json: input })),
     onSuccess: (result) => {
       if (result.stopped) toastStopped(result.stopped);
       if (!result.alreadyRunning) {
+        // Trocar de jogo encerra o anterior: se isso bateu um marco da ofensiva, o marco ganha.
+        const stopped = result.stopped && !result.stopped.discarded ? result.stopped : null;
+        playMostImportant([
+          "session-start",
+          stopped && reachedStreakMilestone(stopped.streak) && "streak-milestone",
+        ]);
         toast.success(`Valendo! Bom jogo de ${result.active.gameName}`, {
           description: result.statusChangedTo
             ? `Agora em ${gameStatusLabels[result.statusChangedTo]}`
@@ -276,9 +327,12 @@ function toastStopped(result: StopTimerResult) {
 
 export function useStopTimer() {
   const queryClient = useQueryClient();
+  const { playMostImportant } = useSound();
   return useMutation({
     mutationFn: (input: StopTimerInput) => unwrap(api.timer.stop.$post({ json: input })),
     onSuccess: (result) => {
+      // Sessão de menos de 1 minuto é descartada, mas o usuário parou o timer: toca o "parei".
+      playMostImportant(result.discarded ? ["session-stop"] : sessionSavedSounds(result));
       toastStopped(result);
       return invalidateGameData(queryClient);
     },

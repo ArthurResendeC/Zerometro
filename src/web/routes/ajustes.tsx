@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LogOutIcon } from "@/components/icons";
 import { Label } from "@/components/ui/label";
+import { AudioSettingsCard } from "@/features/audio/audio-settings-card";
 import { authClient } from "@/lib/auth-client";
 import { formatMinutes } from "@/lib/format";
 import { settingsQuery, useUpdateSettings } from "@/lib/queries";
@@ -47,6 +48,7 @@ function SettingsPage() {
         title="⏱️ Aviso de sessão longa"
         description='Ao parar um timer ligado há mais que isso, o Zerômetro pergunta "jogou tudo isso mesmo?" e deixa corrigir o horário em que você parou.'
       />
+      <AudioSettingsCard />
       <AccountCard />
     </div>
   );

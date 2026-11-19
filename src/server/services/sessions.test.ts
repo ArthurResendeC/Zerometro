@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+import { addDays } from "../../shared/dates";
 import { activityLog } from "../db/schema";
 import { NotFoundError, ValidationError } from "../errors";
 import { createFakeIgdb, createTestContext, fakeIgdbGame, TEST_TODAY } from "../testing";
@@ -36,6 +37,21 @@ describe("logSession", () => {
     expect(result.dayTotalMinutes).toBe(90);
     expect(result.gameTotalMinutes).toBe(30);
     expect(result.statusChangedTo).toBeNull(); // zerado continua zerado (replay)
+  });
+
+  test("devolve a ofensiva antes e depois (só conta quando o dia atinge o mínimo)", () => {
+    for (let i = 6; i >= 1; i--) {
+      logSession(ctx, { gameId: persona, minutes: 30, playedOn: addDays(TEST_TODAY, -i) });
+    }
+
+    const short = logSession(ctx, { gameId: persona, minutes: 20 });
+    expect(short.streak).toEqual({ before: 6, current: 6 }); // 20min < mínimo de 30
+
+    const enough = logSession(ctx, { gameId: persona, minutes: 10 });
+    expect(enough.streak).toEqual({ before: 6, current: 7 });
+
+    const extra = logSession(ctx, { gameId: persona, minutes: 30 });
+    expect(extra.streak).toEqual({ before: 7, current: 7 });
   });
 
   test("a fonte segue o actor (mcp) e pode ser forçada (jobs)", () => {

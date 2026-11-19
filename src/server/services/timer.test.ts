@@ -69,6 +69,7 @@ describe("start/stop", () => {
       discarded: false,
       dayTotalMinutes: 90,
       gameTotalMinutes: 90,
+      streak: { before: 0, current: 1 },
       session: {
         minutes: 90,
         playedOn: "2026-11-19",

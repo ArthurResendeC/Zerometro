@@ -6,12 +6,13 @@ import {
   redirect,
   useLocation,
 } from "@tanstack/react-router";
-import { PlusIcon, TimerIcon } from "@/components/icons";
+import { ListIcon, PlusIcon, TimerIcon } from "@/components/icons";
 import { LogSessionDialog } from "@/components/log-session-dialog";
 import { TimerBar } from "@/components/timer";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { UserAvatar } from "@/components/user-avatar";
+import { SoundToggle } from "@/features/audio/sound-toggle";
 import { sessionQuery } from "@/lib/queries";
 import { useLogSessionDialog } from "@/stores/log-session-dialog";
 
@@ -73,10 +74,14 @@ function RootLayout() {
             to="/biblioteca"
             className={navLinkClass}
             activeProps={{ className: "text-foreground" }}
+            aria-label="Biblioteca"
           >
-            Biblioteca
+            {/* No celular, só o ícone: o texto não cabe ao lado dos botões. */}
+            <ListIcon className="sm:hidden" />
+            <span className="max-sm:hidden">Biblioteca</span>
           </Link>
           <div className="ml-auto flex items-center">
+            <SoundToggle className="max-sm:size-8 sm:mr-2" />
             <Link
               to="/ajustes"
               aria-label="Ajustes e conta"

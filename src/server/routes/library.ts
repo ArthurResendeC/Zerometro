@@ -37,12 +37,12 @@ export function createLibraryRoutes(deps: AppDeps) {
       validate("param", gameIdParamSchema),
       validate("json", updateLibraryEntrySchema),
       (c) => {
-        const item = updateLibraryEntry(
+        const result = updateLibraryEntry(
           webContext(deps, c),
           c.req.valid("param").gameId,
           c.req.valid("json"),
         );
-        return c.json({ item });
+        return c.json(result);
       },
     )
     .delete("/:gameId", validate("param", gameIdParamSchema), (c) => {

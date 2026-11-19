@@ -23,6 +23,7 @@ import {
   resumePlaying,
   sessionMinutes,
 } from "./sessions";
+import { currentStreak } from "./stats";
 
 // Timer de sessão: uma linha em play_sessions com início e sem fim (no máximo uma, garantido
 // por índice único parcial). Vive no servidor, então fechar a aba ou trocar de aparelho não perde nada.
@@ -122,6 +123,7 @@ export function stopTimer(ctx: ServiceContext, input: StopTimerInput): StopTimer
   }
 
   const minutes = sessionMinutes(start, end);
+  const streakBefore = currentStreak(ctx, ctx.today);
   return ctx.db.transaction((tx) => {
     const scope = { db: tx, userId: ctx.userId };
     assertDayCapacity(scope, active.playedOn, minutes, active.id);
@@ -146,6 +148,7 @@ export function stopTimer(ctx: ServiceContext, input: StopTimerInput): StopTimer
       dayTotalMinutes: minutesOnDay(scope, active.playedOn),
       gameTotalMinutes: minutesOnGame(scope, active.gameId),
       statusChangedTo: null,
+      streak: { before: streakBefore, current: currentStreak(scope, ctx.today) },
     };
   });
 }

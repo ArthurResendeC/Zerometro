@@ -32,6 +32,12 @@ export interface LibraryItem {
 
 export type StatusCounts = Record<GameStatus, number>;
 
+export interface UpdateLibraryEntryResult {
+  item: LibraryItem;
+  /** Status antes da mudança (ex.: para saber se o jogo acabou de ser zerado). */
+  previousStatus: GameStatus;
+}
+
 export interface RemovalSummary {
   gameId: number;
   name: string;

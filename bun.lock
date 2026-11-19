@@ -16,6 +16,7 @@
         "clsx": "^2.1.1",
         "drizzle-orm": "^0.45.4",
         "hono": "^4.13.19",
+        "jsfxr": "^1.4.1",
         "radix-ui": "^1.8.1",
         "react": "^19.3.1",
         "react-dom": "^19.3.1",
@@ -461,6 +462,8 @@
     "js-tokens": ["js-tokens@4.0.0", "", {}, "sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ=="],
 
     "jsesc": ["jsesc@3.1.0", "", { "bin": { "jsesc": "bin/jsesc" } }, "sha512-/sM3dO2FOzXjKQhJuo0Q173wf2KOo8t4I8vHy6lF9poUp7bKT0/NHE8fPX23PwfhnykfqnC2xRxOnVw5XuGIaA=="],
+
+    "jsfxr": ["jsfxr@1.4.1", "", { "bin": { "sfxr-to-wav": "sfxr-to-wav" } }, "sha512-Xbamo2dpLF5B+ssyv6TUEIoHJ/KRt4SRK2J3JOOmUG+45XBjkGKTjR/KOyQ9sqjrx/uea/UTWI0+p5pOVm1bUw=="],
 
     "json5": ["json5@2.2.3", "", { "bin": { "json5": "lib/cli.js" } }, "sha512-XmOWe7eyHYH14cLdVPoyg+GOH3rYX++KpzrylJwSW98t3Nk+U8XOl8FWKOgwtzdb8lXGf6zYwDUzeHMWfxasyg=="],
 

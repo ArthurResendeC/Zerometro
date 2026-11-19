@@ -8,6 +8,7 @@ import {
   type RemovalSummary,
   type StatusCounts,
   type UpdateLibraryEntryInput,
+  type UpdateLibraryEntryResult,
 } from "../../shared/library";
 import { games, libraryEntries, playSessions } from "../db/schema";
 import { ConflictError, NotFoundError, ValidationError } from "../errors";
@@ -155,7 +156,7 @@ export function updateLibraryEntry(
   ctx: ServiceContext,
   gameId: number,
   patch: UpdateLibraryEntryInput,
-): LibraryItem {
+): UpdateLibraryEntryResult {
   const current = getLibraryItem(ctx, gameId);
   const dates = applyStatusRules(current, patch, ctx.today);
 
@@ -179,7 +180,7 @@ export function updateLibraryEntry(
     });
   });
 
-  return getLibraryItem(ctx, gameId);
+  return { item: getLibraryItem(ctx, gameId), previousStatus: current.status };
 }
 
 /** O que seria apagado ao remover o jogo (usado para confirmação no site e no MCP). */

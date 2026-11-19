@@ -134,10 +134,12 @@ describe("updateLibraryEntry", () => {
     const { gameId } = await addToLibrary(ctx, igdb, { igdbId: 114283, status: "playing" });
 
     const finished = updateLibraryEntry(ctx, gameId, { status: "finished", rating: 9 });
-    expect(finished).toMatchObject({ status: "finished", finishedAt: TEST_TODAY, rating: 9 });
+    expect(finished.previousStatus).toBe("playing");
+    expect(finished.item).toMatchObject({ status: "finished", finishedAt: TEST_TODAY, rating: 9 });
 
     const replaying = updateLibraryEntry(ctx, gameId, { status: "playing" });
-    expect(replaying).toMatchObject({ status: "playing", finishedAt: null, rating: 9 });
+    expect(replaying.previousStatus).toBe("finished");
+    expect(replaying.item).toMatchObject({ status: "playing", finishedAt: null, rating: 9 });
   });
 
   test("notas vazias viram null e a atividade guarda o actor", async () => {

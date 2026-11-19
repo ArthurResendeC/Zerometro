@@ -116,6 +116,17 @@ export const GamepadIcon = pixelIcon(
   "evenodd",
 );
 
+/** Alto-falante (caixa + cone), base dos ícones de som. */
+const speaker = r(0, 2, 2, 4) + r(2, 1, 1, 6) + r(3, 0, 1, 8);
+export const VolumeOnIcon = pixelIcon(
+  speaker + r(5, 3, 1, 2) + r(6, 1) + r(7, 2, 1, 4) + r(6, 6),
+  "VolumeOnIcon",
+);
+export const VolumeOffIcon = pixelIcon(
+  speaker + r(5, 2) + r(7, 2) + r(6, 3) + r(5, 4) + r(7, 4),
+  "VolumeOffIcon",
+);
+
 const statusIcons: Record<GameStatus, ReturnType<typeof pixelIcon>> = {
   playing: PlayIcon,
   finished: CheckIcon,

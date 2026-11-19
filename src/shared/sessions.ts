@@ -23,6 +23,12 @@ export interface PlaySessionItem {
   updatedAt: string;
 }
 
+/** Ofensiva (dias seguidos) antes e depois de uma escrita, para o cliente detectar marcos. */
+export interface StreakChange {
+  before: number;
+  current: number;
+}
+
 export interface LogSessionResult {
   session: PlaySessionItem;
   /** Total jogado no dia da sessão (todos os jogos). */
@@ -31,6 +37,8 @@ export interface LogSessionResult {
   gameTotalMinutes: number;
   /** Se registrar a sessão mudou o status do jogo (ex.: Próximos → Jogando). */
   statusChangedTo: GameStatus | null;
+  /** Ofensiva antes e depois da sessão (ex.: 6 → 7). */
+  streak: StreakChange;
 }
 
 const minutesSchema = z
