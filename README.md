@@ -140,7 +140,7 @@ src/
 ### Passos
 
 ```bash
-git clone https://github.com/ArthurResendeC/zerometro.git   # o seu fork
+git clone https://github.com/<seu-usuario>/zerometro.git   # o seu fork
 cd zerometro
 mise trust && mise install   # Bun e Node nas versões do mise.toml
 mise run install             # dependências
