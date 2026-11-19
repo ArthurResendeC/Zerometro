@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Settings } from "../../shared/settings";
-import type { Heatmap, PeriodBreakdown, Rhythm, Stats } from "../../shared/stats";
+import type { Heatmap, PeriodBreakdown, Records, Rhythm, Stats } from "../../shared/stats";
 import { createTestApp } from "../testing";
 
 function patch(body: unknown): RequestInit {
@@ -67,5 +67,12 @@ describe("/api/settings e /api/stats", () => {
     expect(rhythm.weekdays).toHaveLength(7);
     expect(rhythm.hours).toHaveLength(24);
     expect(rhythm).toMatchObject({ sessions: 0, sessionLengths: [0, 0, 0, 0, 0] });
+  });
+
+  test("recordes", async () => {
+    const { request } = await createTestApp();
+    const records = (await (await request("/api/stats/records?year=2026")).json()) as Records;
+    expect(records).toMatchObject({ year: 2026, longestSession: null, finished: [] });
+    expect(records.finishedByMonth).toHaveLength(11); // até novembro (hoje)
   });
 });

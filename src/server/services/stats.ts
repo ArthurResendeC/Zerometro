@@ -5,7 +5,9 @@ import type {
   GenreStat,
   Heatmap,
   PeriodBreakdown,
+  FinishedGame,
   PeriodStats,
+  Records,
   Rhythm,
   Stats,
   StatsPeriod,
@@ -15,6 +17,7 @@ import type {
 } from "../../shared/stats";
 import type { UserScope } from "./context";
 import { games, playSessions } from "../db/schema";
+import { listLibrary } from "./library";
 import { getSettings } from "./settings";
 
 const WEEKS_SHOWN = 8;
@@ -410,4 +413,100 @@ function median(sorted: number[]): number | null {
   if (sorted.length === 0) return null;
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[mid]! : Math.round((sorted[mid - 1]! + sorted[mid]!) / 2);
+}
+
+// ---------------------------------------------------------------------------
+// Recordes e zerados
+
+export function getRecords(
+  scope: UserScope,
+  { today, year }: { today: string } & StatsPeriod,
+): Records {
+  const { from, to } = statsPeriodRange(today, year);
+  const daily = minutesByDay(scope, from, to);
+
+  let bestDay: Records["bestDay"] = null;
+  const weekly = new Map<string, number>();
+  for (const [date, minutes] of [...daily].toSorted(([a], [b]) => a.localeCompare(b))) {
+    // Em empate, o mais recente.
+    if (!bestDay || minutes >= bestDay.minutes) bestDay = { date, minutes };
+    const week = startOfWeek(date);
+    weekly.set(week, (weekly.get(week) ?? 0) + minutes);
+  }
+  let bestWeek: Records["bestWeek"] = null;
+  for (const [weekStart, minutes] of weekly) {
+    if (!bestWeek || minutes >= bestWeek.minutes) bestWeek = { weekStart, minutes };
+  }
+
+  const finished: FinishedGame[] = listLibrary(scope, { status: "finished" })
+    .filter((item) => item.finishedAt && item.finishedAt >= from && item.finishedAt <= to)
+    .map((item) => ({
+      gameId: item.gameId,
+      name: item.name,
+      coverImageId: item.coverImageId,
+      finishedAt: item.finishedAt!,
+      minutesPlayed: item.minutesPlayed,
+      storyMinutes: item.timeToBeat?.mainSec ? Math.round(item.timeToBeat.mainSec / 60) : null,
+      rating: item.rating,
+    }))
+    .toSorted((a, b) => b.finishedAt.localeCompare(a.finishedAt) || a.name.localeCompare(b.name));
+
+  const comparable = finished.filter((g) => g.storyMinutes && g.minutesPlayed > 0);
+  const story = comparable.reduce((sum, g) => sum + g.storyMinutes!, 0);
+  const played = comparable.reduce((sum, g) => sum + g.minutesPlayed, 0);
+
+  const lastMonth = (to > today ? today : to).slice(0, 7);
+  const months: string[] = [];
+  for (let month = from.slice(0, 7); month <= lastMonth; month = nextMonth(month)) {
+    months.push(month);
+  }
+
+  return {
+    from,
+    to,
+    year: year ?? null,
+    longestSession: longestSession(scope, from, to),
+    bestDay,
+    bestWeek,
+    finishedByMonth: months.map((month) => ({
+      month,
+      count: finished.filter((g) => g.finishedAt.startsWith(month)).length,
+    })),
+    finished,
+    paceRatio: story > 0 ? Math.round((played / story) * 100) / 100 : null,
+  };
+}
+
+function nextMonth(month: string): string {
+  const [y, m] = month.split("-").map(Number) as [number, number];
+  return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
+}
+
+function longestSession(
+  { db, userId }: UserScope,
+  from: string,
+  to: string,
+): Records["longestSession"] {
+  return (
+    db
+      .select({
+        minutes: sql<number>`${playSessions.minutes}`,
+        playedOn: playSessions.playedOn,
+        gameId: games.id,
+        name: games.name,
+      })
+      .from(playSessions)
+      .innerJoin(games, eq(games.id, playSessions.gameId))
+      .where(
+        and(
+          eq(playSessions.userId, userId),
+          gte(playSessions.playedOn, from),
+          lte(playSessions.playedOn, to),
+          isNotNull(playSessions.minutes),
+        ),
+      )
+      .orderBy(desc(playSessions.minutes), desc(playSessions.playedOn))
+      .limit(1)
+      .get() ?? null
+  );
 }

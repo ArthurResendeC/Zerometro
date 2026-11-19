@@ -151,3 +151,36 @@ export interface Rhythm {
   /** Duração mediana das sessões, em minutos (null sem sessões). */
   medianSessionMinutes: number | null;
 }
+
+// ---------------------------------------------------------------------------
+// Recordes e zerados do período
+
+export interface FinishedGame {
+  gameId: number;
+  name: string;
+  coverImageId: string | null;
+  finishedAt: string;
+  /** Total jogado (sessões + tempo anterior ao Zerômetro). */
+  minutesPlayed: number;
+  /** Tempo da história no IGDB, em minutos (null se o IGDB não tiver). */
+  storyMinutes: number | null;
+  rating: number | null;
+}
+
+export interface Records {
+  from: string;
+  to: string;
+  year: number | null;
+  longestSession: { minutes: number; playedOn: string; gameId: number; name: string } | null;
+  bestDay: { date: string; minutes: number } | null;
+  bestWeek: { weekStart: string; minutes: number } | null;
+  /** Zerados por mês (YYYY-MM), do primeiro ao último mês do período (até hoje). */
+  finishedByMonth: { month: string; count: number }[];
+  /** Zerados no período, do mais recente ao mais antigo. */
+  finished: FinishedGame[];
+  /**
+   * Seu ritmo comparado ao IGDB: tempo jogado ÷ tempo da história, somando os zerados do
+   * período que têm esse tempo (1,3 = você leva 30% a mais). null sem nenhum.
+   */
+  paceRatio: number | null;
+}

@@ -1,10 +1,17 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { createFakeIgdb, createTestContext, fakeIgdbGame, TEST_TODAY } from "../testing";
 import type { ServiceContext } from "./context";
-import { addToLibrary } from "./library";
+import { addToLibrary, updateLibraryEntry } from "./library";
 import { logSession } from "./sessions";
 import { playSessions } from "../db/schema";
-import { getHeatmap, getPeriodBreakdown, getRhythm, getStats, spreadOverHours } from "./stats";
+import {
+  getHeatmap,
+  getPeriodBreakdown,
+  getRecords,
+  getRhythm,
+  getStats,
+  spreadOverHours,
+} from "./stats";
 
 // TEST_TODAY = 2026-11-19, uma quinta-feira (semana começa na segunda, 16).
 
@@ -268,5 +275,58 @@ describe("spreadOverHours", () => {
     );
     expect(buckets[15]).toBe(30);
     expect(buckets[16]).toBe(40);
+  });
+});
+
+describe("recordes e zerados", () => {
+  test("maior sessão, melhor dia e semana, zerados por mês e ritmo vs IGDB", () => {
+    play("2026-11-10", 60);
+    play("2026-11-12", 90, undertale);
+    play("2026-11-13", 50);
+    play("2026-11-13", 45, undertale);
+    play("2026-11-03", 100); // semana anterior: 100 < 245
+    // Persona: 6000 min antes do Zerômetro + 110 em sessões; história no IGDB = 5250 min.
+    updateLibraryEntry(ctx, persona, {
+      status: "finished",
+      startedAt: "2026-01-10",
+      finishedAt: "2026-11-15",
+      priorMinutes: 6000,
+    });
+    // Undertale não tem tempo no IGDB: entra nos zerados, não no ritmo.
+    updateLibraryEntry(ctx, undertale, {
+      status: "finished",
+      startedAt: "2026-09-01",
+      finishedAt: "2026-10-01",
+    });
+
+    const r = getRecords(ctx, { today: TEST_TODAY });
+
+    expect(r.longestSession).toEqual({
+      minutes: 100,
+      playedOn: "2026-11-03",
+      gameId: persona,
+      name: "Persona 5 Royal",
+    });
+    expect(r.bestDay).toEqual({ date: "2026-11-03", minutes: 100 });
+    expect(r.bestWeek).toEqual({ weekStart: "2026-11-09", minutes: 245 });
+    expect(r.finished.map((g) => [g.name, g.minutesPlayed, g.storyMinutes])).toEqual([
+      ["Persona 5 Royal", 6210, 5250],
+      ["Undertale", 135, null],
+    ]);
+    expect(r.paceRatio).toBe(1.18); // 6210 / 5250
+    expect(r.finishedByMonth).toHaveLength(13); // nov/2025 a nov/2026
+    expect(r.finishedByMonth.at(-1)).toEqual({ month: "2026-11", count: 1 });
+    expect(r.finishedByMonth.at(-2)).toEqual({ month: "2026-10", count: 1 });
+
+    const old = getRecords(ctx, { today: TEST_TODAY, year: 2025 });
+    expect(old).toMatchObject({
+      longestSession: null,
+      bestDay: null,
+      finished: [],
+      paceRatio: null,
+    });
+    expect(old.finishedByMonth.map((m) => m.month)).toEqual(
+      Array.from({ length: 12 }, (_, i) => `2025-${String(i + 1).padStart(2, "0")}`),
+    );
   });
 });
