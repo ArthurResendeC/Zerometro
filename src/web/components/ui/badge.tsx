@@ -3,14 +3,26 @@ import type * as React from "react";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap [&>svg]:pointer-events-none [&>svg]:size-3",
+  "m-0.5 inline-flex w-fit shrink-0 items-center gap-1.5 overflow-hidden rounded-none px-1.5 py-1 display-xs whitespace-nowrap pixel-frame-thin [&>svg]:pointer-events-none [&>svg]:size-2.5",
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground",
-        secondary: "border-transparent bg-secondary text-secondary-foreground",
+        default: "bg-primary text-primary-foreground [--px-frame-color:var(--primary)]",
+        secondary: "bg-secondary text-secondary-foreground [--px-frame-color:var(--secondary)]",
         outline: "text-foreground",
-        brand: "border-transparent bg-brand text-brand-foreground",
+        brand: "bg-primary text-primary-foreground [--px-frame-color:var(--primary)]",
+        playing:
+          "bg-status-playing text-status-playing-foreground [--px-frame-color:var(--status-playing)]",
+        finished:
+          "bg-status-finished text-status-finished-foreground [--px-frame-color:var(--status-finished)]",
+        backlog:
+          "bg-status-backlog text-status-backlog-foreground [--px-frame-color:var(--status-backlog)]",
+        wishlist:
+          "bg-status-wishlist text-status-wishlist-foreground [--px-frame-color:var(--status-wishlist)]",
+        paused:
+          "bg-status-paused text-status-paused-foreground [--px-frame-color:var(--status-paused)]",
+        dropped:
+          "bg-status-dropped text-status-dropped-foreground [--px-frame-color:var(--status-dropped)]",
       },
     },
     defaultVariants: { variant: "default" },

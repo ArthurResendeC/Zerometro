@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { createColumnHelper, tableFeatures, useTable } from "@tanstack/react-table";
-import { Pencil, Trash2 } from "lucide-react";
 import { DEFAULT_TIME_ZONE, zonedParts } from "@shared/dates";
 import type { PlaySessionItem } from "@shared/sessions";
 import {
@@ -14,6 +13,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { PencilIcon, TrashIcon } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -84,22 +84,22 @@ export function SessionsTable({ gameId }: { gameId: number }) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border">
+    <div className="relative m-1 overflow-x-auto bg-card pixel-frame">
       <table className="w-full text-sm">
-        <thead className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
+        <thead className="bg-secondary text-left text-muted-foreground">
           {table.getHeaderGroups().map((group) => (
             <tr key={group.id}>
               {group.headers.map((header) => (
-                <th key={header.id} className="px-3 py-2 font-medium">
+                <th key={header.id} className="px-3 py-3 display-xs font-normal whitespace-nowrap">
                   {header.isPlaceholder ? null : <table.FlexRender header={header} />}
                 </th>
               ))}
             </tr>
           ))}
         </thead>
-        <tbody className="divide-y">
+        <tbody>
           {table.getRowModel().rows.map((row) => (
-            <tr key={row.id}>
+            <tr key={row.id} className="border-t-2 border-dashed border-muted hover:bg-accent">
               {row.getAllCells().map((cell) => (
                 <td key={cell.id} className="px-3 py-2 align-middle">
                   <table.FlexRender cell={cell} />
@@ -118,25 +118,25 @@ function RowActions({ session }: { session: PlaySessionItem }) {
   const remove = useDeleteSession();
 
   return (
-    <div className="flex justify-end gap-1">
+    <div className="flex justify-end">
       <Button
         variant="ghost"
         size="icon"
-        className="size-8"
-        aria-label="Editar sessão"
+        className="size-9"
+        aria-label={`Editar sessão de ${formatDate(session.playedOn)}`}
         onClick={() => openEdit(session)}
       >
-        <Pencil />
+        <PencilIcon />
       </Button>
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <Button
             variant="ghost"
             size="icon"
-            className="size-8 text-muted-foreground hover:text-destructive"
-            aria-label="Apagar sessão"
+            className="size-9 text-muted-foreground hover:text-destructive"
+            aria-label={`Apagar sessão de ${formatDate(session.playedOn)}`}
           >
-            <Trash2 />
+            <TrashIcon />
           </Button>
         </AlertDialogTrigger>
         <AlertDialogContent>

@@ -6,7 +6,7 @@ function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
   return (
     <textarea
       data-slot="textarea"
-      className={cn(fieldClassName, "field-sizing-content min-h-20 py-2", className)}
+      className={cn(fieldClassName, "field-sizing-content min-h-24 p-3", className)}
       {...props}
     />
   );

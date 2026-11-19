@@ -1,63 +1,131 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Tema no padrão do shadcn/ui (paleta zinc). O app usa o modo escuro (classe .dark no <html>). */
+/* Zerômetro — Direção A · Cartucho NES. Escuro em .dark (principal), claro em :root. */
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.141 0.005 285.823);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.141 0.005 285.823);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.21 0.006 285.885);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.21 0.006 285.885);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.705 0.015 286.067);
-  /* Cor de destaque do Zerômetro (ofensiva, progresso). */
-  --brand: oklch(0.705 0.187 47.604);
-  --brand-foreground: oklch(0.141 0.005 285.823);
+  --radius: 0px;
+  --background: #f6efdf;
+  --foreground: #1c1a29;
+  --card: #fffaf0;
+  --card-foreground: #1c1a29;
+  --popover: #fffaf0;
+  --popover-foreground: #1c1a29;
+  --primary: #b34700;
+  --primary-foreground: #ffffff;
+  --primary-shade: #6e2a00;
+  --secondary: #e6dcc6;
+  --secondary-foreground: #1c1a29;
+  --muted: #e6dcc6;
+  --muted-foreground: #5c5670;
+  --accent: #e6dcc6;
+  --accent-foreground: #1c1a29;
+  --destructive: #c0182e;
+  --destructive-foreground: #ffffff;
+  --border: #6e6785;
+  --input: #6e6785;
+  --ring: #0b6f86;
+  --pixel-shadow: #1c1a29;
+  --info: #0b6f86;
+  --chart-1: #b34700;
+  --chart-2: #0b6f86;
+  --chart-3: #8a6a00;
+  --chart-4: #2a7a2a;
+  --chart-5: #7a3fbf;
+  --status-playing: #b34700;
+  --status-playing-foreground: #ffffff;
+  --status-finished: #2a7a2a;
+  --status-finished-foreground: #ffffff;
+  --status-backlog: #0b6f86;
+  --status-backlog-foreground: #ffffff;
+  --status-wishlist: #7a3fbf;
+  --status-wishlist-foreground: #ffffff;
+  --status-paused: #e8b416;
+  --status-paused-foreground: #1c1a29;
+  --status-dropped: #5c5670;
+  --status-dropped-foreground: #ffffff;
+  --score-good: #2a7a2a;
+  --score-good-foreground: #ffffff;
+  --score-mixed: #e8b416;
+  --score-mixed-foreground: #1c1a29;
+  --score-bad: #c0182e;
+  --score-bad-foreground: #ffffff;
+  --heat-0: #e6dcc6;
+  --heat-1: #f5c49a;
+  --heat-2: #e8873f;
+  --heat-3: #b34700;
+  --heat-4: #6e2a00;
+  --flame: #b34700;
+  --flame-core: #e8b416;
 }
 
 .dark {
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.92 0.004 286.32);
-  --primary-foreground: oklch(0.21 0.006 285.885);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.552 0.016 285.938);
-  --brand: oklch(0.75 0.183 55.934);
-  --brand-foreground: oklch(0.141 0.005 285.823);
+  --background: #0f0e17;
+  --foreground: #f4ecdc;
+  --card: #1c1a29;
+  --card-foreground: #f4ecdc;
+  --popover: #1c1a29;
+  --popover-foreground: #f4ecdc;
+  --primary: #ff7a1a;
+  --primary-foreground: #1a0d00;
+  --primary-shade: #b34a00;
+  --secondary: #2b2840;
+  --secondary-foreground: #f4ecdc;
+  --muted: #2b2840;
+  --muted-foreground: #a39cb8;
+  --accent: #34304d;
+  --accent-foreground: #f4ecdc;
+  --destructive: #ff5d6c;
+  --destructive-foreground: #1a0004;
+  --border: #7a7396;
+  --input: #7a7396;
+  --ring: #3ec7e0;
+  --pixel-shadow: #000000;
+  --info: #3ec7e0;
+  --chart-1: #ff7a1a;
+  --chart-2: #3ec7e0;
+  --chart-3: #ffd23f;
+  --chart-4: #6bd66b;
+  --chart-5: #c49bff;
+  --status-playing: #ff7a1a;
+  --status-playing-foreground: #1a0d00;
+  --status-finished: #6bd66b;
+  --status-finished-foreground: #0b1a0b;
+  --status-backlog: #3ec7e0;
+  --status-backlog-foreground: #001a20;
+  --status-wishlist: #c49bff;
+  --status-wishlist-foreground: #1a0d26;
+  --status-paused: #ffd23f;
+  --status-paused-foreground: #1a1400;
+  --status-dropped: #a39cb8;
+  --status-dropped-foreground: #1a1824;
+  --score-good: #6bd66b;
+  --score-good-foreground: #0b1a0b;
+  --score-mixed: #ffd23f;
+  --score-mixed-foreground: #1a1400;
+  --score-bad: #ff5d6c;
+  --score-bad-foreground: #1a0004;
+  --heat-0: #2b2840;
+  --heat-1: #5a2a0a;
+  --heat-2: #9a4400;
+  --heat-3: #e06a10;
+  --heat-4: #ffb070;
+  --flame: #ff7a1a;
+  --flame-core: #ffd23f;
 }
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: var(--radius);
+  --radius-md: var(--radius);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: var(--radius);
+
+  --font-sans: "VT323", ui-monospace, monospace;
+  --font-mono: "VT323", ui-monospace, monospace;
+  --font-pixel: "Press Start 2P", ui-monospace, monospace;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -66,6 +134,7 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-shade: var(--primary-shade);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -73,18 +142,233 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-brand: var(--brand);
-  --color-brand-foreground: var(--brand-foreground);
+  --color-pixel-shadow: var(--pixel-shadow);
+  --color-info: var(--info);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-status-playing: var(--status-playing);
+  --color-status-playing-foreground: var(--status-playing-foreground);
+  --color-status-finished: var(--status-finished);
+  --color-status-finished-foreground: var(--status-finished-foreground);
+  --color-status-backlog: var(--status-backlog);
+  --color-status-backlog-foreground: var(--status-backlog-foreground);
+  --color-status-wishlist: var(--status-wishlist);
+  --color-status-wishlist-foreground: var(--status-wishlist-foreground);
+  --color-status-paused: var(--status-paused);
+  --color-status-paused-foreground: var(--status-paused-foreground);
+  --color-status-dropped: var(--status-dropped);
+  --color-status-dropped-foreground: var(--status-dropped-foreground);
+  --color-score-good: var(--score-good);
+  --color-score-good-foreground: var(--score-good-foreground);
+  --color-score-mixed: var(--score-mixed);
+  --color-score-mixed-foreground: var(--score-mixed-foreground);
+  --color-score-bad: var(--score-bad);
+  --color-score-bad-foreground: var(--score-bad-foreground);
+  --color-heat-0: var(--heat-0);
+  --color-heat-1: var(--heat-1);
+  --color-heat-2: var(--heat-2);
+  --color-heat-3: var(--heat-3);
+  --color-heat-4: var(--heat-4);
+  --color-flame: var(--flame);
+  --color-flame-core: var(--flame-core);
+  /* compatibilidade: o app usa bg-brand / text-brand hoje */
+  --color-brand: var(--primary);
+  --color-brand-foreground: var(--primary-foreground);
+}
+
+/* Escala de texto do Tailwind recalibrada para a VT323 (olho pequeno):
+   text-sm do app passa a 20px, text-base a 22px etc. */
+@theme {
+  --text-xs: 18px;
+  --text-xs--line-height: 20px;
+  --text-sm: 20px;
+  --text-sm--line-height: 24px;
+  --text-base: 22px;
+  --text-base--line-height: 26px;
+  --text-lg: 26px;
+  --text-lg--line-height: 28px;
+  --text-xl: 28px;
+  --text-xl--line-height: 32px;
+  --text-2xl: 32px;
+  --text-2xl--line-height: 36px;
+
+  --animate-blink: blink 1s steps(1) infinite;
+  --animate-flicker: flicker 600ms steps(2) infinite;
+  @keyframes blink {
+    50% {
+      opacity: 0;
+    }
+  }
+  @keyframes flicker {
+    50% {
+      transform: scaleY(0.92);
+    }
+  }
+}
+
+/* ---------- Tipografia pixelada (Press Start 2P) ---------- */
+@utility display-xl {
+  font-family: var(--font-pixel);
+  font-size: 32px;
+  line-height: 40px;
+}
+@utility display-lg {
+  font-family: var(--font-pixel);
+  font-size: 24px;
+  line-height: 32px;
+}
+@utility display-md {
+  font-family: var(--font-pixel);
+  font-size: 16px;
+  line-height: 24px;
+}
+@utility display-sm {
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  line-height: 16px;
+}
+@utility display-xs {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  line-height: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* As variáveis da moldura NÃO herdam: um Input dentro de um Card elevado não ganha a sombra do Card. */
+@property --px-frame-color {
+  syntax: "*";
+  inherits: false;
+}
+@property --px-inset {
+  syntax: "*";
+  inherits: false;
+}
+@property --px-drop {
+  syntax: "*";
+  inherits: false;
+}
+@property --px-shade {
+  syntax: "*";
+  inherits: false;
+}
+
+/* ---------- Moldura pixelada ----------
+   pixel-frame desenha a moldura de 4px com cantos em degrau e compõe, via variáveis,
+   o bisel (pixel-bevel) e a sombra dura (pixel-drop). Não ocupa layout: dê margem. */
+@utility pixel-frame {
+  --px-c: var(--px-frame-color, var(--border));
+  box-shadow:
+    0 -4px 0 0 var(--px-c),
+    0 4px 0 0 var(--px-c),
+    -4px 0 0 0 var(--px-c),
+    4px 0 0 0 var(--px-c),
+    var(--px-inset, 0 0 #0000),
+    var(--px-drop, 0 0 #0000);
+}
+@utility pixel-frame-ink {
+  --px-frame-color: var(--foreground);
+}
+@utility pixel-frame-thin {
+  --px-c: var(--px-frame-color, currentColor);
+  box-shadow:
+    0 -2px 0 0 var(--px-c),
+    0 2px 0 0 var(--px-c),
+    -2px 0 0 0 var(--px-c),
+    2px 0 0 0 var(--px-c);
+}
+@utility pixel-drop {
+  --px-drop: 4px 8px 0 0 var(--pixel-shadow), 8px 4px 0 0 var(--pixel-shadow);
+}
+@utility pixel-bevel {
+  --px-inset: inset 0 -4px 0 0 var(--px-shade, var(--primary-shade));
+}
+@utility pixel-sunken {
+  --px-inset: inset 4px 4px 0 0 var(--muted);
+}
+@utility pixel-press {
+  translate: 4px 4px;
+  --px-drop: 0 0 #0000;
+  --px-inset: inset 0 4px 0 0 var(--px-shade, var(--primary-shade));
+}
+@utility pixel-disabled {
+  --px-frame-color: var(--border);
+  --px-drop: 0 0 #0000;
+  --px-inset: 0 0 #0000;
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+}
+@utility bg-scanlines {
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent 0 2px,
+    color-mix(in srgb, var(--pixel-shadow) 35%, transparent) 2px 4px
+  );
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background font-sans text-base text-foreground;
+    caret-color: var(--primary);
+  }
+  /* Foco: sempre ciano, sólido, fora da moldura. Substitui os focus-visible:ring-* do shadcn. */
+  :focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 7px;
+  }
+}
+
+@layer components {
+  /* Cursor ▶ de menu: itens de menu, select e navegação */
+  .menu-cursor {
+    position: relative;
+    padding-left: 28px;
+  }
+  .menu-cursor:is([data-highlighted], [aria-current="page"], :hover)::before {
+    content: "";
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    width: 10px;
+    height: 12px;
+    margin-top: -6px;
+    background: var(--primary);
+    clip-path: polygon(
+      0 0,
+      40% 0,
+      40% 16.6%,
+      60% 16.6%,
+      60% 33.3%,
+      80% 33.3%,
+      80% 50%,
+      100% 50%,
+      80% 50%,
+      80% 66.6%,
+      60% 66.6%,
+      60% 83.3%,
+      40% 83.3%,
+      40% 100%,
+      0 100%
+    );
+    animation: var(--animate-blink);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
   }
 }

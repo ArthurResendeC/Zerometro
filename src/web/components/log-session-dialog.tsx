@@ -248,7 +248,7 @@ function SessionForm({ editing, initialGameId, onDone }: SessionFormProps) {
                 />
               )}
             </form.Field>
-            <div className="ml-auto flex gap-1">
+            <div className="ml-auto flex flex-wrap">
               {QUICK_ADD.map((q) => (
                 <Button
                   key={q.label}
@@ -277,7 +277,7 @@ function SessionForm({ editing, initialGameId, onDone }: SessionFormProps) {
         {(field) => (
           <div className="space-y-2">
             <Label htmlFor={field.name}>Dia</Label>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center">
               <Input
                 id={field.name}
                 type="date"

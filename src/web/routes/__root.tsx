@@ -6,7 +6,7 @@ import {
   redirect,
   useLocation,
 } from "@tanstack/react-router";
-import { Plus, Timer } from "lucide-react";
+import { PlusIcon, TimerIcon } from "@/components/icons";
 import { LogSessionDialog } from "@/components/log-session-dialog";
 import { TimerBar } from "@/components/timer";
 import { Button } from "@/components/ui/button";
@@ -32,8 +32,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   notFoundComponent: () => <p className="text-muted-foreground">Página não encontrada.</p>,
 });
 
+// menu-cursor: o ▶ piscando aparece no hover e no link da página atual (aria-current).
 const navLinkClass =
-  "rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground";
+  "menu-cursor py-2 pr-2 display-xs max-sm:pl-2 max-sm:before:hidden text-muted-foreground hover:bg-accent hover:text-foreground aria-[current=page]:text-foreground";
 
 function RootLayout() {
   const openLogSession = useLogSessionDialog((state) => state.openNew);
@@ -51,10 +52,13 @@ function RootLayout() {
 
   return (
     <div className="min-h-dvh">
-      <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
-        <nav className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-3">
-          <Link to="/" className="mr-2 font-semibold tracking-tight whitespace-nowrap sm:mr-4">
-            🎮 Zerômetro
+      <header className="sticky top-0 z-40 border-b-4 border-border bg-background">
+        <nav className="mx-auto flex max-w-6xl items-center px-4 py-2 sm:gap-2">
+          <Link
+            to="/"
+            className="mr-1 font-pixel text-[12px] whitespace-nowrap sm:mr-4 sm:text-[16px]"
+          >
+            Zer<span className="text-primary">ô</span>metro
           </Link>
           {/* No celular o logo já leva ao início. */}
           <Link
@@ -72,34 +76,44 @@ function RootLayout() {
           >
             Biblioteca
           </Link>
-          <div className="ml-auto flex gap-2">
+          <div className="ml-auto flex items-center">
             <Link
               to="/ajustes"
               aria-label="Ajustes e conta"
-              className="rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-              activeProps={{ className: "ring-2 ring-brand" }}
+              className="mr-2 sm:mr-3 [&[aria-current=page]>span]:shadow-[0_0_0_2px_var(--primary)]"
             >
               <UserAvatar user={session.user} />
             </Link>
-            <Button asChild size="sm" variant="outline" aria-label="Adicionar jogo">
+            <Button
+              asChild
+              size="sm"
+              variant="outline"
+              aria-label="Adicionar jogo"
+              className="max-sm:mr-2 max-sm:px-2.5"
+            >
               <Link to="/adicionar">
-                <Plus />
-                <span className="hidden sm:inline">Adicionar jogo</span>
+                <PlusIcon />
+                <span className="hidden md:inline">Adicionar jogo</span>
               </Link>
             </Button>
-            <Button size="sm" onClick={() => openLogSession()} aria-label="Registrar sessão">
-              <Timer />
-              <span className="hidden sm:inline">Registrar sessão</span>
+            <Button
+              size="sm"
+              onClick={() => openLogSession()}
+              aria-label="Registrar sessão"
+              className="max-sm:mr-2 max-sm:px-2.5"
+            >
+              <TimerIcon />
+              <span className="hidden md:inline">Registrar sessão</span>
             </Button>
           </div>
         </nav>
         <TimerBar />
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-8">
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:py-12">
         <Outlet />
       </main>
       <LogSessionDialog />
-      <Toaster position="bottom-center" />
+      <Toaster position="bottom-right" />
     </div>
   );
 }

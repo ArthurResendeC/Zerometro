@@ -1,7 +1,6 @@
 import { useForm } from "@tanstack/react-form";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { LogOut } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
 import { LONG_SESSION_MINUTES, type Settings, STREAK_MIN_MINUTES } from "@shared/settings";
@@ -10,6 +9,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { FieldErrors } from "@/components/field-errors";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { LogOutIcon } from "@/components/icons";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 import { formatMinutes } from "@/lib/format";
@@ -26,8 +26,8 @@ function SettingsPage() {
   return (
     <div className="max-w-xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Ajustes</h1>
-        <p className="text-sm text-muted-foreground">Preferências do Zerômetro.</p>
+        <h1 className="display-lg">Ajustes</h1>
+        <p className="mt-2 text-muted-foreground">Preferências do Zerômetro.</p>
       </div>
       <DurationSettingCard
         key={`streak-${settings.streakMinMinutes}`}
@@ -70,13 +70,13 @@ function AccountCard() {
 
   return (
     <Card className="flex flex-row items-center gap-3 p-4">
-      <UserAvatar user={session.user} className="size-10" />
+      <UserAvatar user={session.user} className="size-12" />
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{session.user.name}</p>
+        <p className="truncate text-lg leading-6">{session.user.name}</p>
         <p className="truncate text-sm text-muted-foreground">{session.user.email}</p>
       </div>
       <Button variant="outline" size="sm" onClick={signOut} disabled={pending}>
-        <LogOut /> Sair
+        <LogOutIcon /> Sair
       </Button>
     </Card>
   );
@@ -163,7 +163,7 @@ function DurationSettingCard({
               />
             )}
           </form.Field>
-          <div className="flex gap-1 sm:ml-auto">
+          <div className="flex flex-wrap sm:ml-auto">
             {presets.map((minutes) => (
               <Button
                 key={minutes}
