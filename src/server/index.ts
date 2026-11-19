@@ -4,6 +4,7 @@ import { createAuth, createAuthGateway, parseEmailList, resolvePublicUrl } from 
 import { db } from "./db";
 import { runMigrations } from "./db/client";
 import { createRootRoutes } from "./mcp/routes";
+import { createFeedsService } from "./services/feeds";
 import { createIgdbFromEnv } from "./services/igdb";
 import index from "../web/index.html";
 
@@ -42,11 +43,14 @@ const auth = createAuth({
   allowedEmails,
 });
 
+const igdb = createIgdbFromEnv(db, env);
+const clock = { now: () => new Date(), timeZone: env.TZ };
 const deps = {
   db,
   auth: createAuthGateway(auth, allowedEmails),
-  igdb: createIgdbFromEnv(db, env),
-  clock: { now: () => new Date(), timeZone: env.TZ },
+  igdb,
+  feeds: createFeedsService({ db, igdb, clock }),
+  clock,
 };
 const app = createApp(deps);
 const root = createRootRoutes(deps);

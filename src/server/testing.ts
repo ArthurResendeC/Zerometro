@@ -10,6 +10,7 @@ import { createAuth, createAuthGateway } from "./auth";
 import { user } from "./db/schema";
 import { createTestDb, type Db } from "./db/client";
 import type { Clock, ServiceContext } from "./services/context";
+import { createFeedsService } from "./services/feeds";
 import type { IgdbApi } from "./services/igdb";
 
 export function fakeIgdbGame(overrides: Partial<IgdbGameDetails> = {}): IgdbGameDetails {
@@ -137,7 +138,8 @@ export async function createTestApp(
     allowedEmails,
     plugins: [testUtils()],
   });
-  const deps = { db, auth: createAuthGateway(auth, allowedEmails), igdb, clock };
+  const feeds = createFeedsService({ db, igdb, clock });
+  const deps = { db, auth: createAuthGateway(auth, allowedEmails), igdb, feeds, clock };
   const app = createApp({ ...deps, logRequests: false });
   const root = createRootRoutes(deps);
   /** Mesmo roteamento do Bun.serve (index.ts), sem a SPA. */
@@ -168,6 +170,7 @@ export async function createTestApp(
     fetchRoot,
     db,
     igdb,
+    feeds,
     clock,
     auth,
     helpers,

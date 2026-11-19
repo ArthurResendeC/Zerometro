@@ -5,6 +5,7 @@ import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
 import type { Db } from "./db/client";
 import { AppError, type ApiErrorBody } from "./errors";
+import { createFeedRoutes } from "./routes/feeds";
 import { healthRoutes } from "./routes/health";
 import { createIgdbRoutes } from "./routes/igdb";
 import { createLibraryRoutes } from "./routes/library";
@@ -13,6 +14,7 @@ import { createSettingsRoutes } from "./routes/settings";
 import { createStatsRoutes } from "./routes/stats";
 import { createTimerRoutes } from "./routes/timer";
 import type { Clock } from "./services/context";
+import type { FeedsService } from "./services/feeds";
 import type { IgdbApi } from "./services/igdb";
 
 export interface AppDeps {
@@ -20,6 +22,8 @@ export interface AppDeps {
   /** Login (Better Auth) e resolução do usuário da requisição; injetável para testes. */
   auth: AuthGateway;
   igdb: IgdbApi;
+  /** Listas do IGDB da tela inicial (cache compartilhado entre requisições). */
+  feeds: FeedsService;
   /** Relógio e fuso do usuário; injetável para testes. */
   clock: Clock;
   /** Log de requisições (desligado nos testes). */
@@ -64,6 +68,7 @@ export function createApp(deps: AppDeps) {
         await next();
       })
       .route("/igdb", createIgdbRoutes(deps))
+      .route("/feeds", createFeedRoutes(deps))
       .route("/library", createLibraryRoutes(deps))
       .route("/sessions", createSessionRoutes(deps))
       .route("/stats", createStatsRoutes(deps))
