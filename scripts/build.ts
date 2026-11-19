@@ -1,5 +1,8 @@
 // Build de produção: servidor + SPA (via HTML import) num único bundle em ./dist.
+import { cpSync, rmSync } from "node:fs";
 import tailwind from "bun-plugin-tailwind";
+
+rmSync("./dist", { recursive: true, force: true });
 
 const result = await Bun.build({
   entrypoints: ["./src/server/index.ts"],
@@ -20,4 +23,8 @@ if (!result.success) {
   process.exit(1);
 }
 
+// O servidor aplica as migrations no boot a partir de dist/migrations (import.meta.dir do bundle).
+cpSync("./src/server/db/migrations", "./dist/migrations", { recursive: true });
+
 for (const output of result.outputs) console.log(output.path);
+console.log("dist/migrations");

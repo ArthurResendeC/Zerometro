@@ -1,0 +1,14 @@
+# Só o necessário para o build: nada de dependências, banco, segredos ou artefatos locais.
+node_modules
+dist
+data
+.env
+.env.*
+*.db
+*.db-*
+*.log
+.git
+.railway
+.vscode
+.idea
+coverage

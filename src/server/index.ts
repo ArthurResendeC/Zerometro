@@ -2,10 +2,15 @@ import { env } from "./env";
 import { createApp } from "./app";
 import { createAuth, createAuthGateway, parseEmailList } from "./auth";
 import { db } from "./db";
+import { runMigrations } from "./db/client";
 import { createIgdbFromEnv } from "./services/igdb";
 import index from "../web/index.html";
 
 const isProduction = env.NODE_ENV === "production";
+
+// Migrations no boot: na Railway o volume do SQLite só é montado quando o container sobe
+// (não no build nem no pre-deploy). Uma réplica só, então não há corrida.
+runMigrations(db);
 
 if (!env.BETTER_AUTH_SECRET && isProduction) {
   console.error("BETTER_AUTH_SECRET é obrigatório em produção (openssl rand -base64 32)");
@@ -24,7 +29,7 @@ const auth = createAuth({
   db,
   // Em dev sem segredo, as sessões só valem até reiniciar o servidor.
   secret: env.BETTER_AUTH_SECRET ?? crypto.randomUUID() + crypto.randomUUID(),
-  baseURL: env.BETTER_AUTH_URL ?? `http://localhost:${env.PORT}`,
+  baseURL: publicUrl(),
   google,
   allowedEmails,
 });
@@ -46,4 +51,19 @@ const server = Bun.serve({
   development: !isProduction && { hmr: true, console: true },
 });
 
-console.log(`Zerômetro rodando em ${server.url}`);
+console.log(`Zerômetro rodando em ${server.url} (público: ${publicUrl()})`);
+
+// Deploy/restart: para de aceitar conexões e fecha o SQLite (checkpoint do WAL).
+for (const signal of ["SIGTERM", "SIGINT"] as const) {
+  process.once(signal, async () => {
+    await server.stop();
+    db.$client.close();
+    process.exit(0);
+  });
+}
+
+function publicUrl(): string {
+  if (env.BETTER_AUTH_URL) return env.BETTER_AUTH_URL;
+  if (env.RAILWAY_PUBLIC_DOMAIN) return `https://${env.RAILWAY_PUBLIC_DOMAIN}`;
+  return `http://localhost:${env.PORT}`;
+}

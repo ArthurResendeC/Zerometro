@@ -141,3 +141,35 @@ npx @modelcontextprotocol/inspector
 ## 📄 Licença
 
 [MIT](./LICENSE)
+
+---
+
+## 🚀 Deploy (Railway)
+
+A infraestrutura está em [`.railway/railway.ts`](.railway/railway.ts) ([IaC da Railway](https://docs.railway.com/infrastructure-as-code)): um serviço `web` buildado pelo [`Dockerfile`](Dockerfile) a partir da `main` no GitHub, com um volume em `/data` para o SQLite (uma réplica só). As migrations rodam no boot do servidor, porque o volume não fica montado no build nem no pre-deploy.
+
+Testar a imagem localmente (precisa do Docker):
+
+```sh
+mise run docker:run   # builda e sobe em http://localhost:3000 com os segredos do .env
+```
+
+Primeiro deploy:
+
+```sh
+railway init --name zerometro      # cria o projeto e vincula esta pasta (ou: railway link)
+mise run deploy:plan               # confere o que vai ser criado
+mise run deploy:apply              # cria o serviço e o volume
+
+# Segredos (uma vez; o railway.ts usa preserve() e nunca guarda valores)
+railway variable set --service web BETTER_AUTH_SECRET="$(openssl rand -base64 32)" --skip-deploys
+railway variable set --service web GOOGLE_CLIENT_ID=... GOOGLE_CLIENT_SECRET=... --skip-deploys
+railway variable set --service web IGDB_CLIENT_ID=... IGDB_CLIENT_SECRET=... --skip-deploys
+railway variable set --service web ALLOWED_EMAILS=voce@gmail.com,amigo@gmail.com --skip-deploys
+
+railway domain --service web       # gera https://<nome>.up.railway.app
+```
+
+No Google Cloud Console, acrescente a origem `https://<domínio>` e o redirect `https://<domínio>/api/auth/callback/google`. Depois é só `git push` (ou `railway redeploy --service web`). A URL pública vem de `RAILWAY_PUBLIC_DOMAIN`; com domínio próprio, defina `BETTER_AUTH_URL`.
+
+Mudanças de infraestrutura: edite `.railway/railway.ts`, rode `mise run deploy:plan` e depois `mise run deploy:apply`.

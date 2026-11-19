@@ -7,6 +7,7 @@ bun = "1.4.4"
 node = "lts" # usado pelo oxfmt (backend npm) e pelo npx (ex.: MCP Inspector)
 oxlint = "1.94.0"
 oxfmt = "0.79.0"
+railway = "5.71.0" # CLI da Railway (IaC exige >= 5.42.1)
 
 [env]
 # Padrões; sobrescreva no .env (não versionado)
@@ -47,6 +48,31 @@ env = { NODE_ENV = "production" }
 # O Bun resolve os assets do HTML import a partir do cwd, então rodamos de dentro de dist/.
 dir = "{{config_root}}/dist"
 run = "bun index.js"
+
+[tasks."docker:build"]
+description = "Builda a imagem de produção (a mesma que a Railway usa)"
+run = "docker build -t zerometro:local ."
+
+[tasks."docker:run"]
+description = "Roda a imagem como na Railway: PORT injetada, volume em /data e segredos do .env"
+depends = ["docker:build"]
+# Segredos passados por nome (-e VAR), sem valor na linha de comando. Porta 3000 = redirect do Google em dev.
+run = """
+docker rm -f zerometro-local >/dev/null 2>&1 || true
+docker run --rm --name zerometro-local -p 3000:8080 -e PORT=8080 \
+  -v zerometro-data-local:/data -e BETTER_AUTH_URL=http://localhost:3000 \
+  -e BETTER_AUTH_SECRET -e GOOGLE_CLIENT_ID -e GOOGLE_CLIENT_SECRET \
+  -e IGDB_CLIENT_ID -e IGDB_CLIENT_SECRET -e ALLOWED_EMAILS \
+  zerometro:local
+"""
+
+[tasks."deploy:plan"]
+description = "Mostra o que mudaria na Railway (.railway/railway.ts), sem aplicar"
+run = "railway config plan"
+
+[tasks."deploy:apply"]
+description = "Aplica .railway/railway.ts no projeto da Railway vinculado (pede confirmação)"
+run = "railway config apply"
 
 [tasks."db:generate"]
 description = "Gera uma migration a partir do schema do Drizzle"
