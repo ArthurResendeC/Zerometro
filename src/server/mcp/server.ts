@@ -105,7 +105,7 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     {
       title: "Listas do IGDB (bem avaliados, em alta, próximos)",
       description:
-        'As listas da tela inicial, atualizadas 1x por dia a partir do IGDB: top_rated (lançamentos dos últimos meses com melhor nota da crítica), trending (mais visitados no IGDB) e upcoming (próximos lançamentos por expectativa). Cada jogo diz se já está na biblioteca do usuário. Ex.: "o que está em alta?", "o que lança em breve?". Para adicionar um, use add_game com o igdbId.',
+        'As listas da tela inicial, atualizadas 1x por dia a partir do IGDB: top_rated (lançamentos dos últimos meses com melhor nota da crítica), trending (lançados no último ano que mais gente quer jogar no IGDB) e upcoming (próximos lançamentos por expectativa). Cada jogo diz se já está na biblioteca do usuário. Ex.: "o que está em alta?", "o que lança em breve?". Para adicionar um, use add_game com o igdbId.',
       inputSchema: z.object({
         list: z.enum(feedKeys).optional().describe("Só uma das listas; omita para todas"),
         limit: z.number().int().min(1).max(20).default(10).describe("Jogos por lista"),

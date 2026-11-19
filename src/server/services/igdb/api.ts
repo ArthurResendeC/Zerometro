@@ -38,11 +38,14 @@ const FEED_SIZE = 20;
 const DAY_SEC = 86_400;
 const TOP_RATED_WINDOW_DAYS = 120;
 const TOP_RATED_MIN_REVIEWS = 3;
-/** "Em alta" = mais visitados no IGDB, entre os lançados há até um ano (ou ainda por lançar). */
+/**
+ * "Em alta" = mais "quero jogar" no IGDB entre os lançados no último ano. As visitas (tipo 1)
+ * eram dominadas por indies obscuros e jogos antigos; os não lançados já estão em "próximos".
+ */
 const TRENDING_WINDOW_DAYS = 365;
-const TRENDING_CANDIDATES = 50;
-/** `popularity_types` 1 = visitas na página do jogo no IGDB. */
-const POPULARITY_VISITS = 1;
+const TRENDING_CANDIDATES = 200;
+/** `popularity_types` 2 = "Want to Play" no IGDB. */
+const POPULARITY_WANT_TO_PLAY = 2;
 /** Nas listas, só jogos "principais" (jogo, remake, remaster), sem versões expandidas e ports. */
 const FEED_FILTER = "game_type = (0,8,9) & version_parent = null & cover != null";
 const FEED_FIELDS = [
@@ -158,14 +161,15 @@ export function createIgdbApi(client: IgdbClient): IgdbApi {
         case "trending": {
           const popular = await client.query<RawPopularity[]>(
             "popularity_primitives",
-            `fields game_id; where popularity_type = ${POPULARITY_VISITS}; ` +
+            `fields game_id; where popularity_type = ${POPULARITY_WANT_TO_PLAY}; ` +
               `sort value desc; limit ${TRENDING_CANDIDATES};`,
           );
           const ids = [...new Set(popular.map((p) => toInt(p.game_id)))];
           if (ids.length === 0) return [];
           const games = await queryFeed(
             `where id = (${ids.join(",")}) ` +
-              `& first_release_date > ${nowSec - TRENDING_WINDOW_DAYS * DAY_SEC} & ${FEED_FILTER};`,
+              `& first_release_date > ${nowSec - TRENDING_WINDOW_DAYS * DAY_SEC} ` +
+              `& first_release_date <= ${nowSec} & ${FEED_FILTER};`,
             TRENDING_CANDIDATES,
           );
           // O IGDB não devolve na ordem dos ids: reordena pela popularidade.

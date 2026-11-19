@@ -180,7 +180,7 @@ describe("getFeed", () => {
     });
   });
 
-  test("em alta: mais visitados, na ordem de popularidade, sem os antigos", async () => {
+  test('em alta: mais "quero jogar", na ordem de popularidade, só os lançados no último ano', async () => {
     const { client, queries } = fakeClient({
       popularity_primitives: [{ game_id: 3 }, { game_id: 1 }, { game_id: 3 }, { game_id: 2 }],
       // O IGDB devolve fora de ordem e já sem o jogo 2 (filtrado por data/tipo).
@@ -193,9 +193,10 @@ describe("getFeed", () => {
     const games = await createIgdbApi(client).getFeed("trending", now);
 
     expect(queries[0]!.endpoint).toBe("popularity_primitives");
-    expect(queries[0]!.body).toContain("where popularity_type = 1; sort value desc;");
+    expect(queries[0]!.body).toContain("where popularity_type = 2; sort value desc;");
     expect(queries[1]!.body).toContain("where id = (3,1,2)");
     expect(queries[1]!.body).toContain(`first_release_date > ${nowSec - 365 * 86_400}`);
+    expect(queries[1]!.body).toContain(`first_release_date <= ${nowSec}`);
     expect(games.map((g) => g.name)).toEqual(["Primeiro", "Segundo"]);
   });
 
