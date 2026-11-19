@@ -2,7 +2,7 @@
 
 > Quanto falta pra zerar?
 
-Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa de quanto falta para zerar cada jogo. Também dá para consultar tudo por IA através de um servidor **MCP** (as tools de escrita ainda estão por vir).
+Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa de quanto falta para zerar cada jogo. Também dá para consultar tudo por IA através de um servidor **MCP** ("comecei a jogar", "joguei 2h ontem", "zerei").
 
 > 🧪 **Projeto de exemplo, feito para cada um hospedar o seu.** O Zerômetro é um projeto pessoal publicado como referência. A minha instância é privada: só entram os e-mails convidados (`ALLOWED_EMAILS`), então ela não serve como serviço público. Para usar, faça um fork e suba a sua (veja [Rodando localmente](#-rodando-localmente) e [Deploy](#-deploy-railway)).
 
@@ -21,12 +21,12 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 - **Estatísticas:** 🔥 ofensiva atual e recorde (com mínimo diário configurável), hoje, média diária e semanal, gráfico das últimas 8 semanas e jogos mais jogados
 - **Tempo para zerar:** história, história + extras e 100%, com o progresso estimado de cada jogo
 - **Efeitos sonoros 8 bits** (desligados por padrão): ao começar e parar sessões, zerar jogos e bater marcos da ofensiva, com volume nos ajustes
-- **Servidor MCP** em `/mcp` com login OAuth (conector do claude.ai, Claude Code), por enquanto só com tools de leitura
+- **Servidor MCP** em `/mcp` com login OAuth (conector do claude.ai, Claude Code), com tools de leitura e de escrita (timer, sessões, adicionar jogo, status)
 - **Deploy na Railway** como código (`.railway/railway.ts`) + imagem Docker
 
 ### Ainda falta
 
-- [ ] **Tools de escrita no MCP** (começar/parar timer, registrar sessão, adicionar jogo, mudar status)
+- [ ] **Tools de edição e remoção no MCP** (editar/apagar sessão, editar/remover jogo, com confirmação)
 - [ ] Tela inicial com listas do IGDB: lançamentos bem avaliados, em alta e próximos lançamentos
 - [ ] Heatmap anual estilo GitHub e gráficos com Recharts
 - [ ] Kanban da biblioteca com arrastar e soltar (o hook já existe: `useMoveGameStatus`)
@@ -135,7 +135,9 @@ claude mcp add --transport http zerometro https://<seu-domínio>/mcp
 
 **Tools disponíveis (leitura):** `search_igdb`, `list_library`, `get_game`, `get_stats`, `list_sessions`, `get_active_session`. O jogo pode ser passado pelo id ou pelo nome (sem diferenciar acentos); se o nome for ambíguo, a tool devolve as opções.
 
-**Planejadas (escrita):** `start_session`, `stop_session`, `log_session`, `add_game`, `set_status`, `update_session`, `update_game_entry`, `remove_game`, `delete_session`. As destrutivas só vão executar com confirmação explícita.
+**Tools de escrita:** `start_session` / `stop_session` (o mesmo timer do site), `log_session` (sessão já jogada, ex.: "joguei 2h ontem"), `add_game` (pelo igdbId achado com `search_igdb`) e `set_status`. Tudo fica no histórico de atividade com actor `mcp`.
+
+**Planejadas:** `update_session`, `update_game_entry`, `remove_game`, `delete_session`. As destrutivas só vão executar com confirmação explícita.
 
 Para inspecionar localmente: `mise run mcp:inspect` e aponte para `http://localhost:3000/mcp`.
 

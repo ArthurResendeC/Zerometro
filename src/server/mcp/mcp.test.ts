@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { eq } from "drizzle-orm";
-import { user } from "../db/schema";
+import { activityLog, user } from "../db/schema";
 import {
   createFakeIgdb,
   createTestApp,
@@ -9,6 +9,7 @@ import {
   mockGoogleLogin,
   TEST_BASE_URL,
   TEST_EMAILS,
+  TEST_TODAY,
 } from "../testing";
 
 // Fluxo completo de um conector MCP (como o do claude.ai): descoberta → registro dinâmico →
@@ -252,7 +253,10 @@ describe("tools", () => {
     const client = await connect(t, await authorize(t, cookie));
 
     const { tools } = await client.listTools();
-    expect(tools.map((tool) => tool.name).toSorted()).toEqual([
+    const readOnly = tools
+      .filter((tool) => tool.annotations?.readOnlyHint)
+      .map((tool) => tool.name);
+    expect(readOnly.toSorted()).toEqual([
       "get_active_session",
       "get_game",
       "get_stats",
@@ -260,7 +264,8 @@ describe("tools", () => {
       "list_sessions",
       "search_igdb",
     ]);
-    expect(tools.every((tool) => tool.annotations?.readOnlyHint)).toBe(true);
+    // Nenhuma tool apaga dados por enquanto.
+    expect(tools.some((tool) => tool.annotations?.destructiveHint)).toBe(false);
 
     const playing = await callJson(client, "list_library", { status: "playing" });
     expect(playing.data.games.map((g: { name: string }) => g.name)).toEqual(["Persona 5 Royal"]);
@@ -291,6 +296,73 @@ describe("tools", () => {
 
     const search = await callJson(client, "search_igdb", { query: "undertale" });
     expect(search.data.results[0]).toMatchObject({ igdbId: 12517, name: "Undertale" });
+
+    await client.close();
+  });
+
+  test("escrita: adiciona jogo, timer, registra sessão e muda status, como actor mcp", async () => {
+    const cookie = (await t.helpers.login({ userId: t.userId })).headers.get("cookie") ?? "";
+    const client = await connect(t, await authorize(t, cookie));
+
+    const added = await callJson(client, "add_game", { igdbId: 12517 });
+    expect(added.data).toMatchObject({ name: "Undertale", status: "backlog" });
+    expect((await callJson(client, "add_game", { igdbId: 12517 })).isError).toBe(true);
+    await callJson(client, "add_game", {
+      igdbId: 114283,
+      status: "playing",
+      platformPlayed: "PS5",
+    });
+
+    // Timer: começa em Undertale (Próximos → Jogando), não troca sozinho de jogo.
+    const started = await callJson(client, "start_session", { game: "undertale" });
+    expect(started.data).toMatchObject({
+      active: { gameName: "Undertale" },
+      alreadyRunning: false,
+      statusChangedTo: "playing",
+    });
+    const again = await callJson(client, "start_session", { game: "undertale" });
+    expect(again.data.alreadyRunning).toBe(true);
+    const busy = await callJson(client, "start_session", { game: "persona" });
+    expect(busy.isError).toBe(true);
+    expect(busy.text).toContain("replaceActive");
+
+    t.clock.set(new Date(t.clock.now().getTime() + 50 * 60_000));
+    const stopped = await callJson(client, "stop_session", { note: "Ruínas" });
+    expect(stopped.data).toMatchObject({
+      discarded: false,
+      session: { minutes: 50, note: "Ruínas", source: "timer" },
+      dayTotalMinutes: 50,
+    });
+    expect((await callJson(client, "stop_session")).isError).toBe(true);
+
+    // Sessão sem timer: fonte "mcp", soma no dia e no jogo.
+    const logged = await callJson(client, "log_session", { game: "persona", minutes: 90 });
+    expect(logged.data).toMatchObject({
+      session: { minutes: 90, source: "mcp" },
+      dayTotalMinutes: 140,
+      gameTotalMinutes: 90,
+    });
+    expect(
+      (await callJson(client, "log_session", { game: "persona", minutes: 2000 })).isError,
+    ).toBe(true);
+
+    const finished = await callJson(client, "set_status", {
+      game: "undertale",
+      status: "finished",
+    });
+    expect(finished.data).toMatchObject({
+      status: "finished",
+      previousStatus: "playing",
+      finishedAt: TEST_TODAY,
+    });
+
+    // Tudo aparece no site e no histórico com actor "mcp".
+    const { items } = (await (await t.request("/api/library")).json()) as {
+      items: { name: string; status: string }[];
+    };
+    expect(items.find((item) => item.name === "Undertale")?.status).toBe("finished");
+    const actors = t.db.select({ actor: activityLog.actor }).from(activityLog).all();
+    expect(new Set(actors.map((row) => row.actor))).toEqual(new Set(["mcp"]));
 
     await client.close();
   });
