@@ -43,11 +43,11 @@ describe("logSession", () => {
     const viaJob = logSession(
       { ...ctx, actor: "job" },
       { gameId: persona, minutes: 10 },
-      { source: "discord" },
+      { source: "timer" },
     );
 
     expect(viaMcp.session.source).toBe("mcp");
-    expect(viaJob.session.source).toBe("discord");
+    expect(viaJob.session.source).toBe("timer");
   });
 
   test("jogo em Próximos passa para Jogando, com início na data da sessão", async () => {

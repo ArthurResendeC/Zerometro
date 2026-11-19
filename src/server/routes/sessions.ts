@@ -7,11 +7,11 @@ import {
 } from "../../shared/sessions";
 import type { AppDeps } from "../app";
 import { validate } from "../lib/validate";
-import type { ServiceContext } from "../services/context";
+import { createContext, type ServiceContext } from "../services/context";
 import { deleteSession, listSessions, logSession, updateSession } from "../services/sessions";
 
 export function createSessionRoutes(deps: AppDeps) {
-  const ctx = (): ServiceContext => ({ db: deps.db, today: deps.today(), actor: "web" });
+  const ctx = (): ServiceContext => createContext(deps.db, deps.clock, "web");
 
   return new Hono()
     .get("/", validate("query", listSessionsQuerySchema), (c) => {

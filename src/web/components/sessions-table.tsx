@@ -22,9 +22,8 @@ import { useLogSessionDialog } from "@/stores/log-session-dialog";
 
 const SOURCE_LABELS: Record<PlaySessionItem["source"], string | null> = {
   manual: null,
+  timer: null,
   mcp: "IA",
-  discord: "Discord",
-  steam: "Steam",
 };
 
 const features = tableFeatures({});

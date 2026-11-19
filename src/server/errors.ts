@@ -25,6 +25,13 @@ export class ConflictError extends AppError {
   }
 }
 
+/** Já existe um timer rodando em outro jogo (o cliente pode oferecer a troca). */
+export class TimerActiveError extends AppError {
+  constructor(message: string) {
+    super(409, "timer_active", message);
+  }
+}
+
 export class ValidationError extends AppError {
   constructor(message: string) {
     super(400, "invalid_input", message);

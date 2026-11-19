@@ -7,12 +7,18 @@ import { getSettings, updateSettings } from "./settings";
 
 describe("settings", () => {
   test("padrão: ofensiva a partir de 30min", () => {
-    expect(getSettings(createTestContext().db)).toEqual({ streakMinMinutes: 30 });
+    expect(getSettings(createTestContext().db)).toEqual({
+      streakMinMinutes: 30,
+      longSessionMinutes: 360,
+    });
   });
 
   test("atualiza, persiste e registra no activity_log", () => {
     const ctx = createTestContext();
-    expect(updateSettings(ctx, { streakMinMinutes: 45 })).toEqual({ streakMinMinutes: 45 });
+    expect(updateSettings(ctx, { streakMinMinutes: 45 })).toMatchObject({
+      streakMinMinutes: 45,
+      longSessionMinutes: 360,
+    });
     expect(getSettings(ctx.db).streakMinMinutes).toBe(45);
     expect(ctx.db.select().from(activityLog).all()).toMatchObject([
       { action: "settings.update", payload: { streakMinMinutes: 45 } },

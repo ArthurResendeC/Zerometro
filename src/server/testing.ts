@@ -1,8 +1,9 @@
 // Helpers de teste compartilhados.
+import { DEFAULT_TIME_ZONE } from "../shared/dates";
 import type { IgdbGameDetails } from "../shared/igdb";
 import { createApp } from "./app";
 import { createTestDb, type Db } from "./db/client";
-import type { ServiceContext } from "./services/context";
+import type { Clock, ServiceContext } from "./services/context";
 import type { IgdbApi } from "./services/igdb";
 
 export function fakeIgdbGame(overrides: Partial<IgdbGameDetails> = {}): IgdbGameDetails {
@@ -44,16 +45,39 @@ export function createFakeIgdb(catalog: IgdbGameDetails[] = [fakeIgdbGame()]): I
   };
 }
 
-/** "Hoje" fixo nos testes. */
+/** "Hoje" fixo nos testes (uma quinta-feira). */
 export const TEST_TODAY = "2026-11-19";
+/** "Agora" fixo: 15h de TEST_TODAY em São Paulo (UTC-3). */
+export const TEST_NOW = new Date("2026-11-19T18:00:00.000Z");
 
-export function createTestApp(overrides: { db?: Db; igdb?: IgdbApi; today?: string } = {}) {
+/** Relógio controlável: `clock.set(...)` avança o tempo nos testes do timer. */
+export function createTestClock(start: Date = TEST_NOW): Clock & { set: (date: Date) => void } {
+  let current = start;
+  return {
+    now: () => current,
+    timeZone: DEFAULT_TIME_ZONE,
+    set: (date) => {
+      current = date;
+    },
+  };
+}
+
+export function createTestApp(
+  overrides: { db?: Db; igdb?: IgdbApi; clock?: ReturnType<typeof createTestClock> } = {},
+) {
   const db = overrides.db ?? createTestDb();
   const igdb = overrides.igdb ?? createFakeIgdb();
-  const today = overrides.today ?? TEST_TODAY;
-  return { app: createApp({ db, igdb, today: () => today, logRequests: false }), db, igdb };
+  const clock = overrides.clock ?? createTestClock();
+  return { app: createApp({ db, igdb, clock, logRequests: false }), db, igdb, clock };
 }
 
 export function createTestContext(overrides: Partial<ServiceContext> = {}): ServiceContext {
-  return { db: overrides.db ?? createTestDb(), today: TEST_TODAY, actor: "web", ...overrides };
+  return {
+    db: overrides.db ?? createTestDb(),
+    now: TEST_NOW,
+    timeZone: DEFAULT_TIME_ZONE,
+    today: TEST_TODAY,
+    actor: "web",
+    ...overrides,
+  };
 }

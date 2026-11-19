@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { uniqueIndex, check, index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { activityActors, gameStatuses, sessionSources, ttbSources } from "../../shared/domain";
 
 // Datas/horas como texto ISO 8601 em UTC; datas de calendário (played_on) como YYYY-MM-DD no fuso do usuário.
@@ -63,8 +63,13 @@ export const playSessions = sqliteTable(
     gameId: integer("game_id")
       .notNull()
       .references(() => games.id, { onDelete: "cascade" }),
+    /** Dia (no fuso do usuário) em que a sessão começou. */
     playedOn: text("played_on").notNull(),
-    minutes: integer("minutes").notNull(),
+    /** Nulo só enquanto o timer está rodando. */
+    minutes: integer("minutes"),
+    /** Início/fim (ISO UTC) das sessões de timer; nulos em registros manuais. */
+    startedAt: text("started_at"),
+    endedAt: text("ended_at"),
     note: text("note"),
     source: text("source", { enum: sessionSources }).notNull().default("manual"),
     createdAt: createdAt(),
@@ -73,7 +78,16 @@ export const playSessions = sqliteTable(
   (t) => [
     index("play_sessions_played_on_idx").on(t.playedOn),
     index("play_sessions_game_played_on_idx").on(t.gameId, t.playedOn),
-    check("play_sessions_minutes_positive", sql`${t.minutes} > 0`),
+    check("play_sessions_minutes_positive", sql`${t.minutes} is null or ${t.minutes} > 0`),
+    // Sessão ativa (timer rodando) = início sem fim, e só ela tem minutos nulos.
+    check(
+      "play_sessions_active_shape",
+      sql`(${t.minutes} is null) = (${t.startedAt} is not null and ${t.endedAt} is null)`,
+    ),
+    // No máximo uma sessão ativa: todas têm a mesma chave (1) no índice parcial.
+    uniqueIndex("play_sessions_one_active_idx")
+      .on(sql`(${t.endedAt} is null)`)
+      .where(sql`${t.startedAt} is not null and ${t.endedAt} is null`),
   ],
 );
 

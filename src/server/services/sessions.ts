@@ -1,4 +1,5 @@
-import { and, desc, eq, gte, lte, ne, type SQL, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNotNull, lte, ne, type SQL, sql } from "drizzle-orm";
+import { addDays, zonedParts, zonedToInstant } from "../../shared/dates";
 import type { GameStatus, SessionSource } from "../../shared/domain";
 import {
   type ListSessionsQuery,
@@ -17,24 +18,29 @@ import type { ServiceContext } from "./context";
 /** Registrar uma sessão desses status indica que voltei a jogar. */
 const RESUMES_PLAYING: ReadonlySet<GameStatus> = new Set(["backlog", "wishlist", "paused"]);
 
+/** Sessões encerradas (o timer rodando tem `minutes` nulo e fica de fora das listas e totais). */
+const isClosed = isNotNull(playSessions.minutes);
+
 // ---------------------------------------------------------------------------
 // Leitura
 
 export function listSessions(db: Db, query: ListSessionsQuery = {}): PlaySessionItem[] {
-  const filters: SQL[] = [];
+  const filters: SQL[] = [isClosed];
   if (query.gameId) filters.push(eq(playSessions.gameId, query.gameId));
   if (query.from) filters.push(gte(playSessions.playedOn, query.from));
   if (query.to) filters.push(lte(playSessions.playedOn, query.to));
 
   return selectSessions(db)
     .where(and(...filters))
-    .orderBy(desc(playSessions.playedOn), desc(playSessions.id))
+    .orderBy(desc(playSessions.playedOn), desc(playSessions.startedAt), desc(playSessions.id))
     .limit(query.limit ?? 100)
     .all();
 }
 
 export function getSession(db: DbOrTx, id: number): PlaySessionItem {
-  const session = selectSessions(db).where(eq(playSessions.id, id)).get();
+  const session = selectSessions(db)
+    .where(and(eq(playSessions.id, id), isClosed))
+    .get();
   if (!session) throw new NotFoundError(`Sessão ${id} não encontrada`);
   return session;
 }
@@ -47,7 +53,10 @@ function selectSessions(db: DbOrTx) {
       gameName: games.name,
       coverImageId: games.coverImageId,
       playedOn: playSessions.playedOn,
-      minutes: playSessions.minutes,
+      // Só sessões encerradas passam pelos filtros, então os minutos nunca são nulos aqui.
+      minutes: sql<number>`${playSessions.minutes}`,
+      startedAt: playSessions.startedAt,
+      endedAt: playSessions.endedAt,
       note: playSessions.note,
       source: playSessions.source,
       createdAt: playSessions.createdAt,
@@ -70,7 +79,7 @@ export function minutesOnDay(db: DbOrTx, playedOn: string, excludeSessionId?: nu
   );
 }
 
-function minutesOnGame(db: DbOrTx, gameId: number): number {
+export function minutesOnGame(db: DbOrTx, gameId: number): number {
   return (
     db
       .select({ total: sql<number>`coalesce(sum(${playSessions.minutes}), 0)` })
@@ -78,6 +87,29 @@ function minutesOnGame(db: DbOrTx, gameId: number): number {
       .where(eq(playSessions.gameId, gameId))
       .get()?.total ?? 0
   );
+}
+
+export interface LibraryEntryRef {
+  gameId: number;
+  name: string;
+  status: GameStatus;
+  startedAt: string | null;
+}
+
+export function findLibraryEntry(db: DbOrTx, gameId: number): LibraryEntryRef {
+  const entry = db
+    .select({
+      gameId: libraryEntries.gameId,
+      name: games.name,
+      status: libraryEntries.status,
+      startedAt: libraryEntries.startedAt,
+    })
+    .from(libraryEntries)
+    .innerJoin(games, eq(games.id, libraryEntries.gameId))
+    .where(eq(libraryEntries.gameId, gameId))
+    .get();
+  if (!entry) throw new NotFoundError(`Jogo ${gameId} não está na biblioteca`);
+  return entry;
 }
 
 // ---------------------------------------------------------------------------
@@ -91,18 +123,7 @@ export function logSession(
   const playedOn = input.playedOn ?? ctx.today;
   const source = options.source ?? (ctx.actor === "mcp" ? "mcp" : "manual");
   assertNotFuture(playedOn, ctx.today);
-
-  const entry = ctx.db
-    .select({
-      name: games.name,
-      status: libraryEntries.status,
-      startedAt: libraryEntries.startedAt,
-    })
-    .from(libraryEntries)
-    .innerJoin(games, eq(games.id, libraryEntries.gameId))
-    .where(eq(libraryEntries.gameId, input.gameId))
-    .get();
-  if (!entry) throw new NotFoundError(`Jogo ${input.gameId} não está na biblioteca`);
+  const entry = findLibraryEntry(ctx.db, input.gameId);
 
   return ctx.db.transaction((tx) => {
     assertDayCapacity(tx, playedOn, input.minutes);
@@ -119,14 +140,7 @@ export function logSession(
       .returning({ id: playSessions.id })
       .get();
 
-    let statusChangedTo: GameStatus | null = null;
-    if (RESUMES_PLAYING.has(entry.status)) {
-      statusChangedTo = "playing";
-      tx.update(libraryEntries)
-        .set({ status: "playing", startedAt: entry.startedAt ?? playedOn })
-        .where(eq(libraryEntries.gameId, input.gameId))
-        .run();
-    }
+    const statusChangedTo = resumePlaying(tx, entry, playedOn);
 
     logActivity(tx, ctx.actor, "session.log", {
       sessionId: id,
@@ -152,26 +166,78 @@ export function updateSession(
   patch: UpdateSessionInput,
 ): PlaySessionItem {
   const current = getSession(ctx.db, id);
-  const playedOn = patch.playedOn ?? current.playedOn;
-  const minutes = patch.minutes ?? current.minutes;
+  const changes = current.startedAt
+    ? timerSessionChanges(ctx, current, patch)
+    : manualSessionChanges(current, patch);
+  const playedOn = changes.playedOn ?? current.playedOn;
+  const minutes = changes.minutes ?? current.minutes;
   assertNotFuture(playedOn, ctx.today);
 
   return ctx.db.transaction((tx) => {
     assertDayCapacity(tx, playedOn, minutes, id);
-    const changes = {
-      ...(patch.playedOn !== undefined && { playedOn: patch.playedOn }),
-      ...(patch.minutes !== undefined && { minutes: patch.minutes }),
+    const set = {
+      ...changes,
       ...(patch.note !== undefined && { note: patch.note || null }),
     };
-    tx.update(playSessions).set(changes).where(eq(playSessions.id, id)).run();
+    tx.update(playSessions).set(set).where(eq(playSessions.id, id)).run();
     logActivity(tx, ctx.actor, "session.update", {
       sessionId: id,
       gameId: current.gameId,
       name: current.gameName,
-      changes,
+      changes: set,
     });
     return getSession(tx, id);
   });
+}
+
+interface SessionTimeChanges {
+  playedOn?: string;
+  minutes?: number;
+  startedAt?: string;
+  endedAt?: string;
+}
+
+function manualSessionChanges(
+  current: PlaySessionItem,
+  patch: UpdateSessionInput,
+): SessionTimeChanges {
+  if (patch.startTime !== undefined || patch.endTime !== undefined) {
+    throw new ValidationError(
+      `A sessão ${current.id} foi registrada manualmente e não tem horário de início/fim`,
+    );
+  }
+  return {
+    ...(patch.playedOn !== undefined && { playedOn: patch.playedOn }),
+    ...(patch.minutes !== undefined && { minutes: patch.minutes }),
+  };
+}
+
+/**
+ * Sessão de timer: dia + horário de início definem o começo; o fim vem do horário de fim
+ * (antes do início = dia seguinte), da duração informada ou mantém a duração atual.
+ */
+function timerSessionChanges(
+  ctx: ServiceContext,
+  current: PlaySessionItem,
+  patch: UpdateSessionInput,
+): SessionTimeChanges {
+  const startedAt = new Date(current.startedAt as string);
+  const day = patch.playedOn ?? current.playedOn;
+  const startTime = patch.startTime ?? zonedParts(startedAt, ctx.timeZone).time;
+  const start = zonedToInstant(day, startTime, ctx.timeZone);
+
+  let end: Date;
+  if (patch.endTime) end = nextOccurrence(start, patch.endTime, ctx.timeZone);
+  else if (patch.minutes) end = new Date(start.getTime() + patch.minutes * 60_000);
+  else end = new Date(start.getTime() + current.minutes * 60_000);
+
+  assertNotAfterNow(end, ctx.now);
+  return {
+    playedOn: day,
+    startedAt: start.toISOString(),
+    endedAt: end.toISOString(),
+    minutes: sessionMinutes(start, end),
+  };
 }
 
 export function deleteSession(ctx: ServiceContext, id: number): PlaySessionItem {
@@ -184,14 +250,57 @@ export function deleteSession(ctx: ServiceContext, id: number): PlaySessionItem 
 }
 
 // ---------------------------------------------------------------------------
-// Regras
+// Regras (também usadas pelo timer)
+
+/** Jogar algo em Próximos/Desejos/Pausado move para Jogando. Retorna o novo status, se mudou. */
+export function resumePlaying(
+  tx: DbOrTx,
+  entry: LibraryEntryRef,
+  playedOn: string,
+): GameStatus | null {
+  if (!RESUMES_PLAYING.has(entry.status)) return null;
+  tx.update(libraryEntries)
+    .set({ status: "playing", startedAt: entry.startedAt ?? playedOn })
+    .where(eq(libraryEntries.gameId, entry.gameId))
+    .run();
+  return "playing";
+}
+
+/** Primeira ocorrência do horário local `time` depois de `after` (no máximo 24h depois). */
+export function nextOccurrence(after: Date, time: string, timeZone: string): Date {
+  const { date } = zonedParts(after, timeZone);
+  const sameDay = zonedToInstant(date, time, timeZone);
+  return sameDay > after ? sameDay : zonedToInstant(addDays(date, 1), time, timeZone);
+}
+
+/** Duração em minutos inteiros; valida 1min a 24h. */
+export function sessionMinutes(start: Date, end: Date): number {
+  const minutes = Math.round((end.getTime() - start.getTime()) / 60_000);
+  if (minutes < 1) throw new ValidationError("A sessão precisa ter pelo menos 1 minuto");
+  if (minutes > MAX_MINUTES_PER_DAY) {
+    throw new ValidationError("Uma sessão vai até 24h: ajuste o horário de fim");
+  }
+  return minutes;
+}
+
+/** Tolerância de 1 minuto para diferença de relógio. */
+export function assertNotAfterNow(instant: Date, now: Date) {
+  if (instant.getTime() > now.getTime() + 60_000) {
+    throw new ValidationError("O fim da sessão não pode ser no futuro");
+  }
+}
 
 function assertNotFuture(playedOn: string, today: string) {
   if (playedOn > today) throw new ValidationError("A data da sessão não pode ser no futuro");
 }
 
 /** Um dia tem 24h: evita erros como registrar horas no lugar de minutos. */
-function assertDayCapacity(db: DbOrTx, playedOn: string, minutes: number, excludeId?: number) {
+export function assertDayCapacity(
+  db: DbOrTx,
+  playedOn: string,
+  minutes: number,
+  excludeId?: number,
+) {
   const total = minutesOnDay(db, playedOn, excludeId) + minutes;
   if (total > MAX_MINUTES_PER_DAY) {
     throw new ValidationError(

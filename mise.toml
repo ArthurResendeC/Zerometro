@@ -25,7 +25,7 @@ depends = ["dev:server", "routes:watch"]
 
 [tasks."dev:server"]
 description = "Servidor de desenvolvimento (API + MCP + frontend com HMR)"
-depends = ["routes:gen"]
+depends = ["routes:gen", "db:migrate"]
 run = "bun --hot src/server/index.ts"
 
 [tasks."routes:gen"]

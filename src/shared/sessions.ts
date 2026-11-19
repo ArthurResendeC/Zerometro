@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { isoDateSchema } from "./dates";
+import { isoDateSchema, localTimeSchema } from "./dates";
 import type { GameStatus, SessionSource } from "./domain";
 
 // Contrato das sessões de jogo, compartilhado por API, frontend e MCP.
@@ -14,6 +14,9 @@ export interface PlaySessionItem {
   /** YYYY-MM-DD no fuso do usuário. */
   playedOn: string;
   minutes: number;
+  /** Início/fim (ISO UTC) quando a sessão veio do timer; nulos em registros manuais. */
+  startedAt: string | null;
+  endedAt: string | null;
   note: string | null;
   source: SessionSource;
   createdAt: string;
@@ -36,7 +39,7 @@ const minutesSchema = z
   .min(1, "Mínimo de 1 minuto")
   .max(MAX_MINUTES_PER_DAY, "Máximo de 24h por sessão");
 
-const noteSchema = z.string().trim().max(500);
+export const noteSchema = z.string().trim().max(500);
 
 export const sessionIdParamSchema = z.object({ id: z.coerce.number().int().positive() });
 
@@ -50,7 +53,14 @@ export const logSessionSchema = z.object({
 export type LogSessionInput = z.infer<typeof logSessionSchema>;
 
 export const updateSessionSchema = z
-  .object({ minutes: minutesSchema, playedOn: isoDateSchema, note: noteSchema.nullable() })
+  .object({
+    minutes: minutesSchema,
+    playedOn: isoDateSchema,
+    note: noteSchema.nullable(),
+    /** Só para sessões de timer: horários locais (HH:MM); fim antes do início = dia seguinte. */
+    startTime: localTimeSchema,
+    endTime: localTimeSchema,
+  })
   .partial()
   .refine((patch) => Object.keys(patch).length > 0, "Nada para atualizar");
 export type UpdateSessionInput = z.infer<typeof updateSessionSchema>;

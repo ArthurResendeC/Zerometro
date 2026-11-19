@@ -7,7 +7,7 @@ import {
 } from "../../shared/library";
 import type { AppDeps } from "../app";
 import { validate } from "../lib/validate";
-import type { ServiceContext } from "../services/context";
+import { createContext, type ServiceContext } from "../services/context";
 import {
   addToLibrary,
   countByStatus,
@@ -18,7 +18,7 @@ import {
 } from "../services/library";
 
 export function createLibraryRoutes(deps: AppDeps) {
-  const ctx = (): ServiceContext => ({ db: deps.db, today: deps.today(), actor: "web" });
+  const ctx = (): ServiceContext => createContext(deps.db, deps.clock, "web");
 
   return new Hono()
     .get("/", validate("query", libraryListQuerySchema), (c) => {

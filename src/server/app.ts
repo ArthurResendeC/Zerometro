@@ -9,13 +9,15 @@ import { createLibraryRoutes } from "./routes/library";
 import { createSessionRoutes } from "./routes/sessions";
 import { createSettingsRoutes } from "./routes/settings";
 import { createStatsRoutes } from "./routes/stats";
+import { createTimerRoutes } from "./routes/timer";
+import type { Clock } from "./services/context";
 import type { IgdbApi } from "./services/igdb";
 
 export interface AppDeps {
   db: Db;
   igdb: IgdbApi;
-  /** "Hoje" (YYYY-MM-DD) no fuso do usuário; injetável para testes. */
-  today: () => string;
+  /** Relógio e fuso do usuário; injetável para testes. */
+  clock: Clock;
   /** Log de requisições (desligado nos testes). */
   logRequests?: boolean;
 }
@@ -46,7 +48,8 @@ export function createApp(deps: AppDeps) {
     .route("/library", createLibraryRoutes(deps))
     .route("/sessions", createSessionRoutes(deps))
     .route("/stats", createStatsRoutes(deps))
-    .route("/settings", createSettingsRoutes(deps));
+    .route("/settings", createSettingsRoutes(deps))
+    .route("/timer", createTimerRoutes(deps));
 }
 
 export type AppType = ReturnType<typeof createApp>;

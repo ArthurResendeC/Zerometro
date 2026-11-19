@@ -1,4 +1,4 @@
-import { and, desc, eq, type SQL, sql } from "drizzle-orm";
+import { isNotNull, and, desc, eq, type SQL, sql } from "drizzle-orm";
 import { type GameStatus, gameStatuses, gameStatusLabels } from "../../shared/domain";
 import {
   type AddToLibraryInput,
@@ -53,6 +53,7 @@ function selectItems(db: Db, filters: SQL[]): LibraryItem[] {
       lastPlayedOn: sql<string>`max(${playSessions.playedOn})`.as("last_played_on"),
     })
     .from(playSessions)
+    .where(isNotNull(playSessions.minutes)) // ignora o timer rodando
     .groupBy(playSessions.gameId)
     .as("totals");
 
