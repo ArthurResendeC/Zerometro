@@ -10,33 +10,63 @@
 
 import { Route as rootRouteImport } from "./routes/__root"
 import { Route as IndexRouteImport } from "./routes/index"
+import { Route as AdicionarRouteImport } from "./routes/adicionar"
+import { Route as BibliotecaRouteImport } from "./routes/biblioteca"
+import { Route as JogosGameIdRouteImport } from "./routes/jogos.$gameId"
 
 const IndexRoute = IndexRouteImport.update({
   id: "/",
   path: "/",
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdicionarRoute = AdicionarRouteImport.update({
+  id: "/adicionar",
+  path: "/adicionar",
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BibliotecaRoute = BibliotecaRouteImport.update({
+  id: "/biblioteca",
+  path: "/biblioteca",
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JogosGameIdRoute = JogosGameIdRouteImport.update({
+  id: "/jogos/$gameId",
+  path: "/jogos/$gameId",
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   "/": typeof IndexRoute
+  "/adicionar": typeof AdicionarRoute
+  "/biblioteca": typeof BibliotecaRoute
+  "/jogos/$gameId": typeof JogosGameIdRoute
 }
 export interface FileRoutesByTo {
   "/": typeof IndexRoute
+  "/adicionar": typeof AdicionarRoute
+  "/biblioteca": typeof BibliotecaRoute
+  "/jogos/$gameId": typeof JogosGameIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   "/": typeof IndexRoute
+  "/adicionar": typeof AdicionarRoute
+  "/biblioteca": typeof BibliotecaRoute
+  "/jogos/$gameId": typeof JogosGameIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: "/"
+  fullPaths: "/" | "/adicionar" | "/biblioteca" | "/jogos/$gameId"
   fileRoutesByTo: FileRoutesByTo
-  to: "/"
-  id: "__root__" | "/"
+  to: "/" | "/adicionar" | "/biblioteca" | "/jogos/$gameId"
+  id: "__root__" | "/" | "/adicionar" | "/biblioteca" | "/jogos/$gameId"
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdicionarRoute: typeof AdicionarRoute
+  BibliotecaRoute: typeof BibliotecaRoute
+  JogosGameIdRoute: typeof JogosGameIdRoute
 }
 
 declare module "@tanstack/react-router" {
@@ -48,11 +78,35 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    "/adicionar": {
+      id: "/adicionar"
+      path: "/adicionar"
+      fullPath: "/adicionar"
+      preLoaderRoute: typeof AdicionarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    "/biblioteca": {
+      id: "/biblioteca"
+      path: "/biblioteca"
+      fullPath: "/biblioteca"
+      preLoaderRoute: typeof BibliotecaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    "/jogos/$gameId": {
+      id: "/jogos/$gameId"
+      path: "/jogos/$gameId"
+      fullPath: "/jogos/$gameId"
+      preLoaderRoute: typeof JogosGameIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdicionarRoute: AdicionarRoute,
+  BibliotecaRoute: BibliotecaRoute,
+  JogosGameIdRoute: JogosGameIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
