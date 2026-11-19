@@ -28,11 +28,11 @@ function errorMessage(code: string): string {
 function LoginPage() {
   const { redirect, error } = Route.useSearch();
   const [pending, setPending] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
 
   const signIn = async () => {
     setPending(true);
-    setFailed(false);
+    setFailure(null);
     const result = await authClient.signIn.social({
       provider: "google",
       callbackURL: safeRedirect(redirect),
@@ -41,13 +41,15 @@ function LoginPage() {
     // Em caso de sucesso o navegador já está indo para o Google.
     if (result.error) {
       setPending(false);
-      setFailed(true);
+      setFailure(
+        result.error.status
+          ? `O servidor recusou o login (erro ${result.error.status}). Tente de novo mais tarde.`
+          : "Não deu para falar com o servidor. Confira a conexão e tente de novo.",
+      );
     }
   };
 
-  const message = failed
-    ? "Não deu para falar com o servidor. Tente de novo."
-    : error && errorMessage(error);
+  const message = failure ?? (error && errorMessage(error));
 
   return (
     <main className="flex min-h-dvh items-center justify-center px-4">

@@ -1,6 +1,6 @@
 import { env } from "./env";
 import { createApp } from "./app";
-import { createAuth, createAuthGateway, parseEmailList } from "./auth";
+import { createAuth, createAuthGateway, parseEmailList, resolvePublicUrl } from "./auth";
 import { db } from "./db";
 import { runMigrations } from "./db/client";
 import { createIgdbFromEnv } from "./services/igdb";
@@ -16,6 +16,13 @@ if (!env.BETTER_AUTH_SECRET && isProduction) {
   console.error("BETTER_AUTH_SECRET é obrigatório em produção (openssl rand -base64 32)");
   process.exit(1);
 }
+let publicUrl: string;
+try {
+  publicUrl = resolvePublicUrl(env);
+} catch (error) {
+  console.error((error as Error).message);
+  process.exit(1);
+}
 const allowedEmails = parseEmailList(env.ALLOWED_EMAILS);
 const google =
   env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
@@ -29,7 +36,7 @@ const auth = createAuth({
   db,
   // Em dev sem segredo, as sessões só valem até reiniciar o servidor.
   secret: env.BETTER_AUTH_SECRET ?? crypto.randomUUID() + crypto.randomUUID(),
-  baseURL: publicUrl(),
+  baseURL: publicUrl,
   google,
   allowedEmails,
 });
@@ -51,7 +58,7 @@ const server = Bun.serve({
   development: !isProduction && { hmr: true, console: true },
 });
 
-console.log(`Zerômetro rodando em ${server.url} (público: ${publicUrl()})`);
+console.log(`Zerômetro rodando em ${server.url} (público: ${publicUrl})`);
 
 // Deploy/restart: para de aceitar conexões e fecha o SQLite (checkpoint do WAL).
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
@@ -60,10 +67,4 @@ for (const signal of ["SIGTERM", "SIGINT"] as const) {
     db.$client.close();
     process.exit(0);
   });
-}
-
-function publicUrl(): string {
-  if (env.BETTER_AUTH_URL) return env.BETTER_AUTH_URL;
-  if (env.RAILWAY_PUBLIC_DOMAIN) return `https://${env.RAILWAY_PUBLIC_DOMAIN}`;
-  return `http://localhost:${env.PORT}`;
 }

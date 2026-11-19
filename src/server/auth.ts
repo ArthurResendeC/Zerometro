@@ -58,6 +58,11 @@ export function createAuth(config: AuthConfig) {
     socialProviders: config.google
       ? { google: { ...config.google, prompt: "select_account" } }
       : {},
+    advanced: {
+      // Atrás do proxy da Railway o IP do cliente vem em X-Real-IP (usado no rate limit
+      // da Better Auth, que só fica ligado em produção).
+      ipAddress: { ipAddressHeaders: ["x-real-ip"] },
+    },
     session: {
       // Uso pessoal no celular e no PC: sessão longa, renovada a cada dia de uso.
       expiresIn: 60 * 60 * 24 * SESSION_DAYS,
@@ -132,6 +137,27 @@ export function adoptLegacyData(db: Db, userId: string): boolean {
     tx.delete(user).where(eq(user.id, LEGACY_OWNER_ID)).run();
   });
   return true;
+}
+
+/**
+ * URL pública do site, que a Better Auth usa como origem confiável e para montar o
+ * redirect do Google. Em produção, cair em localhost quebra o login (403 "Invalid
+ * origin"), então falha no boot com uma mensagem clara.
+ */
+export function resolvePublicUrl(env: {
+  NODE_ENV: string;
+  PORT: number;
+  BETTER_AUTH_URL?: string;
+  RAILWAY_PUBLIC_DOMAIN?: string;
+}): string {
+  if (env.BETTER_AUTH_URL) return env.BETTER_AUTH_URL.replace(/\/+$/, "");
+  if (env.RAILWAY_PUBLIC_DOMAIN) return `https://${env.RAILWAY_PUBLIC_DOMAIN}`;
+  if (env.NODE_ENV === "production") {
+    throw new Error(
+      "Defina BETTER_AUTH_URL com a URL pública do site (ex.: https://zerometro.exemplo.com)",
+    );
+  }
+  return `http://localhost:${env.PORT}`;
 }
 
 export function parseEmailList(value: string | undefined): string[] {

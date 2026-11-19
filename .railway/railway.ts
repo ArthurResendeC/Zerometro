@@ -6,6 +6,9 @@ import { defineRailway, github, preserve, project, service, volume } from "railw
 
 /** Onde o volume é montado; o SQLite fica em /data/zerometro.db (ver Dockerfile). */
 const DATA_DIR = "/data";
+const DOMAIN = "zerometro.arthur-resende.com.br";
+/** Porta em que o servidor escuta; o domínio aponta para ela. */
+const PORT = 8080;
 
 export default defineRailway(() => {
   // SQLite com WAL: 1 GB sobra para anos de sessões; aumentar é online e não destrutivo.
@@ -25,13 +28,16 @@ export default defineRailway(() => {
       restartPolicyType: "ON_FAILURE",
       restartPolicyMaxRetries: 10,
     },
+    domains: [{ domain: DOMAIN, port: PORT }],
     volumeMounts: { [DATA_DIR]: data },
     env: {
       NODE_ENV: "production",
       TZ: "America/Sao_Paulo",
       DATABASE_PATH: `${DATA_DIR}/zerometro.db`,
-      // A URL pública vem de RAILWAY_PUBLIC_DOMAIN (injetada pela Railway). Defina
-      // BETTER_AUTH_URL só se usar domínio próprio.
+      PORT: String(PORT),
+      // Origem confiável do login e base do redirect do Google (com domínio próprio, a
+      // Railway não preenche RAILWAY_PUBLIC_DOMAIN com ele).
+      BETTER_AUTH_URL: `https://${DOMAIN}`,
       //
       // Segredos: nunca neste arquivo (vai para o git). Defina uma vez com
       // `railway variable set NOME=valor`; preserve() mantém o valor que já está lá.
