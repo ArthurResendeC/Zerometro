@@ -63,7 +63,7 @@ src/
 ## 🚀 Rodando localmente
 
 ### Pré-requisitos
-- [Bun](https://bun.sh) 1.2+
+- [mise](https://mise.jdx.dev): instala as versões certas do Bun e do Node e centraliza variáveis de ambiente e tarefas no `mise.toml`
 - Credenciais do IGDB: crie um app no [Twitch Developer Console](https://dev.twitch.tv/console/apps) para obter `client_id` e `client_secret`
 
 ### Passos
@@ -71,13 +71,26 @@ src/
 ```bash
 git clone https://github.com/<seu-usuario>/zerometro.git
 cd zerometro
-bun install
-cp .env.example .env   # preencha as variáveis
-bun run db:migrate
-bun dev
+mise trust && mise install   # Bun e Node nas versões do mise.toml
+mise run install             # dependências
+cp .env.example .env         # preencha as variáveis
+mise run db:migrate
+mise run dev                 # http://localhost:3000
 ```
 
+Outras tarefas (`mise tasks` lista todas):
+
+| Tarefa | O que faz |
+| --- | --- |
+| `mise run check` | typecheck + testes |
+| `mise run build` / `mise run start` | build de produção em `dist/` e execução |
+| `mise run db:generate` | gera migration a partir do schema |
+| `mise run db:studio` | abre o Drizzle Studio |
+| `mise run mcp:inspect` | abre o MCP Inspector |
+
 ### Variáveis de ambiente
+
+Os padrões ficam no `[env]` do `mise.toml`; valores locais e segredos vão no `.env` (carregado pelo mise, não versionado).
 
 | Variável | Descrição |
 | --- | --- |
@@ -85,7 +98,8 @@ bun dev
 | `IGDB_CLIENT_SECRET` | Client Secret do app na Twitch |
 | `APP_PASSWORD` | Senha de acesso ao painel |
 | `MCP_TOKEN` | Token bearer para o servidor MCP |
-| `DATABASE_PATH` | Caminho do arquivo SQLite (padrão: `./data/zerometro.db`) |
+| `DATABASE_PATH` | Caminho do arquivo SQLite (padrão: `data/zerometro.db` na raiz do projeto) |
+| `PORT` | Porta do servidor (padrão: `3000`) |
 | `TZ` | Fuso usado nas estatísticas (padrão: `America/Sao_Paulo`) |
 
 ---

@@ -1,0 +1,36 @@
+# Dependências e build
+node_modules/
+dist/
+*.tsbuildinfo
+.cache/
+
+# Ambiente e config local
+.env
+.env.*
+!.env.example
+mise.local.toml
+.mise.local.toml
+
+# Banco SQLite (dados locais) e backups
+data/*
+!data/.gitkeep
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Logs e testes
+*.log
+logs/
+coverage/
+
+# Editores e SO
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

@@ -1,0 +1,76 @@
+#:schema https://mise.jdx.dev/schema/mise.json
+# Fonte única de ferramentas, variáveis de ambiente e tarefas do projeto.
+# Uso: `mise install` e depois `mise run <tarefa>` (ou `mise tasks` para listar).
+
+[tools]
+bun = "1.4.4"
+node = "lts" # só para ferramentas via npx (ex.: MCP Inspector)
+
+[env]
+# Padrões; sobrescreva no .env (não versionado)
+DATABASE_PATH = "{{config_root}}/data/zerometro.db" # absoluto: o `start` roda de dentro de dist/
+TZ = "America/Sao_Paulo"
+PORT = "3000"
+_.file = { path = ".env", redact = true }
+
+[tasks.install]
+description = "Instala as dependências"
+run = "bun install"
+
+[tasks.dev]
+description = "Desenvolvimento: servidor com HMR + watch das rotas, em paralelo"
+depends = ["dev:server", "routes:watch"]
+
+[tasks."dev:server"]
+description = "Servidor de desenvolvimento (API + MCP + frontend com HMR)"
+depends = ["routes:gen"]
+run = "bun --hot src/server/index.ts"
+
+[tasks."routes:gen"]
+description = "Gera a árvore de rotas do TanStack Router"
+run = "bunx --bun tsr generate"
+
+[tasks."routes:watch"]
+description = "Regenera a árvore de rotas ao alterar src/web/routes"
+run = "bunx --bun tsr watch"
+
+[tasks.build]
+description = "Build de produção em ./dist"
+depends = ["routes:gen"]
+run = "bun scripts/build.ts"
+
+[tasks.start]
+description = "Roda o build de produção"
+env = { NODE_ENV = "production" }
+# O Bun resolve os assets do HTML import a partir do cwd, então rodamos de dentro de dist/.
+dir = "{{config_root}}/dist"
+run = "bun index.js"
+
+[tasks."db:generate"]
+description = "Gera uma migration a partir do schema do Drizzle"
+run = "bunx drizzle-kit generate"
+
+[tasks."db:migrate"]
+description = "Aplica as migrations pendentes"
+run = "bun src/server/db/migrate.ts"
+
+[tasks."db:studio"]
+description = "Abre o Drizzle Studio"
+run = "bunx drizzle-kit studio"
+
+[tasks.typecheck]
+description = "Checagem de tipos"
+depends = ["routes:gen"]
+run = "bunx tsc --noEmit"
+
+[tasks.test]
+description = "Testes"
+run = "bun test"
+
+[tasks.check]
+description = "Typecheck + testes"
+depends = ["typecheck", "test"]
+
+[tasks."mcp:inspect"]
+description = "Abre o MCP Inspector"
+run = "npx @modelcontextprotocol/inspector"
