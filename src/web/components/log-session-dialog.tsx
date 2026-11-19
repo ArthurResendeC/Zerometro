@@ -194,7 +194,7 @@ function SessionForm({ editing, initialGameId, onDone }: SessionFormProps) {
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
                   aria-invalid={field.state.meta.errors.length > 0}
-                  className="w-32"
+                  className="flex-1 sm:w-32 sm:flex-none"
                 />
               )}
             </form.Field>
@@ -207,7 +207,7 @@ function SessionForm({ editing, initialGameId, onDone }: SessionFormProps) {
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
                   aria-invalid={field.state.meta.errors.length > 0}
-                  className="w-32"
+                  className="flex-1 sm:w-32 sm:flex-none"
                 />
               )}
             </form.Field>
@@ -219,7 +219,7 @@ function SessionForm({ editing, initialGameId, onDone }: SessionFormProps) {
       ) : (
         <div className="space-y-2">
           <Label>Duração</Label>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <form.Field name="hours">
               {(field) => (
                 <DurationInput
@@ -242,7 +242,7 @@ function SessionForm({ editing, initialGameId, onDone }: SessionFormProps) {
                 />
               )}
             </form.Field>
-            <div className="ml-auto flex flex-wrap">
+            <div className="flex flex-wrap sm:ml-auto">
               {QUICK_ADD.map((q) => (
                 <Button
                   key={q.label}
@@ -278,7 +278,7 @@ function SessionForm({ editing, initialGameId, onDone }: SessionFormProps) {
                 value={field.state.value}
                 onChange={field.handleChange}
                 aria-invalid={field.state.meta.errors.length > 0}
-                className="w-48"
+                className="w-full sm:w-48"
               />
               <Button type="button" variant="outline" onClick={() => field.handleChange(today)}>
                 Hoje
