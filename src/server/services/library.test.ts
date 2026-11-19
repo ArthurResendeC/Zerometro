@@ -14,6 +14,8 @@ import {
   removeFromLibrary,
   updateLibraryEntry,
 } from "./library";
+import { logSession } from "./sessions";
+import { getStats } from "./stats";
 
 const igdb = createFakeIgdb([
   fakeIgdbGame(),
@@ -160,6 +162,47 @@ describe("updateLibraryEntry", () => {
 
   test("jogo fora da biblioteca → NotFoundError", () => {
     expect(() => updateLibraryEntry(ctx, 42, { status: "playing" })).toThrow(NotFoundError);
+  });
+});
+
+describe("tempo anterior ao Zerômetro", () => {
+  test("soma no total e no progresso do jogo, mas não nas estatísticas", async () => {
+    // Persona 5 Royal: 87,5h de história no fake do IGDB.
+    const { gameId } = await addToLibrary(ctx, igdb, {
+      igdbId: 114283,
+      status: "playing",
+      priorMinutes: 39 * 60,
+    });
+    logSession(ctx, { gameId, minutes: 60 });
+
+    const item = getLibraryItem(ctx, gameId);
+    expect(item).toMatchObject({ minutesPlayed: 40 * 60, priorMinutes: 39 * 60, sessionsCount: 1 });
+    expect(item.progress).toBeCloseTo((40 * 3600) / 315_000);
+
+    const stats = getStats(ctx, { today: TEST_TODAY, streakMinMinutes: 30 });
+    expect(stats.totalMinutes).toBe(60);
+    expect(stats.todayMinutes).toBe(60);
+    expect(stats.topGames[0]?.minutes).toBe(60);
+  });
+
+  test("jogo sem sessões já aparece como jogado; editar substitui o valor", async () => {
+    const { gameId } = await addToLibrary(ctx, igdb, { igdbId: 1029, status: "paused" });
+    expect(getLibraryItem(ctx, gameId).minutesPlayed).toBe(0);
+
+    updateLibraryEntry(ctx, gameId, { priorMinutes: 600 });
+    updateLibraryEntry(ctx, gameId, { priorMinutes: 900 });
+
+    expect(getLibraryItem(ctx, gameId)).toMatchObject({
+      minutesPlayed: 900,
+      priorMinutes: 900,
+      sessionsCount: 0,
+      lastPlayedOn: null,
+      status: "paused",
+    });
+    expect(ctx.db.select().from(activityLog).all().at(-1)).toMatchObject({
+      action: "library.update",
+      payload: { changes: { priorMinutes: 900 } },
+    });
   });
 });
 

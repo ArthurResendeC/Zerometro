@@ -142,10 +142,11 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
       notes: entry.notes,
       addedAt: entry.createdAt,
       updatedAt: entry.updatedAt,
-      minutesPlayed: minutes,
+      minutesPlayed: minutes + entry.priorMinutes,
+      priorMinutes: entry.priorMinutes,
       sessionsCount: sessions,
       lastPlayedOn: lastPlayedOn ?? null,
-      progress: estimateProgress(minutes, game.ttbMainSec),
+      progress: estimateProgress(minutes + entry.priorMinutes, game.ttbMainSec),
     };
   });
 }
@@ -179,6 +180,7 @@ export async function addToLibrary(
         gameId: game.id,
         status: input.status,
         platformPlayed: input.platformPlayed ?? null,
+        priorMinutes: input.priorMinutes ?? 0,
         ...dates,
       })
       .run();
@@ -186,6 +188,7 @@ export async function addToLibrary(
       gameId: game.id,
       name: game.name,
       status: input.status,
+      ...(input.priorMinutes && { priorMinutes: input.priorMinutes }),
     });
   });
 
@@ -205,6 +208,7 @@ export function updateLibraryEntry(
     ...(patch.rating !== undefined && { rating: patch.rating }),
     ...(patch.notes !== undefined && { notes: patch.notes || null }),
     ...(patch.platformPlayed !== undefined && { platformPlayed: patch.platformPlayed }),
+    ...(patch.priorMinutes !== undefined && { priorMinutes: patch.priorMinutes }),
     ...dates,
   };
 

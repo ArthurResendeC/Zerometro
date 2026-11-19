@@ -367,6 +367,36 @@ describe("tools", () => {
     await client.close();
   });
 
+  test("tempo anterior: add_game e set_prior_playtime, fora das estatísticas", async () => {
+    const cookie = (await t.helpers.login({ userId: t.userId })).headers.get("cookie") ?? "";
+    const client = await connect(t, await authorize(t, cookie));
+
+    const added = await callJson(client, "add_game", {
+      igdbId: 114283,
+      status: "playing",
+      priorMinutes: 600,
+    });
+    expect(added.data).toMatchObject({ minutesPlayed: 600, priorMinutes: 600 });
+
+    const updated = await callJson(client, "set_prior_playtime", {
+      game: "persona",
+      minutes: 39 * 60,
+    });
+    expect(updated.data).toMatchObject({
+      minutesPlayed: 2340,
+      priorMinutes: 2340,
+      status: "playing",
+    });
+    expect(
+      (await callJson(client, "set_prior_playtime", { game: "persona", minutes: -5 })).isError,
+    ).toBe(true);
+
+    const stats = await callJson(client, "get_stats");
+    expect(stats.data.totalMinutes).toBe(0);
+
+    await client.close();
+  });
+
   test("cada token só enxerga os dados do próprio usuário", async () => {
     await t.request("/api/library", json({ igdbId: 114283, status: "playing" }));
     const friend = await t.loginAs(TEST_EMAILS.friend);

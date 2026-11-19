@@ -55,6 +55,8 @@ export const libraryEntries = sqliteTable(
     finishedAt: text("finished_at"),
     rating: integer("rating"),
     notes: text("notes"),
+    /** Tempo jogado antes de registrar no Zerômetro: conta no total do jogo, não nas estatísticas. */
+    priorMinutes: integer("prior_minutes").notNull().default(0),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -62,6 +64,7 @@ export const libraryEntries = sqliteTable(
     uniqueIndex("library_entries_user_game_idx").on(t.userId, t.gameId),
     index("library_entries_user_status_idx").on(t.userId, t.status),
     check("library_entries_rating_range", sql`${t.rating} is null or ${t.rating} between 1 and 10`),
+    check("library_entries_prior_minutes_non_negative", sql`${t.priorMinutes} >= 0`),
   ],
 );
 

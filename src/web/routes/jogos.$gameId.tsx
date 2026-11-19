@@ -5,8 +5,14 @@ import { useState } from "react";
 import { z } from "zod";
 import { todayIn } from "@shared/dates";
 import { type GameStatus, gameStatuses, gameStatusLabels } from "@shared/domain";
-import type { LibraryItem, UpdateLibraryEntryInput } from "@shared/library";
+import {
+  type LibraryItem,
+  MAX_PRIOR_MINUTES,
+  priorMinutesSchema,
+  type UpdateLibraryEntryInput,
+} from "@shared/library";
 import { DateInput, dateField } from "@/components/date-input";
+import { DurationInput } from "@/components/duration-input";
 import { FieldErrors } from "@/components/field-errors";
 import { GameCover } from "@/components/game-cover";
 import { ArrowLeftIcon, TimerIcon, TrashIcon } from "@/components/icons";
@@ -154,6 +160,13 @@ function PlayedSummary({ item }: { item: LibraryItem }) {
           </p>
         </div>
       )}
+      {item.priorMinutes > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {formatMinutes(item.priorMinutes)} antes do Zerômetro
+          {item.minutesPlayed > item.priorMinutes &&
+            ` + ${formatMinutes(item.minutesPlayed - item.priorMinutes)} em sessões`}
+        </p>
+      )}
       <p className="text-xs text-muted-foreground">
         {item.sessionsCount === 0
           ? "Nenhuma sessão registrada."
@@ -171,6 +184,7 @@ interface EntryFormValues {
   startedAt: string;
   finishedAt: string;
   notes: string;
+  priorMinutes: number;
 }
 
 function toFormValues(item: LibraryItem): EntryFormValues {
@@ -181,6 +195,7 @@ function toFormValues(item: LibraryItem): EntryFormValues {
     startedAt: item.startedAt ?? "",
     finishedAt: item.finishedAt ?? "",
     notes: item.notes ?? "",
+    priorMinutes: item.priorMinutes,
   };
 }
 
@@ -197,6 +212,7 @@ function toPatch(values: EntryFormValues, initial: EntryFormValues): UpdateLibra
   if (values.status === "finished" && values.finishedAt !== initial.finishedAt)
     patch.finishedAt = orNull(values.finishedAt);
   if (values.notes !== initial.notes) patch.notes = orNull(values.notes);
+  if (values.priorMinutes !== initial.priorMinutes) patch.priorMinutes = values.priorMinutes;
   return patch;
 }
 
@@ -332,6 +348,37 @@ function EntryForm({ item }: { item: LibraryItem }) {
           }
         </form.Subscribe>
       </div>
+
+      <form.Field name="priorMinutes" validators={{ onSubmit: priorMinutesSchema }}>
+        {(field) => (
+          <div className="space-y-2">
+            <Label>Antes do Zerômetro</Label>
+            <p className="text-sm text-muted-foreground">
+              Tempo que você já tinha jogado antes de registrar aqui. Conta no total e no progresso
+              do jogo, mas não na ofensiva nem nas médias.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <DurationInput
+                label="horas"
+                max={MAX_PRIOR_MINUTES / 60}
+                value={Math.floor(field.state.value / 60)}
+                onChange={(h) => field.handleChange(h * 60 + (field.state.value % 60))}
+                invalid={field.state.meta.errors.length > 0}
+              />
+              <DurationInput
+                label="min"
+                max={59}
+                value={field.state.value % 60}
+                onChange={(m) =>
+                  field.handleChange(Math.floor(field.state.value / 60) * 60 + Math.min(m, 59))
+                }
+                invalid={field.state.meta.errors.length > 0}
+              />
+            </div>
+            <FieldErrors errors={field.state.meta.errors} />
+          </div>
+        )}
+      </form.Field>
 
       <form.Field name="notes">
         {(field) => (

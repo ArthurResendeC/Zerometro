@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { isoDateSchema, localTimeSchema } from "../../shared/dates";
 import { gameStatusLabels, gameStatusSchema } from "../../shared/domain";
-import type { LibraryItem } from "../../shared/library";
+import { type LibraryItem, priorMinutesSchema } from "../../shared/library";
 import { type LogSessionResult, noteSchema } from "../../shared/sessions";
 import type { AppDeps } from "../app";
 import { AppError, TimerActiveError } from "../errors";
@@ -71,6 +71,7 @@ function gameSummary(item: LibraryItem) {
     platformPlayed: item.platformPlayed,
     releaseYear: item.releaseYear,
     minutesPlayed: item.minutesPlayed,
+    priorMinutes: item.priorMinutes,
     progressPercent: item.progress === null ? null : Math.round(item.progress * 100),
     rating: item.rating,
     startedAt: item.startedAt,
@@ -264,7 +265,7 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     {
       title: "Registrar sessão",
       description:
-        'Registra uma sessão já jogada, sem timer ("joguei 2h de Persona ontem"). Converta a duração para minutos. playedOn é a data local (YYYY-MM-DD), padrão hoje; não pode ser no futuro e o dia não passa de 24h somando todos os jogos. Jogo em Próximos/Desejos/Pausado passa para Jogando. Cada chamada cria uma sessão nova: não repita se a primeira deu certo.',
+        'Registra uma sessão já jogada, sem timer ("joguei 2h de Persona ontem"). Converta a duração para minutos. playedOn é a data local (YYYY-MM-DD), padrão hoje; não pode ser no futuro e o dia não passa de 24h somando todos os jogos. Jogo em Próximos/Desejos/Pausado passa para Jogando. Cada chamada cria uma sessão nova: não repita se a primeira deu certo. Para horas jogadas antes de usar o Zerômetro, sem dia certo ("já tenho 39h disso"), use set_prior_playtime em vez de inventar sessões.',
       inputSchema: z.object({
         game: gameRefSchema,
         minutes: z.number().int().min(1).max(1440).describe("Duração em minutos"),
@@ -297,13 +298,40 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
           .max(50)
           .optional()
           .describe('Plataforma em que vai jogar (ex.: "PS5", "Switch", "PC")'),
+        priorMinutes: priorMinutesSchema
+          .optional()
+          .describe(
+            'Minutos já jogados antes de usar o Zerômetro (ex.: "já tenho 39h" → 2340). Veja set_prior_playtime.',
+          ),
       }),
       annotations: { ...write, openWorldHint: true },
     },
-    ({ igdbId, status, platformPlayed }) =>
+    ({ igdbId, status, platformPlayed, priorMinutes }) =>
       run(async () =>
-        gameSummary(await addToLibrary(ctx(), deps.igdb, { igdbId, status, platformPlayed })),
+        gameSummary(
+          await addToLibrary(ctx(), deps.igdb, { igdbId, status, platformPlayed, priorMinutes }),
+        ),
       ),
+  );
+
+  server.registerTool(
+    "set_prior_playtime",
+    {
+      title: "Tempo jogado antes do Zerômetro",
+      description:
+        'Define quanto o usuário jogou de um jogo antes de começar a registrar no Zerômetro ("já tenho 39h de Witcher 3"). Substitui o valor anterior (não soma). Esse tempo não tem data: entra no total e no progresso do jogo, mas não nas estatísticas (ofensiva, médias, semanas, mais jogados). Para tempo jogado num dia específico, use log_session.',
+      inputSchema: z.object({
+        game: gameRefSchema,
+        minutes: priorMinutesSchema.describe("Total de minutos jogados antes (0 para limpar)"),
+      }),
+      annotations: { ...write, idempotentHint: true },
+    },
+    ({ game, minutes }) =>
+      run(() => {
+        const scope = ctx();
+        const { gameId } = resolveLibraryGame(scope, game);
+        return gameSummary(updateLibraryEntry(scope, gameId, { priorMinutes: minutes }).item);
+      }),
   );
 
   server.registerTool(

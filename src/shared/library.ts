@@ -23,7 +23,10 @@ export interface LibraryItem {
   notes: string | null;
   addedAt: string;
   updatedAt: string;
+  /** Total jogado: sessões + `priorMinutes`. É o que vale para o progresso. */
   minutesPlayed: number;
+  /** Tempo jogado antes de registrar no Zerômetro (sem data, fora das estatísticas). */
+  priorMinutes: number;
   sessionsCount: number;
   lastPlayedOn: string | null;
   /** 0..1, estimado pelo tempo da história. null se o IGDB não tiver o tempo. */
@@ -55,10 +58,19 @@ export type LibraryListQuery = z.infer<typeof libraryListQuerySchema>;
 
 const platformSchema = z.string().trim().min(1).max(50);
 
+/** Até 9999h de tempo anterior por jogo. */
+export const MAX_PRIOR_MINUTES = 9999 * 60;
+export const priorMinutesSchema = z
+  .number()
+  .int()
+  .min(0, "O tempo anterior não pode ser negativo")
+  .max(MAX_PRIOR_MINUTES, "O tempo anterior vai até 9999h");
+
 export const addToLibrarySchema = z.object({
   igdbId: z.number().int().positive(),
   status: gameStatusSchema,
   platformPlayed: platformSchema.nullish(),
+  priorMinutes: priorMinutesSchema.optional(),
 });
 export type AddToLibraryInput = z.infer<typeof addToLibrarySchema>;
 
@@ -70,6 +82,7 @@ export const updateLibraryEntrySchema = z
     platformPlayed: platformSchema.nullable(),
     startedAt: isoDateSchema.nullable(),
     finishedAt: isoDateSchema.nullable(),
+    priorMinutes: priorMinutesSchema,
   })
   .partial()
   .refine((patch) => Object.keys(patch).length > 0, "Nada para atualizar");

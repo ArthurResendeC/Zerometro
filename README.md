@@ -76,6 +76,7 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 - **Registro de sessões:** manual ("joguei 2h ontem") ou pelo **timer** ("Comecei a jogar" / "Parei"), que roda no servidor e não se perde ao fechar a aba
 - **Estatísticas:** 🔥 ofensiva atual e recorde (com mínimo diário configurável), hoje, média diária e semanal, gráfico das últimas 8 semanas e jogos mais jogados
 - **Tempo para zerar:** história, história + extras e 100%, com o progresso estimado de cada jogo
+- **Tempo jogado antes do Zerômetro:** para jogos que você já vinha jogando ("tenho 39h de Witcher 3"), sem inventar sessões; conta no total e no progresso do jogo, mas não na ofensiva nem nas médias
 - **Efeitos sonoros 8 bits** (desligados por padrão): ao começar e parar sessões, zerar jogos e bater marcos da ofensiva, com volume nos ajustes
 - **Servidor MCP** em `/mcp` com login OAuth (conector do claude.ai, Claude Code), com tools de leitura e de escrita (timer, sessões, adicionar jogo, status)
 - **Deploy na Railway** como código (`.railway/railway.ts`) + imagem Docker
@@ -192,7 +193,7 @@ claude mcp add --transport http zerometro https://<seu-domínio>/mcp
 
 **Tools disponíveis (leitura):** `search_igdb`, `list_library`, `get_game`, `get_stats`, `list_sessions`, `get_active_session`. O jogo pode ser passado pelo id ou pelo nome (sem diferenciar acentos); se o nome for ambíguo, a tool devolve as opções.
 
-**Tools de escrita:** `start_session` / `stop_session` (o mesmo timer do site), `log_session` (sessão já jogada, ex.: "joguei 2h ontem"), `add_game` (pelo igdbId achado com `search_igdb`) e `set_status`. Tudo fica no histórico de atividade com actor `mcp`.
+**Tools de escrita:** `start_session` / `stop_session` (o mesmo timer do site), `log_session` (sessão já jogada, ex.: "joguei 2h ontem"), `add_game` (pelo igdbId achado com `search_igdb`, opcionalmente com o tempo já jogado), `set_status` e `set_prior_playtime` (tempo jogado antes do Zerômetro, ex.: "já tenho 39h de Witcher 3"). Tudo fica no histórico de atividade com actor `mcp`.
 
 **Planejadas:** `update_session`, `update_game_entry`, `remove_game`, `delete_session`. As destrutivas só vão executar com confirmação explícita.
 

@@ -97,6 +97,8 @@ interface EntrySpec {
   platform?: string;
   rating?: number;
   notes?: string;
+  /** Horas jogadas antes do Zerômetro (sem sessões). */
+  priorHours?: number;
 }
 
 const LIBRARY: Record<GameKey, EntrySpec> = {
@@ -108,7 +110,7 @@ const LIBRARY: Record<GameKey, EntrySpec> = {
   clairObscur: { status: "playing", platform: "PC" },
   silksong: { status: "playing", platform: "Switch 2" },
   persona5: { status: "playing", platform: "PS5", notes: "Rota da Makoto." },
-  bg3: { status: "playing", platform: "PC", notes: "Campanha co-op, ato 1." },
+  bg3: { status: "playing", platform: "PC", notes: "Campanha co-op, ato 2.", priorHours: 25 },
   hades: { status: "finished", platform: "Switch", rating: 10 },
   celeste: { status: "finished", platform: "Switch", rating: 9, notes: "Faltam os B-sides." },
   hollowKnight: { status: "finished", platform: "Switch", rating: 9 },
@@ -304,6 +306,7 @@ db.transaction((tx) => {
       finishedAt: dates?.finishedAt ?? null,
       rating: spec.rating ?? null,
       notes: spec.notes ?? null,
+      priorMinutes: (spec.priorHours ?? 0) * 60,
     };
     tx.insert(libraryEntries).values(entry).run();
   }
