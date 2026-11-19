@@ -27,7 +27,7 @@ export interface Column {
   highlight?: boolean;
 }
 
-export type ColumnUnit = "minutes" | "sessions";
+export type ColumnUnit = "minutes" | "sessions" | "games";
 
 interface ColumnChartProps {
   data: Column[];
@@ -38,9 +38,9 @@ interface ColumnChartProps {
 }
 
 export function formatColumnValue(value: number, unit: ColumnUnit): string {
-  return unit === "minutes"
-    ? formatMinutes(value)
-    : `${value} ${value === 1 ? "sessão" : "sessões"}`;
+  if (unit === "minutes") return formatMinutes(value);
+  if (unit === "games") return `${value} ${value === 1 ? "jogo" : "jogos"}`;
+  return `${value} ${value === 1 ? "sessão" : "sessões"}`;
 }
 
 /** Marcas inteiras para contagens: 0, 1, 2… ou 0, 5, 10… (até ~4 divisões). */
