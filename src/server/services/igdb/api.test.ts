@@ -108,3 +108,100 @@ describe("getGame", () => {
     expect(await createIgdbApi(vazio.client).getGame(999)).toBeNull();
   });
 });
+
+describe("getFeed", () => {
+  const now = new Date("2026-11-19T18:00:00.000Z");
+  const nowSec = Math.floor(now.getTime() / 1000);
+
+  test("bem avaliados: janela de 120 dias, mínimo de notas e campos da lista", async () => {
+    const { client, queries } = fakeClient({
+      games: [
+        {
+          id: 381247,
+          name: "Ace Combat 8",
+          slug: "ace-combat-8",
+          cover: { image_id: "co1" },
+          first_release_date: 1_791_331_200, // 2026-10-07
+          game_type: 0,
+          aggregated_rating: 90.6,
+          aggregated_rating_count: 5,
+          hypes: 58,
+          release_dates: [
+            { date: 1_791_331_200, date_format: 0 },
+            { date: 1_800_000_000, date_format: 1 },
+          ],
+        },
+      ],
+    });
+
+    const [game] = await createIgdbApi(client).getFeed("top_rated", now);
+
+    const body = queries[0]!.body;
+    expect(body).toContain(`first_release_date > ${nowSec - 120 * 86_400}`);
+    expect(body).toContain(`first_release_date <= ${nowSec}`);
+    expect(body).toContain("aggregated_rating_count >= 3");
+    expect(body).toContain("game_type = (0,8,9) & version_parent = null & cover != null");
+    expect(body).toContain("sort aggregated_rating desc;");
+    expect(game).toMatchObject({
+      igdbId: 381247,
+      criticRating: 91,
+      criticRatingCount: 5,
+      hypes: 58,
+      releaseDate: "2026-10-07",
+      releasePrecision: "day",
+    });
+  });
+
+  test("próximos: ordena por expectativa e lê a precisão da data", async () => {
+    const { client, queries } = fakeClient({
+      games: [
+        {
+          id: 194662,
+          name: "The Witcher IV",
+          first_release_date: 1_861_833_600, // 2028-12-31: só o ano é conhecido
+          hypes: 292,
+          release_dates: [{ date: 1_861_833_600, date_format: 2 }],
+        },
+        { id: 1, name: "Sem data" },
+      ],
+    });
+
+    const games = await createIgdbApi(client).getFeed("upcoming", now);
+
+    expect(queries[0]!.body).toContain(`first_release_date > ${nowSec} & hypes > 0`);
+    expect(queries[0]!.body).toContain("sort hypes desc;");
+    expect(games[0]).toMatchObject({ releaseDate: "2028-12-31", releasePrecision: "year" });
+    expect(games[1]).toMatchObject({
+      criticRating: null,
+      criticRatingCount: 0,
+      hypes: 0,
+      releaseDate: null,
+      releasePrecision: null,
+    });
+  });
+
+  test("em alta: mais visitados, na ordem de popularidade, sem os antigos", async () => {
+    const { client, queries } = fakeClient({
+      popularity_primitives: [{ game_id: 3 }, { game_id: 1 }, { game_id: 3 }, { game_id: 2 }],
+      // O IGDB devolve fora de ordem e já sem o jogo 2 (filtrado por data/tipo).
+      games: [
+        { id: 1, name: "Segundo" },
+        { id: 3, name: "Primeiro" },
+      ],
+    });
+
+    const games = await createIgdbApi(client).getFeed("trending", now);
+
+    expect(queries[0]!.endpoint).toBe("popularity_primitives");
+    expect(queries[0]!.body).toContain("where popularity_type = 1; sort value desc;");
+    expect(queries[1]!.body).toContain("where id = (3,1,2)");
+    expect(queries[1]!.body).toContain(`first_release_date > ${nowSec - 365 * 86_400}`);
+    expect(games.map((g) => g.name)).toEqual(["Primeiro", "Segundo"]);
+  });
+
+  test("em alta sem dados de popularidade não consulta jogos", async () => {
+    const { client, queries } = fakeClient({});
+    expect(await createIgdbApi(client).getFeed("trending", now)).toEqual([]);
+    expect(queries).toHaveLength(1);
+  });
+});

@@ -1,6 +1,7 @@
 // Helpers de teste compartilhados.
 import { spyOn } from "bun:test";
 import { DEFAULT_TIME_ZONE } from "../shared/dates";
+import type { FeedGame, FeedKey } from "../shared/feeds";
 import type { IgdbGameDetails } from "../shared/igdb";
 import { testUtils, type TestHelpers } from "better-auth/plugins";
 import { createApp } from "./app";
@@ -26,11 +27,27 @@ export function fakeIgdbGame(overrides: Partial<IgdbGameDetails> = {}): IgdbGame
   };
 }
 
-/** IGDB em memória: busca por substring no nome. */
-export function createFakeIgdb(catalog: IgdbGameDetails[] = [fakeIgdbGame()]): IgdbApi & {
-  calls: { getGame: number[] };
+export function fakeFeedGame(overrides: Partial<FeedGame> = {}): FeedGame {
+  const { timeToBeat: _ttb, ...summary } = fakeIgdbGame();
+  return {
+    ...summary,
+    criticRating: 92,
+    criticRatingCount: 40,
+    hypes: 120,
+    releaseDate: "2019-10-31",
+    releasePrecision: "day",
+    ...overrides,
+  };
+}
+
+/** IGDB em memória: busca por substring no nome; listas da home fixas. */
+export function createFakeIgdb(
+  catalog: IgdbGameDetails[] = [fakeIgdbGame()],
+  feeds: Partial<Record<FeedKey, FeedGame[]>> = {},
+): IgdbApi & {
+  calls: { getGame: number[]; getFeed: FeedKey[] };
 } {
-  const calls = { getGame: [] as number[] };
+  const calls = { getGame: [] as number[], getFeed: [] as FeedKey[] };
   return {
     calls,
     async searchGames(term, limit = 10) {
@@ -46,6 +63,10 @@ export function createFakeIgdb(catalog: IgdbGameDetails[] = [fakeIgdbGame()]): I
     async getGame(igdbId) {
       calls.getGame.push(igdbId);
       return catalog.find((g) => g.igdbId === igdbId) ?? null;
+    },
+    async getFeed(key) {
+      calls.getFeed.push(key);
+      return feeds[key] ?? [];
     },
   };
 }
