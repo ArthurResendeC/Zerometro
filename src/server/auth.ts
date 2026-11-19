@@ -33,8 +33,14 @@ export const LEGACY_OWNER_ID = "legacy-owner";
 
 const SESSION_DAYS = 30;
 
+/** O código vira `?error=not_invited` no redirect do callback do Google (tela de login). */
+export const NOT_INVITED = "not_invited";
+
 const notInvited = () =>
-  new APIError("FORBIDDEN", { message: "Esse e-mail não está na lista de convidados" });
+  new APIError("FORBIDDEN", {
+    code: NOT_INVITED,
+    message: "Esse e-mail não está na lista de convidados",
+  });
 
 export function createAuth(config: AuthConfig) {
   const allowed = new Set(config.allowedEmails.map(normalizeEmail));

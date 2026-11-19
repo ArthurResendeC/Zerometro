@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import type { LibraryItem } from "../../shared/library";
 import { createAuthGateway, LEGACY_OWNER_ID } from "../auth";
 import { createTestDb } from "../db/client";
@@ -8,6 +8,91 @@ import { createTestApp, TEST_EMAILS } from "../testing";
 function json(body: unknown, method = "POST"): RequestInit {
   return { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
 }
+
+// ---------------------------------------------------------------------------
+// Login com Google simulado: o endpoint de token devolve um id_token montado aqui
+// (no fluxo com code, a Better Auth só decodifica o id_token do Google).
+
+afterEach(() => {
+  fetchSpy?.mockRestore();
+  fetchSpy = undefined;
+});
+
+let fetchSpy: ReturnType<typeof spyOn<typeof globalThis, "fetch">> | undefined;
+
+const b64 = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
+
+function fakeGoogle(email: string) {
+  const idToken = [
+    b64({ alg: "none", typ: "JWT" }),
+    b64({ sub: `google-${email}`, email, email_verified: true, name: "Fulano", picture: null }),
+    "",
+  ].join(".");
+  const realFetch = globalThis.fetch;
+  fetchSpy = spyOn(globalThis, "fetch").mockImplementation((async (input, init) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (url.startsWith("https://oauth2.googleapis.com/token")) {
+      return Response.json({
+        access_token: "at",
+        id_token: idToken,
+        token_type: "Bearer",
+        expires_in: 3600,
+      });
+    }
+    return realFetch(input, init);
+  }) as typeof fetch);
+}
+
+type TestApp = Awaited<ReturnType<typeof createTestApp>>["app"];
+
+/** Clica em "Entrar com Google", "volta" do Google e devolve a resposta do callback. */
+async function signInWithGoogle(app: TestApp, email: string) {
+  fakeGoogle(email);
+  const start = await app.request("/api/auth/sign-in/social", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Origin: "http://localhost:3000" },
+    body: JSON.stringify({ provider: "google", callbackURL: "/", errorCallbackURL: "/entrar" }),
+  });
+  const { url } = (await start.json()) as { url: string };
+  const state = new URL(url).searchParams.get("state");
+  const cookie = start.headers
+    .getSetCookie()
+    .map((c) => c.split(";")[0])
+    .join("; ");
+  return app.request(`/api/auth/callback/google?code=codigo&state=${state}`, {
+    headers: { cookie },
+  });
+}
+
+const sessionCookie = (res: Response) =>
+  res.headers
+    .getSetCookie()
+    .find((c) => c.startsWith("better-auth.session_token="))
+    ?.split(";")[0];
+
+describe("login com Google", () => {
+  test("convidado entra e cai na página pedida", async () => {
+    const { app } = await createTestApp();
+    const res = await signInWithGoogle(app, TEST_EMAILS.friend);
+
+    expect(res.status).toBe(302);
+    expect(new URL(res.headers.get("location") ?? "", "http://x").pathname).toBe("/");
+    const cookie = sessionCookie(res);
+    expect(cookie).toBeDefined();
+    expect((await app.request("/api/library", { headers: { cookie: cookie! } })).status).toBe(200);
+  });
+
+  test("não convidado volta para /entrar com error=not_invited e sem sessão", async () => {
+    const { app } = await createTestApp();
+    const res = await signInWithGoogle(app, "intruso@gmail.com");
+
+    expect(res.status).toBe(302);
+    const location = new URL(res.headers.get("location") ?? "", "http://x");
+    expect(location.pathname).toBe("/entrar");
+    expect(location.searchParams.get("error")).toBe("not_invited");
+    expect(sessionCookie(res)).toBeUndefined();
+  });
+});
 
 describe("autenticação", () => {
   test("API exige sessão; health e rotas da Better Auth são públicas", async () => {
@@ -36,9 +121,9 @@ describe("autenticação", () => {
 
   test("e-mail fora da lista de convidados não cria conta", async () => {
     const { loginAs } = await createTestApp();
-    await expect(loginAs("intruso@zerometro.test")).rejects.toThrow(
-      "Esse e-mail não está na lista de convidados",
-    );
+    await expect(loginAs("intruso@zerometro.test")).rejects.toMatchObject({
+      body: { code: "not_invited", message: "Esse e-mail não está na lista de convidados" },
+    });
   });
 
   test("quem sai da lista de convidados perde o acesso na hora", async () => {

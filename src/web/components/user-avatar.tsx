@@ -1,0 +1,35 @@
+import { useState } from "react";
+import { cn } from "@/lib/utils";
+
+interface UserAvatarProps {
+  user: { name: string; email: string; image?: string | null };
+  className?: string;
+}
+
+/** Foto da conta Google, ou a inicial do nome se não houver (ou não carregar). */
+export function UserAvatar({ user, className }: UserAvatarProps) {
+  const [broken, setBroken] = useState(false);
+  const initial = (user.name || user.email).trim().charAt(0).toUpperCase();
+
+  return (
+    <span
+      className={cn(
+        "flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-sm font-medium",
+        className,
+      )}
+    >
+      {user.image && !broken ? (
+        <img
+          src={user.image}
+          alt=""
+          referrerPolicy="no-referrer"
+          className="size-full object-cover"
+          onError={() => setBroken(true)}
+        />
+      ) : (
+        initial
+      )}
+      <span className="sr-only">{user.name}</span>
+    </span>
+  );
+}

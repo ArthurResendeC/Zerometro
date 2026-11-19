@@ -1,13 +1,17 @@
 import { useForm } from "@tanstack/react-form";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { LogOut } from "lucide-react";
+import { useState } from "react";
 import { z } from "zod";
 import { LONG_SESSION_MINUTES, type Settings, STREAK_MIN_MINUTES } from "@shared/settings";
 import { DurationInput } from "@/components/duration-input";
+import { UserAvatar } from "@/components/user-avatar";
 import { FieldErrors } from "@/components/field-errors";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { authClient } from "@/lib/auth-client";
 import { formatMinutes } from "@/lib/format";
 import { settingsQuery, useUpdateSettings } from "@/lib/queries";
 
@@ -43,7 +47,38 @@ function SettingsPage() {
         title="⏱️ Aviso de sessão longa"
         description='Ao parar um timer ligado há mais que isso, o Zerômetro pergunta "jogou tudo isso mesmo?" e deixa corrigir o horário em que você parou.'
       />
+      <AccountCard />
     </div>
+  );
+}
+
+function AccountCard() {
+  const { session } = Route.useRouteContext();
+  const router = useRouter();
+  const { queryClient } = Route.useRouteContext();
+  const [pending, setPending] = useState(false);
+
+  if (!session) return null;
+
+  const signOut = async () => {
+    setPending(true);
+    await authClient.signOut();
+    // Nada do usuário anterior pode sobrar no cache.
+    queryClient.clear();
+    await router.navigate({ to: "/entrar" });
+  };
+
+  return (
+    <Card className="flex flex-row items-center gap-3 p-4">
+      <UserAvatar user={session.user} className="size-10" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium">{session.user.name}</p>
+        <p className="truncate text-sm text-muted-foreground">{session.user.email}</p>
+      </div>
+      <Button variant="outline" size="sm" onClick={signOut} disabled={pending}>
+        <LogOut /> Sair
+      </Button>
+    </Card>
   );
 }
 

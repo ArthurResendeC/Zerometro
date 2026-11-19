@@ -109,6 +109,7 @@ export async function createTestApp(
     db,
     secret: TEST_AUTH_SECRET,
     baseURL: "http://localhost:3000",
+    google: { clientId: "test-client-id", clientSecret: "test-client-secret" },
     allowedEmails,
     plugins: [testUtils()],
   });

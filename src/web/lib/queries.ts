@@ -11,6 +11,7 @@ import type {
 import type { UpdateSettingsInput } from "@shared/settings";
 import type { StartTimerInput, StopTimerInput, StopTimerResult } from "@shared/timer";
 import { ApiError, api, unwrap } from "@/lib/api";
+import { authClient } from "@/lib/auth-client";
 import { formatMinutes } from "@/lib/format";
 
 // Query keys e queryOptions centralizados: rotas usam no loader e componentes no useQuery.
@@ -296,3 +297,15 @@ export function useCancelTimer() {
     onError,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Sessão (login)
+
+export const authKeys = { session: ["auth", "session"] as const };
+
+export const sessionQuery = () =>
+  queryOptions({
+    queryKey: authKeys.session,
+    queryFn: async () => (await authClient.getSession()).data ?? null,
+    staleTime: 5 * 60_000,
+  });
