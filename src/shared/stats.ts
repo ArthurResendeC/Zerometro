@@ -62,11 +62,11 @@ export interface Stats {
 // ---------------------------------------------------------------------------
 // Heatmap (estilo GitHub)
 
-export const heatmapQuerySchema = z.object({
-  /** Ano de calendário; sem ano, os últimos 12 meses até hoje. */
+/** Período das estatísticas: um ano de calendário ou, sem ano, os últimos 12 meses. */
+export const statsPeriodSchema = z.object({
   year: z.coerce.number().int().min(2000).max(2100).optional(),
 });
-export type HeatmapQuery = z.infer<typeof heatmapQuerySchema>;
+export type StatsPeriod = z.infer<typeof statsPeriodSchema>;
 
 export interface HeatmapDay {
   date: string;
@@ -87,4 +87,26 @@ export interface Heatmap {
   streakMinMinutes: number;
   /** Anos com alguma sessão, mais o atual (para o seletor), do mais recente ao mais antigo. */
   years: number[];
+}
+
+// ---------------------------------------------------------------------------
+// Detalhamento do período (página de estatísticas)
+
+export interface GenreStat {
+  /** Nome do gênero no IGDB (em inglês; a interface traduz). */
+  genre: string;
+  /** Minutos em jogos desse gênero: um jogo com vários gêneros conta inteiro em cada um. */
+  minutes: number;
+  /** Jogos diferentes desse gênero jogados no período. */
+  games: number;
+}
+
+export interface PeriodBreakdown {
+  from: string;
+  to: string;
+  year: number | null;
+  totalMinutes: number;
+  genres: GenreStat[];
+  /** Jogos mais jogados no período. */
+  games: TopGame[];
 }

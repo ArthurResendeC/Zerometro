@@ -1,10 +1,12 @@
 import { and, desc, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
 import { addDays, diffInDays, startOfWeek } from "../../shared/dates";
 import type {
+  GenreStat,
   Heatmap,
-  HeatmapQuery,
+  PeriodBreakdown,
   PeriodStats,
   Stats,
+  StatsPeriod,
   StreakStats,
   TopGame,
   WeekStats,
@@ -15,6 +17,7 @@ import { getSettings } from "./settings";
 
 const WEEKS_SHOWN = 8;
 const TOP_GAMES = 5;
+const PERIOD_TOP_GAMES = 10;
 
 interface StatsOptions {
   today: string;
@@ -192,7 +195,12 @@ function allTimeMinutes({ db, userId }: UserScope): number {
   );
 }
 
-function topGames({ db, userId }: UserScope, from: string, to: string): TopGame[] {
+function topGames(
+  { db, userId }: UserScope,
+  from: string,
+  to: string,
+  limit = TOP_GAMES,
+): TopGame[] {
   const minutes = sql<number>`sum(${playSessions.minutes})`;
   return db
     .select({
@@ -213,7 +221,7 @@ function topGames({ db, userId }: UserScope, from: string, to: string): TopGame[
     )
     .groupBy(games.id)
     .orderBy(desc(minutes), games.name)
-    .limit(TOP_GAMES)
+    .limit(limit)
     .all();
 }
 
@@ -221,37 +229,73 @@ function topGames({ db, userId }: UserScope, from: string, to: string): TopGame[
 // Heatmap
 
 /**
- * Minutos por dia para o heatmap: um ano de calendário ou, sem ano, os últimos 12 meses
- * (as 53 colunas do GitHub: da segunda-feira de 52 semanas atrás até hoje).
- * Tempo anterior ao Zerômetro não entra: não tem dia.
+ * Período das estatísticas: um ano de calendário (até 31/12, mesmo que ainda não tenha chegado)
+ * ou, sem ano, os últimos 12 meses como o GitHub: da segunda-feira de 52 semanas atrás até hoje.
  */
+export function statsPeriodRange(today: string, year?: number): { from: string; to: string } {
+  return year
+    ? { from: `${year}-01-01`, to: `${year}-12-31` }
+    : { from: addDays(startOfWeek(today), -7 * 52), to: today };
+}
+
+/** Minutos por dia para o heatmap. Tempo anterior ao Zerômetro não entra: não tem dia. */
 export function getHeatmap(
   scope: UserScope,
-  { today, streakMinMinutes, year }: StatsOptions & HeatmapQuery,
+  { today, streakMinMinutes, year }: StatsOptions & StatsPeriod,
 ): Heatmap {
-  const currentYear = Number(today.slice(0, 4));
-  const from = year ? `${year}-01-01` : addDays(startOfWeek(today), -7 * 52);
-  const lastDay = year ? `${year}-12-31` : today;
-  const to = lastDay > today ? today : lastDay;
-
+  const { from, to } = statsPeriodRange(today, year);
+  const until = to > today ? today : to;
   const days =
-    from > to
+    from > until
       ? []
-      : [...minutesByDay(scope, from, to)]
+      : [...minutesByDay(scope, from, until)]
           .map(([date, minutes]) => ({ date, minutes }))
           .toSorted((a, b) => a.date.localeCompare(b.date));
 
   return {
     from,
-    to: lastDay,
+    to,
     today,
     year: year ?? null,
     days,
     totalMinutes: days.reduce((sum, d) => sum + d.minutes, 0),
     playedDays: days.length,
     streakMinMinutes,
-    years: playedYears(scope, currentYear),
+    years: playedYears(scope, Number(today.slice(0, 4))),
   };
+}
+
+/** Gêneros e jogos mais jogados no período (o mesmo recorte do heatmap). */
+export function getPeriodBreakdown(
+  scope: UserScope,
+  { today, year }: { today: string } & StatsPeriod,
+): PeriodBreakdown {
+  const { from, to } = statsPeriodRange(today, year);
+  const daily = minutesByDay(scope, from, to);
+  return {
+    from,
+    to,
+    year: year ?? null,
+    totalMinutes: sumRange(daily, from, to),
+    genres: genreStats(scope, from, to),
+    games: topGames(scope, from, to, PERIOD_TOP_GAMES),
+  };
+}
+
+function genreStats({ db, userId }: UserScope, from: string, to: string): GenreStat[] {
+  return db.all<GenreStat>(sql`
+    select genre.value as genre,
+      sum(${playSessions.minutes}) as minutes,
+      count(distinct ${playSessions.gameId}) as games
+    from ${playSessions}
+    join ${games} on ${games.id} = ${playSessions.gameId}
+    join json_each(${games.genres}) as genre
+    where ${playSessions.userId} = ${userId}
+      and ${playSessions.playedOn} between ${from} and ${to}
+      and ${playSessions.minutes} is not null
+    group by genre.value
+    order by minutes desc, genre.value
+  `);
 }
 
 function playedYears({ db, userId }: UserScope, currentYear: number): number[] {

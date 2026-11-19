@@ -3,13 +3,14 @@ import { createFakeIgdb, createTestContext, fakeIgdbGame, TEST_TODAY } from "../
 import type { ServiceContext } from "./context";
 import { addToLibrary } from "./library";
 import { logSession } from "./sessions";
-import { getHeatmap, getStats } from "./stats";
+import { getHeatmap, getPeriodBreakdown, getStats } from "./stats";
 
 // TEST_TODAY = 2026-11-19, uma quinta-feira (semana começa na segunda, 16).
 
 const igdb = createFakeIgdb([
   fakeIgdbGame(),
   fakeIgdbGame({ igdbId: 12517, name: "Undertale", timeToBeat: null }),
+  fakeIgdbGame({ igdbId: 113112, name: "Hades", genres: ["Role-playing (RPG)", "Indie"] }),
 ]);
 
 let ctx: ServiceContext;
@@ -182,5 +183,32 @@ describe("heatmap", () => {
     expect(h.years).toEqual([2026, 2025, 2024]);
     expect(heatmap(2026).to).toBe("2026-12-31");
     expect(heatmap(2030)).toMatchObject({ days: [], totalMinutes: 0 });
+  });
+});
+
+describe("detalhamento do período", () => {
+  test("gêneros: jogo com vários gêneros conta inteiro em cada um; só o período", async () => {
+    const hades = (await addToLibrary(ctx, igdb, { igdbId: 113112, status: "playing" })).gameId;
+    play("2026-11-10", 60); // Persona: RPG
+    play("2026-11-11", 30, hades); // RPG + Indie
+    play("2026-11-12", 20, undertale); // RPG
+    play("2025-01-05", 500); // fora dos últimos 12 meses
+
+    const b = getPeriodBreakdown(ctx, { today: TEST_TODAY });
+
+    expect(b).toMatchObject({ from: "2025-11-17", to: TEST_TODAY, year: null, totalMinutes: 110 });
+    expect(b.genres).toEqual([
+      { genre: "Role-playing (RPG)", minutes: 110, games: 3 },
+      { genre: "Indie", minutes: 30, games: 1 },
+    ]);
+    expect(b.games.map((g) => [g.name, g.minutes])).toEqual([
+      ["Persona 5 Royal", 60],
+      ["Hades", 30],
+      ["Undertale", 20],
+    ]);
+
+    const old = getPeriodBreakdown(ctx, { today: TEST_TODAY, year: 2025 });
+    expect(old).toMatchObject({ totalMinutes: 500, year: 2025 });
+    expect(old.genres).toEqual([{ genre: "Role-playing (RPG)", minutes: 500, games: 1 }]);
   });
 });

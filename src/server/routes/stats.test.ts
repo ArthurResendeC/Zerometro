@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Settings } from "../../shared/settings";
-import type { Heatmap, Stats } from "../../shared/stats";
+import type { Heatmap, PeriodBreakdown, Stats } from "../../shared/stats";
 import { createTestApp } from "../testing";
 
 function patch(body: unknown): RequestInit {
@@ -46,5 +46,18 @@ describe("/api/settings e /api/stats", () => {
     expect(year).toMatchObject({ year: 2025, from: "2025-01-01", to: "2025-12-31" });
 
     expect((await request("/api/stats/heatmap?year=abc")).status).toBe(400);
+  });
+
+  test("detalhamento do período", async () => {
+    const { request } = await createTestApp();
+    const res = await request("/api/stats/breakdown?year=2026");
+    expect(res.status).toBe(200);
+    expect((await res.json()) as PeriodBreakdown).toMatchObject({
+      year: 2026,
+      genres: [],
+      games: [],
+      totalMinutes: 0,
+    });
+    expect((await request("/api/stats/breakdown?year=1999")).status).toBe(400);
   });
 });
