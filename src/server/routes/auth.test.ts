@@ -1,47 +1,19 @@
-import { afterEach, describe, expect, spyOn, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import type { LibraryItem } from "../../shared/library";
 import { createAuthGateway, LEGACY_OWNER_ID } from "../auth";
 import { createTestDb } from "../db/client";
 import { games, kv, libraryEntries, playSessions, user } from "../db/schema";
-import { createTestApp, TEST_EMAILS } from "../testing";
+import { createTestApp, mockGoogleLogin, TEST_EMAILS } from "../testing";
 
 function json(body: unknown, method = "POST"): RequestInit {
   return { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
 }
 
-// ---------------------------------------------------------------------------
-// Login com Google simulado: o endpoint de token devolve um id_token montado aqui
-// (no fluxo com code, a Better Auth só decodifica o id_token do Google).
-
-afterEach(() => {
-  fetchSpy?.mockRestore();
-  fetchSpy = undefined;
-});
-
-let fetchSpy: ReturnType<typeof spyOn<typeof globalThis, "fetch">> | undefined;
-
-const b64 = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
-
-function fakeGoogle(email: string) {
-  const idToken = [
-    b64({ alg: "none", typ: "JWT" }),
-    b64({ sub: `google-${email}`, email, email_verified: true, name: "Fulano", picture: null }),
-    "",
-  ].join(".");
-  const realFetch = globalThis.fetch;
-  fetchSpy = spyOn(globalThis, "fetch").mockImplementation((async (input, init) => {
-    const url = input instanceof Request ? input.url : String(input);
-    if (url.startsWith("https://oauth2.googleapis.com/token")) {
-      return Response.json({
-        access_token: "at",
-        id_token: idToken,
-        token_type: "Bearer",
-        expires_in: 3600,
-      });
-    }
-    return realFetch(input, init);
-  }) as typeof fetch);
-}
+afterEach(() => restoreGoogle?.());
+let restoreGoogle: (() => void) | undefined;
+const fakeGoogle = (email: string) => {
+  restoreGoogle = mockGoogleLogin(email);
+};
 
 type TestApp = Awaited<ReturnType<typeof createTestApp>>["app"];
 

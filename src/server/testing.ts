@@ -1,4 +1,5 @@
 // Helpers de teste compartilhados.
+import { spyOn } from "bun:test";
 import { DEFAULT_TIME_ZONE } from "../shared/dates";
 import type { IgdbGameDetails } from "../shared/igdb";
 import { testUtils, type TestHelpers } from "better-auth/plugins";
@@ -153,4 +154,32 @@ export async function createTestApp(
     userId: owner.userId,
     request: owner.request,
   };
+}
+
+const b64 = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
+
+/**
+ * Login com Google simulado: o endpoint de token do Google devolve um id_token montado aqui
+ * (no fluxo com code, a Better Auth só decodifica o id_token). Devolve a função que desfaz.
+ */
+export function mockGoogleLogin(email: string): () => void {
+  const idToken = [
+    b64({ alg: "none", typ: "JWT" }),
+    b64({ sub: `google-${email}`, email, email_verified: true, name: "Fulano", picture: null }),
+    "",
+  ].join(".");
+  const realFetch = globalThis.fetch;
+  const spy = spyOn(globalThis, "fetch").mockImplementation((async (input, init) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (url.startsWith("https://oauth2.googleapis.com/token")) {
+      return Response.json({
+        access_token: "at",
+        id_token: idToken,
+        token_type: "Bearer",
+        expires_in: 3600,
+      });
+    }
+    return realFetch(input, init);
+  }) as typeof fetch);
+  return () => spy.mockRestore();
 }

@@ -3,9 +3,11 @@ import { useState } from "react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { authClient, safeRedirect } from "@/lib/auth-client";
+import { authClient, isOAuthFlow, safeRedirect } from "@/lib/auth-client";
 
-const searchSchema = z.object({
+// looseObject: no fluxo OAuth dos clientes MCP a URL traz a query assinada (client_id, sig...),
+// que precisa continuar na URL para o oauthProviderClient mandar junto do login.
+const searchSchema = z.looseObject({
   redirect: z.string().optional().catch(undefined),
   /** Erro devolvido pela Better Auth no callback do Google. */
   error: z.string().optional().catch(undefined),
@@ -26,7 +28,9 @@ function errorMessage(code: string): string {
 }
 
 function LoginPage() {
-  const { redirect, error } = Route.useSearch();
+  const search = Route.useSearch();
+  const { redirect, error } = search;
+  const connectingApp = isOAuthFlow(search);
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -58,7 +62,11 @@ function LoginPage() {
           <h1 className="display-lg">
             Zer<span className="text-primary">ô</span>metro
           </h1>
-          <p className="text-muted-foreground">Seu backlog de jogos e o tempo que você joga.</p>
+          <p className="text-muted-foreground">
+            {connectingApp
+              ? "Entre para conectar um aplicativo (ex.: o Claude) à sua conta. Depois você escolhe se autoriza."
+              : "Seu backlog de jogos e o tempo que você joga."}
+          </p>
         </div>
         <Button variant="outline" size="lg" onClick={signIn} disabled={pending}>
           <GoogleIcon /> {pending ? "Abrindo o Google…" : "Entrar com Google"}

@@ -6,6 +6,7 @@ import {
   createFakeIgdb,
   createTestApp,
   fakeIgdbGame,
+  mockGoogleLogin,
   TEST_BASE_URL,
   TEST_EMAILS,
 } from "../testing";
@@ -155,6 +156,65 @@ describe("descoberta OAuth", () => {
       registration_endpoint: `${TEST_BASE_URL}/api/auth/oauth2/register`,
       authorization_endpoint: `${TEST_BASE_URL}/api/auth/oauth2/authorize`,
     });
+  });
+
+  test("login com Google no meio do fluxo continua direto para o consentimento", async () => {
+    const restore = mockGoogleLogin(TEST_EMAILS.friend);
+    try {
+      const { metadata } = await discover(t);
+      const { client_id } = (await (
+        await t.fetchRoot(
+          metadata.registration_endpoint ?? "",
+          json({ redirect_uris: [REDIRECT_URI], token_endpoint_auth_method: "none" }),
+        )
+      ).json()) as { client_id: string };
+      const url = new URL(metadata.authorization_endpoint ?? "");
+      url.search = new URLSearchParams({
+        response_type: "code",
+        client_id,
+        redirect_uri: REDIRECT_URI,
+        scope: "openid offline_access",
+        code_challenge: "x".repeat(43),
+        code_challenge_method: "S256",
+        resource: MCP_URL,
+      }).toString();
+      const login = new URL(
+        (await t.fetchRoot(url.toString(), { redirect: "manual" })).headers.get("location") ?? "",
+        TEST_BASE_URL,
+      );
+
+      // O que a tela /entrar faz: POST do login social com a query assinada (oauth_query).
+      const start = await t.fetchRoot("/api/auth/sign-in/social", {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: TEST_BASE_URL },
+        body: JSON.stringify({
+          provider: "google",
+          callbackURL: "/",
+          errorCallbackURL: "/entrar",
+          oauth_query: login.search.slice(1),
+        }),
+      });
+      const google = new URL(((await start.json()) as { url: string }).url);
+      const cookie = start.headers
+        .getSetCookie()
+        .map((c) => c.split(";")[0])
+        .join("; ");
+
+      // Volta do Google (navegação do navegador): em vez do callbackURL, segue o fluxo OAuth
+      // até o consentimento. Sem os cabeçalhos de navegação, o plugin responde em JSON.
+      const back = await t.fetchRoot(
+        `/api/auth/callback/google?code=codigo&state=${google.searchParams.get("state")}`,
+        {
+          headers: { cookie, accept: "text/html", "sec-fetch-mode": "navigate" },
+          redirect: "manual",
+        },
+      );
+      const next = new URL(back.headers.get("location") ?? "", TEST_BASE_URL);
+      expect(next.pathname).toBe("/autorizar");
+      expect(next.searchParams.get("client_id")).toBe(client_id);
+    } finally {
+      restore();
+    }
   });
 
   test("sem sessão, o authorize manda para a tela de login com a query assinada", async () => {

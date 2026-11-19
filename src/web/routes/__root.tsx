@@ -13,10 +13,13 @@ import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { UserAvatar } from "@/components/user-avatar";
 import { SoundToggle } from "@/features/audio/sound-toggle";
+import { isOAuthFlow } from "@/lib/auth-client";
 import { sessionQuery } from "@/lib/queries";
 import { useLogSessionDialog } from "@/stores/log-session-dialog";
 
 const LOGIN_PATH = "/entrar";
+/** Consentimento do fluxo OAuth dos clientes MCP: tela cheia, sem o cabeçalho do app. */
+const CONSENT_PATH = "/autorizar";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   // Tudo exige login, menos a própria tela de login.
@@ -26,7 +29,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     if (!session && !onLogin) {
       throw redirect({ to: LOGIN_PATH, search: { redirect: location.href } });
     }
-    if (session && onLogin) throw redirect({ to: "/" });
+    // Logado na tela de login vai para o início, menos no fluxo OAuth (ex.: prompt=login).
+    if (session && onLogin && !isOAuthFlow(location.search)) throw redirect({ to: "/" });
     return { session };
   },
   component: RootLayout,
@@ -42,7 +46,7 @@ function RootLayout() {
   const { session } = Route.useRouteContext();
   const pathname = useLocation({ select: (l) => l.pathname });
 
-  if (pathname === LOGIN_PATH || !session) {
+  if (pathname === LOGIN_PATH || pathname === CONSENT_PATH || !session) {
     return (
       <>
         <Outlet />
