@@ -25,6 +25,10 @@ import {
   zonedToInstant,
 } from "../src/shared/dates";
 import type { GameStatus, SessionSource } from "../src/shared/domain";
+import { type FeedGame, type FeedKey, feedKeys } from "../src/shared/feeds";
+import { saveFeedSnapshot } from "../src/server/services/feeds";
+// Listas da home (IGDB, nov/2026) congeladas: o demo roda sem credenciais do IGDB.
+import demoFeeds from "./demo-feeds.json";
 
 const path = process.env.DATABASE_PATH ?? "";
 if (!basename(path).includes("demo")) {
@@ -329,6 +333,10 @@ db.transaction((tx) => {
     })
     .run();
 });
+// Valem 24h; depois disso, com credenciais do IGDB, o servidor troca pelas listas de hoje.
+for (const key of feedKeys) {
+  saveFeedSnapshot(db, key, (demoFeeds as Record<FeedKey, FeedGame[]>)[key], now);
+}
 db.$client.close();
 
 const totalHours = Math.round(sessions.reduce((sum, s) => sum + (s.minutes ?? 0), 0) / 60);

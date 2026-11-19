@@ -121,7 +121,8 @@ function FeedGameCard({
         <p className="line-clamp-2 min-h-10 leading-5">{game.name}</p>
       </a>
       <p className="truncate text-xs text-muted-foreground">{meta || " "}</p>
-      <div className="mt-auto">
+      {/* Altura do botão: selo e botão ficam alinhados entre os cards. */}
+      <div className="mt-auto flex min-h-11 items-center">
         {libraryItem ? (
           <Link to="/jogos/$gameId" params={{ gameId: libraryItem.gameId }}>
             <StatusBadge status={libraryItem.status} />

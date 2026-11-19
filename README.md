@@ -21,9 +21,9 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 ## 📸 Telas
 
 <p align="center">
-  <img src="docs/readme/inicio.png" alt="Início: ofensiva de 12 dias, tempo de hoje, médias, gráfico das últimas 8 semanas, jogos em andamento com barra de progresso e os mais jogados do mês" width="100%">
+  <img src="docs/readme/inicio.png" alt="Início: ofensiva de 12 dias, tempo de hoje, médias, gráfico das últimas 8 semanas, jogos em andamento com barra de progresso, os mais jogados do mês e as listas do IGDB (bem avaliados, em alta e próximos lançamentos)" width="100%">
   <br>
-  <sub><b>Início</b> · ofensiva, médias, as últimas 8 semanas, o que está jogando agora (com o timer rodando no topo) e os mais jogados do mês</sub>
+  <sub><b>Início</b> · ofensiva, médias, as últimas 8 semanas, o que está jogando agora (com o timer rodando no topo), os mais jogados do mês e, no fim, o que descobrir no IGDB</sub>
 </p>
 
 <table>
@@ -75,6 +75,7 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 - **Dados do IGDB:** busca de jogos com capa, plataformas, gêneros, ano e tempo para zerar
 - **Registro de sessões:** manual ("joguei 2h ontem") ou pelo **timer** ("Comecei a jogar" / "Parei"), que roda no servidor e não se perde ao fechar a aba
 - **Estatísticas:** 🔥 ofensiva atual e recorde (com mínimo diário configurável), hoje, média diária e semanal, gráfico das últimas 8 semanas e jogos mais jogados
+- **Descobrir na tela inicial:** listas do IGDB com os lançamentos bem avaliados, os jogos em alta e os próximos lançamentos, atualizadas uma vez por dia, com botão de adicionar (próximos ou desejos) e o status dos que já estão na biblioteca
 - **Tempo para zerar:** história, história + extras e 100%, com o progresso estimado de cada jogo
 - **Tempo jogado antes do Zerômetro:** para jogos que você já vinha jogando ("tenho 39h de Witcher 3"), sem inventar sessões; conta no total e no progresso do jogo, mas não na ofensiva nem nas médias
 - **Efeitos sonoros 8 bits** (desligados por padrão): ao começar e parar sessões, zerar jogos e bater marcos da ofensiva, com volume nos ajustes
@@ -84,7 +85,8 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 ### Ainda falta
 
 - [x] ~**Tools de edição e remoção no MCP** (editar/apagar sessão, editar/remover jogo, com confirmação)~
-- [ ] Tela inicial com listas do IGDB: lançamentos bem avaliados, em alta e próximos lançamentos
+- [x] ~Tela inicial com listas do IGDB: lançamentos bem avaliados, em alta e próximos lançamentos~
+- [ ] Página própria para jogos do IGDB que ainda não estão na biblioteca (hoje os cards de "Descobrir" abrem o site do IGDB)
 - [ ] Heatmap anual estilo GitHub e gráficos com Recharts
 - [ ] Kanban da biblioteca com arrastar e soltar (o hook já existe: `useMoveGameStatus`)
 - [ ] Metas anuais (ex.: zerar 20 jogos no ano) e o som de "meta batida"
