@@ -53,20 +53,19 @@ function LoginPage() {
 
   return (
     <main className="flex min-h-dvh items-center justify-center px-4">
-      <Card className="w-full max-w-sm space-y-6 p-6 text-center">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">
-            Zerô<span className="text-brand">metro</span>
+      <Card className="w-full max-w-md items-center gap-6 p-8 text-center pixel-drop">
+        <div className="space-y-3">
+          <h1 className="display-lg">
+            Zer<span className="text-primary">ô</span>metro
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Seu backlog de jogos e o tempo que você joga.
-          </p>
+          <p className="text-muted-foreground">Seu backlog de jogos e o tempo que você joga.</p>
         </div>
-        <Button className="w-full" size="lg" onClick={signIn} disabled={pending}>
+        <Button variant="outline" size="lg" onClick={signIn} disabled={pending}>
           <GoogleIcon /> {pending ? "Abrindo o Google…" : "Entrar com Google"}
         </Button>
         {message && (
           <p role="alert" className="text-sm text-destructive">
+            <span aria-hidden>✕ </span>
             {message}
           </p>
         )}

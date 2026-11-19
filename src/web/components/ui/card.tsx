@@ -1,12 +1,13 @@
 import type * as React from "react";
 import { cn } from "@/lib/utils";
 
+/** Superfície com moldura pixelada (box-shadow: precisa dos 4px de margem). */
 function Card({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card"
       className={cn(
-        "flex flex-col gap-4 rounded-xl border bg-card p-4 text-card-foreground shadow-sm",
+        "m-1 flex flex-col gap-4 rounded-none bg-card p-4 text-card-foreground pixel-frame",
         className,
       )}
       {...props}

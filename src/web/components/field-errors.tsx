@@ -8,5 +8,10 @@ export function FieldErrors({ errors }: { errors: unknown[] }) {
     ),
   ];
   if (messages.length === 0) return null;
-  return <p className="text-sm text-destructive">{messages.join(" · ")}</p>;
+  return (
+    <p className="text-xs text-destructive">
+      <span aria-hidden>✕ </span>
+      {messages.join(" · ")}
+    </p>
+  );
 }

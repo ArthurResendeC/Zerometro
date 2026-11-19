@@ -1,14 +1,15 @@
 import { useForm } from "@tanstack/react-form";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Timer, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
 import { todayIn } from "@shared/dates";
 import { type GameStatus, gameStatuses, gameStatusLabels } from "@shared/domain";
 import type { LibraryItem, UpdateLibraryEntryInput } from "@shared/library";
 import { GameCover } from "@/components/game-cover";
+import { ArrowLeftIcon, TimerIcon, TrashIcon } from "@/components/icons";
 import { SessionsTable } from "@/components/sessions-table";
+import { StatusBadge } from "@/components/status-badge";
 import { TimerButton } from "@/components/timer";
 import {
   AlertDialog,
@@ -27,7 +28,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
-import { Progress } from "@/components/ui/progress";
+import { XpBar } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import { formatDate, formatHoursFromSeconds, formatMinutes, formatPercent } from "@/lib/format";
@@ -63,24 +64,25 @@ function GamePage() {
 
   return (
     <div className="space-y-6">
-      <Button asChild variant="ghost" size="sm" className="-ml-3">
+      <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link to="/biblioteca">
-          <ArrowLeft /> Biblioteca
+          <ArrowLeftIcon /> Biblioteca
         </Link>
       </Button>
 
-      <div className="grid gap-8 md:grid-cols-[220px_1fr]">
-        <div className="mx-auto w-44 md:w-full">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-8 md:grid-cols-[220px_minmax(0,1fr)]">
+        <div className="mx-auto w-44 self-start bg-card p-2.5 pixel-frame md:w-full">
           <GameCover name={item.name} imageId={item.coverImageId} size="720p" />
         </div>
 
         <div className="space-y-6">
           <header className="space-y-2">
-            <h1 className="text-3xl font-bold tracking-tight">{item.name}</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="text-[32px] leading-9">{item.name}</h1>
+            <p className="text-muted-foreground">
               {[item.releaseYear, ...item.genres].filter(Boolean).join(" · ")}
             </p>
             <div className="flex flex-wrap gap-1">
+              <StatusBadge status={item.status} />
               {item.platforms.map((p) => (
                 <Badge key={p} variant="outline">
                   {p}
@@ -93,10 +95,10 @@ function GamePage() {
 
           <section className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <h2 className="text-lg font-semibold">Sessões</h2>
-              <div className="flex flex-wrap justify-end gap-2">
+              <h2 className="display-md">Sessões</h2>
+              <div className="flex flex-wrap justify-end">
                 <Button size="sm" variant="outline" onClick={() => openLogSession(item.gameId)}>
-                  <Timer /> Registrar sessão
+                  <TimerIcon /> Registrar sessão
                 </Button>
                 <TimerButton gameId={item.gameId} size="sm" />
               </div>
@@ -105,7 +107,7 @@ function GamePage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg font-semibold">Detalhes</h2>
+            <h2 className="display-md">Detalhes</h2>
             <EntryForm key={item.updatedAt} item={item} />
           </section>
 
@@ -130,14 +132,22 @@ function PlayedSummary({ item }: { item: LibraryItem }) {
       <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {stats.map((s) => (
           <div key={s.label}>
-            <dt className="text-xs text-muted-foreground">{s.label}</dt>
-            <dd className="text-lg font-semibold tabular-nums">{s.value}</dd>
+            <dt className="display-xs text-muted-foreground">{s.label}</dt>
+            <dd className="mt-2 display-sm tabular-nums">{s.value}</dd>
           </div>
         ))}
       </dl>
       {item.progress !== null && (
         <div className="space-y-1">
-          <Progress value={item.progress * 100} />
+          <div className="flex items-center gap-3">
+            <XpBar
+              value={item.progress * 100}
+              cells={20}
+              tone={item.progress >= 1 ? "finished" : "primary"}
+              label="Progresso estimado da história"
+            />
+            <span className="display-xs tabular-nums">{formatPercent(item.progress)}</span>
+          </div>
           <p className="text-xs text-muted-foreground">
             {formatPercent(item.progress)} da história (estimativa pelo tempo do IGDB)
           </p>
@@ -332,7 +342,7 @@ function EntryForm({ item }: { item: LibraryItem }) {
 
       <form.Subscribe selector={(s) => [s.isDirty, s.isSubmitting] as const}>
         {([isDirty, isSubmitting]) => (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap">
             <Button type="submit" disabled={!isDirty || isSubmitting}>
               {isSubmitting ? "Salvando…" : "Salvar"}
             </Button>
@@ -356,7 +366,7 @@ function RemoveButton({ item }: { item: LibraryItem }) {
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-          <Trash2 /> Remover da biblioteca
+          <TrashIcon /> Remover da biblioteca
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>

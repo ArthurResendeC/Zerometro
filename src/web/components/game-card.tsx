@@ -1,10 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { gameStatusLabels } from "@shared/domain";
 import type { LibraryItem } from "@shared/library";
 import { GameCover } from "@/components/game-cover";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { StatusBadge } from "@/components/status-badge";
+import { XpBar } from "@/components/ui/progress";
 import { formatMinutes, formatPercent } from "@/lib/format";
 
 interface GameCardProps {
@@ -13,33 +12,38 @@ interface GameCardProps {
   showStatus?: boolean;
 }
 
+/** Card de jogo em forma de cartucho: ranhuras no topo, capa como rótulo, progresso como barra de XP. */
 export function GameCard({ item, showStatus = false }: GameCardProps) {
   const played = item.minutesPlayed > 0;
+  const finished = item.status === "finished";
 
   return (
     <Link
       to="/jogos/$gameId"
       params={{ gameId: item.gameId }}
-      className="group flex flex-col gap-2 rounded-lg outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      className="group flex flex-col gap-2.5 focus-visible:outline-none"
     >
-      <div className="relative overflow-hidden rounded-lg ring-1 ring-border transition group-hover:ring-brand/70">
-        <GameCover name={item.name} imageId={item.coverImageId} />
-        {showStatus && (
-          <Badge
-            variant="secondary"
-            className="absolute top-2 left-2 bg-background/80 backdrop-blur"
-          >
-            {gameStatusLabels[item.status]}
-          </Badge>
-        )}
+      <div className="relative m-1 bg-card px-2.5 pt-3.5 pb-2.5 pixel-frame transition-transform ease-[steps(2)] group-hover:-translate-y-1 group-hover:pixel-drop group-focus-visible:-translate-y-1 group-focus-visible:outline-[3px] group-focus-visible:outline-offset-[7px] group-focus-visible:outline-ring group-focus-visible:outline-solid before:absolute before:inset-x-6 before:top-1 before:h-1.5 before:bg-[repeating-linear-gradient(90deg,var(--border)_0_4px,transparent_4px_8px)]">
+        <div className="relative">
+          <GameCover name={item.name} imageId={item.coverImageId} />
+          {showStatus && <StatusBadge status={item.status} className="absolute top-1 left-1" />}
+        </div>
       </div>
-      <div className="space-y-1.5">
-        <p className="line-clamp-2 text-sm leading-tight font-medium">{item.name}</p>
+      <div className="space-y-1">
+        <p className="line-clamp-2 text-lg leading-6">{item.name}</p>
         <p className="text-xs text-muted-foreground">
           {played ? formatMinutes(item.minutesPlayed) : (item.releaseYear ?? "—")}
           {played && item.progress !== null && ` · ${formatPercent(item.progress)}`}
         </p>
-        {played && item.progress !== null && <Progress value={item.progress * 100} />}
+        {played && item.progress !== null && (
+          <div className="flex items-center gap-2">
+            <XpBar
+              value={item.progress * 100}
+              tone={finished || item.progress >= 1 ? "finished" : "primary"}
+              label={`Progresso estimado em ${item.name}`}
+            />
+          </div>
+        )}
       </div>
     </Link>
   );

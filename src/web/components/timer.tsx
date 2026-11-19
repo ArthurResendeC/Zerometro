@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Play, Square, X } from "lucide-react";
 import { useState } from "react";
 import { create } from "zustand";
 import { DEFAULT_TIME_ZONE, addDays, zonedParts, zonedToInstant } from "@shared/dates";
 import { MAX_MINUTES_PER_DAY } from "@shared/sessions";
 import type { ActiveSession } from "@shared/timer";
 import { GameCover } from "@/components/game-cover";
+import { CloseIcon, PlayIcon, StopIcon } from "@/components/icons";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,13 +53,13 @@ function elapsedMs(active: ActiveSession, now: number, clockOffsetMs: number): n
   return Math.max(0, now + clockOffsetMs - Date.parse(active.startedAt));
 }
 
-/** 1:05:09 */
+/** 01:05:09 */
 function formatClock(ms: number): string {
   const total = Math.floor(ms / 1000);
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
-  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return [h, m, s].map((n) => String(n).padStart(2, "0")).join(":");
 }
 
 const useLongSessionDialog = create<{ open: boolean; setOpen: (open: boolean) => void }>()(
@@ -96,17 +96,14 @@ export function TimerBar() {
   if (!active) return null;
 
   return (
-    <div className="border-t border-brand/30 bg-brand/10">
-      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2 text-sm">
-        <span className="relative flex size-2 shrink-0" aria-hidden>
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand opacity-75" />
-          <span className="relative inline-flex size-2 rounded-full bg-brand" />
-        </span>
+    <div className="mx-auto max-w-6xl px-4 pb-3">
+      <div className="m-1 mr-3 mb-3 flex items-center gap-3 bg-card py-1 pr-1 pl-3 pixel-frame pixel-drop sm:gap-4">
+        <span className="size-2 shrink-0 animate-blink bg-destructive" aria-hidden />
         <GameCover
           name={active.gameName}
           imageId={active.coverImageId}
           size="thumb"
-          className="hidden w-6 shrink-0 rounded-sm sm:block"
+          className="hidden w-7 shrink-0 sm:block"
         />
         <Link
           to="/jogos/$gameId"
@@ -114,19 +111,23 @@ export function TimerBar() {
           className="min-w-0 truncate hover:underline"
         >
           <span className="hidden text-muted-foreground sm:inline">Jogando </span>
-          <span className="font-medium">{active.gameName}</span>
+          <span>{active.gameName}</span>
         </Link>
-        <span className="font-mono tabular-nums" role="timer" aria-label="Tempo de jogo">
+        <span
+          className="display-sm text-primary tabular-nums sm:display-md"
+          role="timer"
+          aria-label="Tempo de jogo"
+        >
           {formatClock(elapsedMs(active, now, clockOffsetMs))}
         </span>
-        <div className="ml-auto flex shrink-0 gap-1">
+        <div className="ml-auto flex shrink-0 items-center">
           <Button size="sm" onClick={requestStop} disabled={isPending}>
-            <Square className="fill-current" /> Parei
+            <StopIcon /> Parei
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button size="icon" variant="ghost" className="size-8" aria-label="Descartar timer">
-                <X />
+              <Button size="icon" variant="ghost" className="size-9" aria-label="Descartar timer">
+                <CloseIcon />
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -216,7 +217,7 @@ function LongSessionForm({
         }}
       >
         <Label htmlFor="end-time">Parei às</Label>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Input
             id="end-time"
             type="time"
@@ -233,10 +234,12 @@ function LongSessionForm({
             Salvar {previewMinutes !== null && previewMinutes >= 1 && formatMinutes(previewMinutes)}
           </Button>
         </div>
-        {endInFuture && <p className="text-sm text-destructive">Esse horário ainda não chegou.</p>}
+        {endInFuture && (
+          <p className="text-xs text-destructive">✕ Esse horário ainda não chegou.</p>
+        )}
       </form>
 
-      <div className="flex flex-col gap-2 border-t pt-4 sm:flex-row sm:justify-end">
+      <div className="flex flex-col border-t-2 border-dashed border-muted pt-4 sm:flex-row sm:justify-end">
         <Button
           variant="outline"
           disabled={stop.isPending || tooLong}
@@ -262,9 +265,11 @@ function nextOccurrence(after: Date, time: string): Date {
 interface TimerButtonProps extends VariantProps<typeof buttonVariants> {
   gameId: number;
   className?: string;
+  /** Em colunas estreitas (cards no celular), mostra só "Jogar". */
+  compact?: boolean;
 }
 
-export function TimerButton({ gameId, className, size, variant }: TimerButtonProps) {
+export function TimerButton({ gameId, className, size, variant, compact }: TimerButtonProps) {
   const { active } = useActiveTimer();
   const start = useStartTimer();
   const { requestStop, isPending } = useRequestStop();
@@ -278,7 +283,7 @@ export function TimerButton({ gameId, className, size, variant }: TimerButtonPro
         onClick={requestStop}
         disabled={isPending}
       >
-        <Square className="fill-current" /> Parei
+        <StopIcon /> Parei
       </Button>
     );
   }
@@ -290,7 +295,15 @@ export function TimerButton({ gameId, className, size, variant }: TimerButtonPro
       onClick={() => start.mutate({ gameId })}
       disabled={start.isPending}
     >
-      <Play className="fill-current" /> Comecei a jogar
+      <PlayIcon />
+      {compact ? (
+        <>
+          <span className="sm:hidden">Jogar</span>
+          <span className="hidden sm:inline">Comecei a jogar</span>
+        </>
+      ) : (
+        "Comecei a jogar"
+      )}
     </Button>
   );
 }

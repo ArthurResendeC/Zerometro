@@ -1,6 +1,6 @@
 import { useDebouncedValue } from "@tanstack/react-pacer";
-import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
+import { SearchIcon } from "@/components/icons";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -35,13 +35,13 @@ export function SearchInput({
 
   return (
     <div className={cn("relative", className)}>
-      <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+      <SearchIcon className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         type="search"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         placeholder={placeholder}
-        className="pl-9"
+        className="pl-10"
       />
     </div>
   );

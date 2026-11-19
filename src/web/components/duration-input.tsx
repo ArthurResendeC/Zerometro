@@ -21,7 +21,7 @@ export function DurationInput({ label, max, value, onChange, invalid }: Duration
         onChange={(e) => onChange(Math.max(0, Math.trunc(Number(e.target.value) || 0)))}
         onFocus={(e) => e.target.select()}
         aria-invalid={invalid}
-        className="w-16 text-center text-foreground"
+        className="w-20 text-center"
       />
       {label}
     </label>

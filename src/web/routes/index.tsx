@@ -1,10 +1,10 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { Flame } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Stats, StreakStats, WeekStats } from "@shared/stats";
 import { GameCard, GameGrid } from "@/components/game-card";
 import { GameCover } from "@/components/game-cover";
+import { PixelFlame } from "@/components/icons";
 import { TimerButton } from "@/components/timer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -31,10 +31,10 @@ function Dashboard() {
     <div className="space-y-10">
       <section className="space-y-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Início</h1>
-          <p className="text-sm text-muted-foreground">Quanto falta pra zerar?</p>
+          <h1 className="display-lg">Início</h1>
+          <p className="mt-2 text-muted-foreground">Quanto falta pra zerar?</p>
         </div>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
           <StreakCard streak={stats.streak} />
           <StatCard
             label="Hoje"
@@ -60,11 +60,11 @@ function Dashboard() {
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold">Jogando agora</h2>
+        <h2 className="display-md">Jogando agora</h2>
         {playing.items.length === 0 ? (
-          <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed p-6">
+          <Card className="items-start gap-3 p-6">
             <p className="text-muted-foreground">Nenhum jogo em andamento.</p>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap">
               <Button asChild>
                 <Link to="/adicionar">Adicionar jogo</Link>
               </Button>
@@ -74,13 +74,13 @@ function Dashboard() {
                 </Link>
               </Button>
             </div>
-          </div>
+          </Card>
         ) : (
           <GameGrid>
             {playing.items.map((item) => (
               <div key={item.gameId} className="flex flex-col gap-2">
                 <GameCard item={item} />
-                <TimerButton gameId={item.gameId} size="sm" variant="outline" />
+                <TimerButton gameId={item.gameId} size="sm" variant="outline" compact />
               </div>
             ))}
           </GameGrid>
@@ -94,9 +94,9 @@ function Dashboard() {
 
 function StatCard({ label, value, hint }: { label: string; value: ReactNode; hint: ReactNode }) {
   return (
-    <Card className="gap-1">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-2xl font-semibold tabular-nums">{value}</p>
+    <Card className="gap-2">
+      <p className="display-xs text-muted-foreground">{label}</p>
+      <p className="display-md tabular-nums">{value}</p>
       <p className="text-xs text-muted-foreground">{hint}</p>
     </Card>
   );
@@ -111,19 +111,22 @@ function StreakCard({ streak }: { streak: StreakStats }) {
       : `Jogue ${formatMinutes(streak.todayRemainingMinutes)} hoje para começar`;
 
   return (
-    <Card className={cn("gap-1", streak.atRisk && "border-brand/50")}>
-      <p className="flex items-center gap-1 text-xs text-muted-foreground">
-        <Flame className={cn("size-3.5", lit && "fill-brand text-brand")} /> Ofensiva
+    <Card className={cn("gap-2", streak.atRisk && "[--px-frame-color:var(--primary)]")}>
+      <p className="display-xs text-muted-foreground">Ofensiva</p>
+      <p className="flex items-end gap-3">
+        <PixelFlame lit={lit} className="h-8 w-6.5 sm:h-10 sm:w-8" />
+        <span className="display-lg tabular-nums sm:display-xl">{streak.current}</span>
+        <span className="text-muted-foreground">{streak.current === 1 ? "dia" : "dias"}</span>
       </p>
-      <p className="text-2xl font-semibold tabular-nums">
-        {streak.current} {streak.current === 1 ? "dia" : "dias"}
-      </p>
-      <p className={cn("text-xs", streak.atRisk ? "text-brand" : "text-muted-foreground")}>
+      <p className={cn("text-xs", streak.atRisk ? "text-primary" : "text-muted-foreground")}>
         {status}
       </p>
       <p className="text-xs text-muted-foreground">
         Recorde: {streak.best} {streak.best === 1 ? "dia" : "dias"} ·{" "}
-        <Link to="/ajustes" className="underline-offset-2 hover:underline">
+        <Link
+          to="/ajustes"
+          className="underline decoration-dotted underline-offset-4 hover:text-foreground"
+        >
           mín. {formatMinutes(streak.minMinutes)}/dia
         </Link>
       </p>
@@ -143,8 +146,8 @@ function WeeksChart({ weeks }: { weeks: WeekStats[] }) {
 
   return (
     <Card className="gap-3">
-      <p className="text-xs text-muted-foreground">Últimas 8 semanas</p>
-      <ol className="flex h-28 items-end gap-2">
+      <p className="display-xs text-muted-foreground">Últimas 8 semanas</p>
+      <ol className="flex h-32 items-end gap-2 border-b-4 border-border bg-[repeating-linear-gradient(0deg,transparent_0_31px,var(--muted)_31px_32px)]">
         {weeks.map((week, i) => {
           const current = i === weeks.length - 1;
           const label = `Semana de ${weekLabel.format(new Date(`${week.weekStart}T00:00:00Z`))}`;
@@ -159,10 +162,8 @@ function WeeksChart({ weeks }: { weeks: WeekStats[] }) {
               </span>
               <div
                 className={cn(
-                  "mx-auto min-h-0.5 w-full max-w-12 rounded-sm transition-colors",
-                  current
-                    ? "bg-brand"
-                    : "bg-muted-foreground/40 group-hover:bg-muted-foreground/70",
+                  "mx-auto min-h-1 w-full max-w-12",
+                  current ? "bg-primary" : "bg-chart-2/60 group-hover:bg-chart-2",
                 )}
                 style={{ height: `${(week.minutes / max) * 100}%` }}
               />
@@ -170,9 +171,9 @@ function WeeksChart({ weeks }: { weeks: WeekStats[] }) {
           );
         })}
       </ol>
-      <div className="flex gap-2 text-[10px] text-muted-foreground tabular-nums" aria-hidden>
+      <div className="flex gap-2 text-xs text-muted-foreground tabular-nums" aria-hidden>
         {weeks.map((week) => (
-          <span key={week.weekStart} className="flex-1 text-center">
+          <span key={week.weekStart} className="flex-1 text-center max-sm:even:invisible">
             {weekLabel.format(new Date(`${week.weekStart}T00:00:00Z`))}
           </span>
         ))}
@@ -186,31 +187,31 @@ function TopGames({ games }: { games: Stats["topGames"] }) {
 
   return (
     <section className="space-y-4">
-      <h2 className="text-lg font-semibold">Mais jogados nos últimos 30 dias</h2>
+      <h2 className="display-md">Mais jogados nos últimos 30 dias</h2>
       <ol className="space-y-3">
         {games.map((game) => (
           <li key={game.gameId}>
             <Link
               to="/jogos/$gameId"
               params={{ gameId: game.gameId }}
-              className="flex items-center gap-3 rounded-lg p-1 hover:bg-muted/50"
+              className="flex items-center gap-4 p-2 hover:bg-accent"
             >
               <GameCover
                 name={game.name}
                 imageId={game.coverImageId}
                 size="thumb"
-                className="w-9 shrink-0 rounded"
+                className="w-10 shrink-0"
               />
               <div className="min-w-0 flex-1 space-y-1.5">
-                <div className="flex justify-between gap-2 text-sm">
-                  <span className="truncate font-medium">{game.name}</span>
+                <div className="flex justify-between gap-2">
+                  <span className="truncate">{game.name}</span>
                   <span className="shrink-0 text-muted-foreground tabular-nums">
                     {formatMinutes(game.minutes)}
                   </span>
                 </div>
-                <div className="h-1.5 rounded-full bg-muted">
+                <div className="m-0.5 h-3 bg-muted p-0.5" aria-hidden>
                   <div
-                    className="h-full rounded-full bg-brand/80"
+                    className="h-full bg-primary"
                     style={{ width: `${(game.minutes / max) * 100}%` }}
                   />
                 </div>

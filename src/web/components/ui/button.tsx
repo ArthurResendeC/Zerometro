@@ -3,25 +3,29 @@ import { Slot } from "radix-ui";
 import type * as React from "react";
 import { cn } from "@/lib/utils";
 
+// Moldura, bisel e sombra são box-shadow (utilitários pixel-* em styles.css): não ocupam layout,
+// por isso a margem mt-1 ml-1 mr-3 mb-3 reserva o espaço da moldura e da sombra dura.
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2.5 whitespace-nowrap rounded-none display-sm select-none mt-1 ml-1 mr-3 mb-3 disabled:pointer-events-none disabled:pixel-disabled aria-invalid:[--px-frame-color:var(--destructive)] [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
+        default:
+          "bg-primary text-primary-foreground pixel-frame pixel-frame-ink pixel-bevel pixel-drop [--px-shade:var(--primary-shade)] hover:brightness-110 active:pixel-press",
         destructive:
-          "bg-destructive/60 text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/40",
+          "bg-destructive text-destructive-foreground pixel-frame pixel-frame-ink pixel-bevel pixel-drop [--px-shade:color-mix(in_srgb,var(--destructive)_60%,black)] hover:brightness-110 active:pixel-press",
         outline:
-          "border border-input bg-input/30 shadow-xs hover:bg-input/50 hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
-        ghost: "hover:bg-accent/50 hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+          "bg-background text-foreground pixel-frame pixel-frame-ink pixel-bevel pixel-drop [--px-shade:var(--muted)] hover:bg-accent active:pixel-press",
+        secondary:
+          "bg-secondary text-secondary-foreground pixel-frame pixel-frame-ink pixel-bevel pixel-drop [--px-shade:var(--background)] hover:brightness-110 active:pixel-press",
+        ghost: "m-1 hover:bg-accent hover:text-accent-foreground active:translate-y-0.5",
+        link: "m-0 font-sans text-base text-info underline decoration-2 underline-offset-4",
       },
       size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
-        sm: "h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5",
-        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
-        icon: "size-9",
+        default: "h-11 px-[18px]",
+        sm: "h-9 gap-2 px-3 text-[10px] leading-3",
+        lg: "h-13 px-6 text-[14px] leading-5",
+        icon: "size-11",
       },
     },
     defaultVariants: { variant: "default", size: "default" },
