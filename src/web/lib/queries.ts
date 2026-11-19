@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { gameStatusLabels } from "@shared/domain";
 import type { AddToLibraryInput, LibraryListQuery, UpdateLibraryEntryInput } from "@shared/library";
 import type { ListSessionsQuery, LogSessionInput, UpdateSessionInput } from "@shared/sessions";
+import type { UpdateSettingsInput } from "@shared/settings";
 import { api, unwrap } from "@/lib/api";
 import { formatMinutes } from "@/lib/format";
 
@@ -119,11 +120,12 @@ export const sessionsQuery = (filters: ListSessionsQuery = {}) =>
       ).sessions,
   });
 
-/** Sessões mudam totais da biblioteca (e, depois, as estatísticas). */
+/** Sessões mudam totais da biblioteca e as estatísticas. */
 function invalidateGameData(queryClient: ReturnType<typeof useQueryClient>) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: libraryKeys.all }),
     queryClient.invalidateQueries({ queryKey: sessionKeys.all }),
+    queryClient.invalidateQueries({ queryKey: statsKeys.all }),
   ]);
 }
 
@@ -169,6 +171,38 @@ export function useDeleteSession() {
     onSuccess: (deleted) => {
       toast.success(`Sessão de ${formatMinutes(deleted.minutes)} apagada`);
       return invalidateGameData(queryClient);
+    },
+    onError,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Estatísticas e ajustes
+
+export const statsKeys = { all: ["stats"] as const };
+export const settingsKeys = { all: ["settings"] as const };
+
+export const statsQuery = () =>
+  queryOptions({
+    queryKey: statsKeys.all,
+    queryFn: () => unwrap(api.stats.$get()),
+  });
+
+export const settingsQuery = () =>
+  queryOptions({
+    queryKey: settingsKeys.all,
+    queryFn: async () => (await unwrap(api.settings.$get())).settings,
+  });
+
+export function useUpdateSettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (patch: UpdateSettingsInput) =>
+      (await unwrap(api.settings.$patch({ json: patch }))).settings,
+    onSuccess: (settings) => {
+      queryClient.setQueryData(settingsKeys.all, settings);
+      toast.success("Ajustes salvos");
+      return queryClient.invalidateQueries({ queryKey: statsKeys.all });
     },
     onError,
   });

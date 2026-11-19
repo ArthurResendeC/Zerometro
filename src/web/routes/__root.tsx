@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { Link, Outlet, createRootRouteWithContext } from "@tanstack/react-router";
-import { Plus, Timer } from "lucide-react";
+import { Plus, Settings, Timer } from "lucide-react";
 import { LogSessionDialog } from "@/components/log-session-dialog";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
@@ -21,12 +21,13 @@ function RootLayout() {
     <div className="min-h-dvh">
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
         <nav className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-3">
-          <Link to="/" className="mr-4 font-semibold tracking-tight">
+          <Link to="/" className="mr-2 font-semibold tracking-tight whitespace-nowrap sm:mr-4">
             🎮 Zerômetro
           </Link>
+          {/* No celular o logo já leva ao início. */}
           <Link
             to="/"
-            className={navLinkClass}
+            className={`${navLinkClass} hidden sm:inline`}
             activeProps={{ className: "text-foreground" }}
             activeOptions={{ exact: true }}
           >
@@ -40,6 +41,11 @@ function RootLayout() {
             Biblioteca
           </Link>
           <div className="ml-auto flex gap-2">
+            <Button asChild size="icon" variant="ghost" className="size-8" aria-label="Ajustes">
+              <Link to="/ajustes" activeProps={{ className: "text-brand" }}>
+                <Settings />
+              </Link>
+            </Button>
             <Button asChild size="sm" variant="outline" aria-label="Adicionar jogo">
               <Link to="/adicionar">
                 <Plus />

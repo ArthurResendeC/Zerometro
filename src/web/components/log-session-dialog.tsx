@@ -15,6 +15,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DurationInput } from "@/components/duration-input";
+import { FieldErrors } from "@/components/field-errors";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -279,43 +281,4 @@ function GameOptions({ items }: { items: LibraryItem[] }) {
       </optgroup>
     );
   });
-}
-
-interface DurationInputProps {
-  label: string;
-  max: number;
-  value: number;
-  onChange: (value: number) => void;
-  invalid: boolean;
-}
-
-function DurationInput({ label, max, value, onChange, invalid }: DurationInputProps) {
-  return (
-    <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
-      <Input
-        type="number"
-        inputMode="numeric"
-        min={0}
-        max={max}
-        value={value}
-        onChange={(e) => onChange(Math.max(0, Math.trunc(Number(e.target.value) || 0)))}
-        onFocus={(e) => e.target.select()}
-        aria-invalid={invalid}
-        className="w-16 text-center text-foreground"
-      />
-      {label}
-    </label>
-  );
-}
-
-function FieldErrors({ errors }: { errors: unknown[] }) {
-  const messages = [
-    ...new Set(
-      errors
-        .map((e) => (typeof e === "string" ? e : (e as { message?: string } | undefined)?.message))
-        .filter(Boolean),
-    ),
-  ];
-  if (messages.length === 0) return null;
-  return <p className="text-sm text-destructive">{messages.join(" · ")}</p>;
 }

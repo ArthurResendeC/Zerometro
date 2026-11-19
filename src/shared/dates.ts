@@ -57,3 +57,9 @@ export function parseFriendlyDate(input: string, today: string): string | null {
 function toUtcDate(isoDate: string): Date {
   return new Date(`${isoDate}T00:00:00Z`);
 }
+
+/** Segunda-feira da semana de uma data de calendário. */
+export function startOfWeek(isoDate: string): string {
+  const weekday = toUtcDate(isoDate).getUTCDay(); // 0 = domingo
+  return addDays(isoDate, -((weekday + 6) % 7));
+}
