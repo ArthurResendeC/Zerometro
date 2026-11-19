@@ -2,9 +2,15 @@ import { keepPreviousData, queryOptions, useMutation, useQueryClient } from "@ta
 import { toast } from "sonner";
 import { gameStatusLabels } from "@shared/domain";
 import type { AddToLibraryInput, LibraryListQuery, UpdateLibraryEntryInput } from "@shared/library";
-import type { ListSessionsQuery, LogSessionInput, UpdateSessionInput } from "@shared/sessions";
+import type {
+  ListSessionsQuery,
+  LogSessionInput,
+  LogSessionResult,
+  UpdateSessionInput,
+} from "@shared/sessions";
 import type { UpdateSettingsInput } from "@shared/settings";
-import { api, unwrap } from "@/lib/api";
+import type { StartTimerInput, StopTimerInput, StopTimerResult } from "@shared/timer";
+import { ApiError, api, unwrap } from "@/lib/api";
 import { formatMinutes } from "@/lib/format";
 
 // Query keys e queryOptions centralizados: rotas usam no loader e componentes no useQuery.
@@ -120,9 +126,22 @@ export const sessionsQuery = (filters: ListSessionsQuery = {}) =>
       ).sessions,
   });
 
-/** Sessões mudam totais da biblioteca e as estatísticas. */
+function toastSessionSaved(result: LogSessionResult) {
+  const { session, dayTotalMinutes, statusChangedTo } = result;
+  toast.success(`${formatMinutes(session.minutes)} de ${session.gameName} registrados`, {
+    description: [
+      `Total do dia: ${formatMinutes(dayTotalMinutes)}`,
+      statusChangedTo && `Agora em ${gameStatusLabels[statusChangedTo]}`,
+    ]
+      .filter(Boolean)
+      .join(" · "),
+  });
+}
+
+/** Sessões mudam totais da biblioteca, as estatísticas e o timer. */
 function invalidateGameData(queryClient: ReturnType<typeof useQueryClient>) {
   return Promise.all([
+    queryClient.invalidateQueries({ queryKey: timerKeys.all }),
     queryClient.invalidateQueries({ queryKey: libraryKeys.all }),
     queryClient.invalidateQueries({ queryKey: sessionKeys.all }),
     queryClient.invalidateQueries({ queryKey: statsKeys.all }),
@@ -134,15 +153,7 @@ export function useLogSession() {
   return useMutation({
     mutationFn: (input: LogSessionInput) => unwrap(api.sessions.$post({ json: input })),
     onSuccess: (result) => {
-      const { session, dayTotalMinutes, statusChangedTo } = result;
-      toast.success(`${formatMinutes(session.minutes)} de ${session.gameName} registrados`, {
-        description: [
-          `Total do dia: ${formatMinutes(dayTotalMinutes)}`,
-          statusChangedTo && `Agora em ${gameStatusLabels[statusChangedTo]}`,
-        ]
-          .filter(Boolean)
-          .join(" · "),
-      });
+      toastSessionSaved(result);
       return invalidateGameData(queryClient);
     },
     onError,
@@ -203,6 +214,84 @@ export function useUpdateSettings() {
       queryClient.setQueryData(settingsKeys.all, settings);
       toast.success("Ajustes salvos");
       return queryClient.invalidateQueries({ queryKey: statsKeys.all });
+    },
+    onError,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Timer (o estado vive no servidor; aqui só o cache dele)
+
+export const timerKeys = { all: ["timer"] as const };
+
+export const timerQuery = () =>
+  queryOptions({
+    queryKey: timerKeys.all,
+    queryFn: async () => {
+      const state = await unwrap(api.timer.$get());
+      // Diferença entre o relógio do servidor e o do aparelho, para o cronômetro não mentir.
+      return { ...state, clockOffsetMs: Date.parse(state.now) - Date.now() };
+    },
+    // Pega timers iniciados em outro aparelho (além do refetch ao focar a janela).
+    refetchInterval: 60_000,
+  });
+
+export function useStartTimer() {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: (input: StartTimerInput) => unwrap(api.timer.start.$post({ json: input })),
+    onSuccess: (result) => {
+      if (result.stopped) toastStopped(result.stopped);
+      if (!result.alreadyRunning) {
+        toast.success(`Valendo! Bom jogo de ${result.active.gameName}`, {
+          description: result.statusChangedTo
+            ? `Agora em ${gameStatusLabels[result.statusChangedTo]}`
+            : undefined,
+        });
+      }
+      return invalidateGameData(queryClient);
+    },
+    onError: (error, input) => {
+      // Outro jogo rodando: oferece a troca em vez de só mostrar o erro.
+      if (error instanceof ApiError && error.code === "timer_active") {
+        toast.warning(error.message, {
+          action: {
+            label: "Trocar de jogo",
+            onClick: () => mutation.mutate({ ...input, replaceActive: true }),
+          },
+        });
+        return;
+      }
+      onError(error);
+    },
+  });
+  return mutation;
+}
+
+function toastStopped(result: StopTimerResult) {
+  if (result.discarded) toast.info(`Menos de 1 minuto de ${result.gameName}: sessão descartada`);
+  else toastSessionSaved(result);
+}
+
+export function useStopTimer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: StopTimerInput) => unwrap(api.timer.stop.$post({ json: input })),
+    onSuccess: (result) => {
+      toastStopped(result);
+      return invalidateGameData(queryClient);
+    },
+    onError,
+  });
+}
+
+export function useCancelTimer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => (await unwrap(api.timer.$delete())).cancelled,
+    onSuccess: (cancelled) => {
+      toast.info(`Timer de ${cancelled.gameName} descartado`);
+      return invalidateGameData(queryClient);
     },
     onError,
   });

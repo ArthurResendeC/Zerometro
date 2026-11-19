@@ -2,7 +2,7 @@ import { useForm } from "@tanstack/react-form";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { type Settings, STREAK_MIN_MINUTES } from "@shared/settings";
+import { LONG_SESSION_MINUTES, type Settings, STREAK_MIN_MINUTES } from "@shared/settings";
 import { DurationInput } from "@/components/duration-input";
 import { FieldErrors } from "@/components/field-errors";
 import { Button } from "@/components/ui/button";
@@ -25,34 +25,62 @@ function SettingsPage() {
         <h1 className="text-2xl font-bold tracking-tight">Ajustes</h1>
         <p className="text-sm text-muted-foreground">Preferências do Zerômetro.</p>
       </div>
-      <StreakForm key={settings.streakMinMinutes} settings={settings} />
+      <DurationSettingCard
+        key={`streak-${settings.streakMinMinutes}`}
+        field="streakMinMinutes"
+        value={settings.streakMinMinutes}
+        bounds={STREAK_MIN_MINUTES}
+        presets={[15, 30, 60, 120]}
+        title="🔥 Mínimo por dia para a ofensiva"
+        description="Um dia só conta na ofensiva se você jogar pelo menos isso (somando todos os jogos)."
+      />
+      <DurationSettingCard
+        key={`long-${settings.longSessionMinutes}`}
+        field="longSessionMinutes"
+        value={settings.longSessionMinutes}
+        bounds={LONG_SESSION_MINUTES}
+        presets={[180, 360, 480, 720]}
+        title="⏱️ Aviso de sessão longa"
+        description='Ao parar um timer ligado há mais que isso, o Zerômetro pergunta "jogou tudo isso mesmo?" e deixa corrigir o horário em que você parou.'
+      />
     </div>
   );
 }
 
-const streakFormSchema = z
-  .object({ hours: z.number().int().min(0), minutes: z.number().int().min(0).max(59) })
-  .refine((v) => v.hours * 60 + v.minutes >= STREAK_MIN_MINUTES.min, {
-    message: `Mínimo de ${formatMinutes(STREAK_MIN_MINUTES.min)}`,
-    path: ["minutes"],
-  })
-  .refine((v) => v.hours * 60 + v.minutes <= STREAK_MIN_MINUTES.max, {
-    message: `Máximo de ${formatMinutes(STREAK_MIN_MINUTES.max)}`,
-    path: ["hours"],
-  });
+interface DurationSettingCardProps {
+  field: keyof Settings;
+  value: number;
+  bounds: { min: number; max: number };
+  presets: number[];
+  title: string;
+  description: string;
+}
 
-const PRESETS = [15, 30, 60, 120];
-
-function StreakForm({ settings }: { settings: Settings }) {
+function DurationSettingCard({
+  field,
+  value,
+  bounds,
+  presets,
+  title,
+  description,
+}: DurationSettingCardProps) {
   const update = useUpdateSettings();
+  const schema = z
+    .object({ hours: z.number().int().min(0), minutes: z.number().int().min(0).max(59) })
+    .refine((v) => v.hours * 60 + v.minutes >= bounds.min, {
+      message: `Mínimo de ${formatMinutes(bounds.min)}`,
+      path: ["minutes"],
+    })
+    .refine((v) => v.hours * 60 + v.minutes <= bounds.max, {
+      message: `Máximo de ${formatMinutes(bounds.max)}`,
+      path: ["hours"],
+    });
+
   const form = useForm({
-    defaultValues: {
-      hours: Math.floor(settings.streakMinMinutes / 60),
-      minutes: settings.streakMinMinutes % 60,
-    },
-    validators: { onSubmit: streakFormSchema },
-    onSubmit: async ({ value }) => {
-      await update.mutateAsync({ streakMinMinutes: value.hours * 60 + value.minutes });
+    defaultValues: { hours: Math.floor(value / 60), minutes: value % 60 },
+    validators: { onSubmit: schema },
+    onSubmit: async ({ value: v }) => {
+      await update.mutateAsync({ [field]: v.hours * 60 + v.minutes });
     },
   });
 
@@ -71,38 +99,37 @@ function StreakForm({ settings }: { settings: Settings }) {
         className="space-y-4"
       >
         <div className="space-y-1">
-          <Label>🔥 Mínimo por dia para a ofensiva</Label>
+          <Label>{title}</Label>
           <p className="text-sm text-muted-foreground">
-            Um dia só conta na ofensiva se você jogar pelo menos isso (somando todos os jogos). De{" "}
-            {formatMinutes(STREAK_MIN_MINUTES.min)} a {formatMinutes(STREAK_MIN_MINUTES.max)}.
+            {description} De {formatMinutes(bounds.min)} a {formatMinutes(bounds.max)}.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <form.Field name="hours">
-            {(field) => (
+            {(f) => (
               <DurationInput
                 label="horas"
-                max={12}
-                value={field.state.value}
-                onChange={field.handleChange}
-                invalid={field.state.meta.errors.length > 0}
+                max={Math.floor(bounds.max / 60)}
+                value={f.state.value}
+                onChange={f.handleChange}
+                invalid={f.state.meta.errors.length > 0}
               />
             )}
           </form.Field>
           <form.Field name="minutes">
-            {(field) => (
+            {(f) => (
               <DurationInput
                 label="min"
                 max={59}
-                value={field.state.value}
-                onChange={field.handleChange}
-                invalid={field.state.meta.errors.length > 0}
+                value={f.state.value}
+                onChange={f.handleChange}
+                invalid={f.state.meta.errors.length > 0}
               />
             )}
           </form.Field>
           <div className="flex gap-1 sm:ml-auto">
-            {PRESETS.map((minutes) => (
+            {presets.map((minutes) => (
               <Button
                 key={minutes}
                 type="button"

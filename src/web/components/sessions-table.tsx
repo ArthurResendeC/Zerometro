@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createColumnHelper, tableFeatures, useTable } from "@tanstack/react-table";
 import { Pencil, Trash2 } from "lucide-react";
+import { DEFAULT_TIME_ZONE, zonedParts } from "@shared/dates";
 import type { PlaySessionItem } from "@shared/sessions";
 import {
   AlertDialog,
@@ -26,6 +27,8 @@ const SOURCE_LABELS: Record<PlaySessionItem["source"], string | null> = {
   mcp: "IA",
 };
 
+const localTime = (iso: string) => zonedParts(new Date(iso), DEFAULT_TIME_ZONE).time;
+
 const features = tableFeatures({});
 const column = createColumnHelper<typeof features, PlaySessionItem>();
 
@@ -33,7 +36,19 @@ const column = createColumnHelper<typeof features, PlaySessionItem>();
 const columns = column.columns([
   column.accessor("playedOn", {
     header: "Dia",
-    cell: (info) => <span className="whitespace-nowrap">{formatDate(info.getValue())}</span>,
+    cell: (info) => {
+      const { startedAt, endedAt } = info.row.original;
+      return (
+        <span className="flex flex-col whitespace-nowrap">
+          {formatDate(info.getValue())}
+          {startedAt && endedAt && (
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {localTime(startedAt)}–{localTime(endedAt)}
+            </span>
+          )}
+        </span>
+      );
+    },
   }),
   column.accessor("minutes", {
     header: "Duração",

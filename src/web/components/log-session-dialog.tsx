@@ -2,7 +2,14 @@ import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { z } from "zod";
-import { addDays, isoDateSchema, todayIn } from "@shared/dates";
+import {
+  DEFAULT_TIME_ZONE,
+  addDays,
+  isoDateSchema,
+  localTimeSchema,
+  todayIn,
+  zonedParts,
+} from "@shared/dates";
 import { gameStatuses, gameStatusLabels } from "@shared/domain";
 import type { LibraryItem } from "@shared/library";
 import { MAX_MINUTES_PER_DAY, type PlaySessionItem } from "@shared/sessions";
@@ -52,6 +59,9 @@ const formSchema = z
     minutes: z.number().int().min(0).max(59),
     playedOn: isoDateSchema,
     note: z.string().max(500),
+    // Só usados no modo timer.
+    startTime: z.string(),
+    endTime: z.string(),
   })
   .refine((v) => v.hours * 60 + v.minutes >= 1, {
     message: "Informe quanto tempo jogou",
@@ -62,7 +72,21 @@ const formSchema = z
     path: ["hours"],
   });
 
-type FormValues = z.infer<typeof formSchema>;
+/** Sessão do timer: edita horários de início e fim (fim antes do início = dia seguinte). */
+const timerFormSchema = z.object({
+  gameId: z.string(),
+  hours: z.number(),
+  minutes: z.number(),
+  playedOn: isoDateSchema,
+  note: z.string().max(500),
+  startTime: localTimeSchema,
+  endTime: localTimeSchema,
+});
+
+type FormValues = z.infer<typeof timerFormSchema>;
+
+const localTime = (iso: string | null | undefined) =>
+  iso ? zonedParts(new Date(iso), DEFAULT_TIME_ZONE).time : "";
 
 const QUICK_ADD = [
   { label: "+15min", minutes: 15 },
@@ -82,6 +106,7 @@ function SessionForm({ editing, initialGameId, onDone }: SessionFormProps) {
   const updateSession = useUpdateSession();
   const [today] = useState(() => todayIn());
   const items = library.data?.items ?? [];
+  const timerMode = Boolean(editing?.startedAt);
 
   // Padrão: jogo pedido > jogo da sessão editada > último "Jogando" jogado.
   const defaultGameId =
@@ -94,12 +119,24 @@ function SessionForm({ editing, initialGameId, onDone }: SessionFormProps) {
       minutes: editing ? editing.minutes % 60 : 0,
       playedOn: editing?.playedOn ?? today,
       note: editing?.note ?? "",
+      startTime: localTime(editing?.startedAt),
+      endTime: localTime(editing?.endedAt),
     } satisfies FormValues as FormValues,
-    validators: { onSubmit: formSchema },
+    validators: { onSubmit: timerMode ? timerFormSchema : formSchema },
     onSubmit: async ({ value }) => {
       const minutes = value.hours * 60 + value.minutes;
       const note = value.note.trim();
-      if (editing) {
+      if (editing && timerMode) {
+        await updateSession.mutateAsync({
+          id: editing.id,
+          patch: {
+            playedOn: value.playedOn,
+            startTime: value.startTime,
+            endTime: value.endTime,
+            note: note || null,
+          },
+        });
+      } else if (editing) {
         await updateSession.mutateAsync({
           id: editing.id,
           patch: { minutes, playedOn: value.playedOn, note: note || null },
@@ -151,54 +188,90 @@ function SessionForm({ editing, initialGameId, onDone }: SessionFormProps) {
         )}
       </form.Field>
 
-      <div className="space-y-2">
-        <Label>Duração</Label>
-        <div className="flex items-center gap-2">
-          <form.Field name="hours">
-            {(field) => (
-              <DurationInput
-                label="horas"
-                max={24}
-                value={field.state.value}
-                onChange={field.handleChange}
-                invalid={field.state.meta.errors.length > 0}
-              />
-            )}
-          </form.Field>
-          <form.Field name="minutes">
-            {(field) => (
-              <DurationInput
-                label="min"
-                max={59}
-                value={field.state.value}
-                onChange={field.handleChange}
-                invalid={field.state.meta.errors.length > 0}
-              />
-            )}
-          </form.Field>
-          <div className="ml-auto flex gap-1">
-            {QUICK_ADD.map((q) => (
-              <Button
-                key={q.label}
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => addMinutes(q.minutes)}
-              >
-                {q.label}
-              </Button>
-            ))}
+      {timerMode ? (
+        <div className="space-y-2">
+          <Label>Horário</Label>
+          <div className="flex items-center gap-2">
+            <form.Field name="startTime">
+              {(field) => (
+                <Input
+                  type="time"
+                  aria-label="Início"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  aria-invalid={field.state.meta.errors.length > 0}
+                  className="w-32"
+                />
+              )}
+            </form.Field>
+            <span className="text-muted-foreground">até</span>
+            <form.Field name="endTime">
+              {(field) => (
+                <Input
+                  type="time"
+                  aria-label="Fim"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  aria-invalid={field.state.meta.errors.length > 0}
+                  className="w-32"
+                />
+              )}
+            </form.Field>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Fim antes do início conta como o dia seguinte (passou da meia-noite).
+          </p>
         </div>
-        <form.Subscribe
-          selector={(s) => [
-            ...(s.fieldMeta.hours?.errors ?? []),
-            ...(s.fieldMeta.minutes?.errors ?? []),
-          ]}
-        >
-          {(errors) => <FieldErrors errors={errors} />}
-        </form.Subscribe>
-      </div>
+      ) : (
+        <div className="space-y-2">
+          <Label>Duração</Label>
+          <div className="flex items-center gap-2">
+            <form.Field name="hours">
+              {(field) => (
+                <DurationInput
+                  label="horas"
+                  max={24}
+                  value={field.state.value}
+                  onChange={field.handleChange}
+                  invalid={field.state.meta.errors.length > 0}
+                />
+              )}
+            </form.Field>
+            <form.Field name="minutes">
+              {(field) => (
+                <DurationInput
+                  label="min"
+                  max={59}
+                  value={field.state.value}
+                  onChange={field.handleChange}
+                  invalid={field.state.meta.errors.length > 0}
+                />
+              )}
+            </form.Field>
+            <div className="ml-auto flex gap-1">
+              {QUICK_ADD.map((q) => (
+                <Button
+                  key={q.label}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addMinutes(q.minutes)}
+                >
+                  {q.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <form.Subscribe
+            selector={(s) => [
+              ...(s.fieldMeta.hours?.errors ?? []),
+              ...(s.fieldMeta.minutes?.errors ?? []),
+            ]}
+          >
+            {(errors) => <FieldErrors errors={errors} />}
+          </form.Subscribe>
+        </div>
+      )}
 
       <form.Field name="playedOn">
         {(field) => (

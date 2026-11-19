@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import type { Stats, StreakStats, WeekStats } from "@shared/stats";
 import { GameCard, GameGrid } from "@/components/game-card";
 import { GameCover } from "@/components/game-cover";
+import { TimerButton } from "@/components/timer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatMinutes } from "@/lib/format";
@@ -77,7 +78,10 @@ function Dashboard() {
         ) : (
           <GameGrid>
             {playing.items.map((item) => (
-              <GameCard key={item.gameId} item={item} />
+              <div key={item.gameId} className="flex flex-col gap-2">
+                <GameCard item={item} />
+                <TimerButton gameId={item.gameId} size="sm" variant="outline" />
+              </div>
             ))}
           </GameGrid>
         )}

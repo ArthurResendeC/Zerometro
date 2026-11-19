@@ -2,6 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { Link, Outlet, createRootRouteWithContext } from "@tanstack/react-router";
 import { Plus, Settings, Timer } from "lucide-react";
 import { LogSessionDialog } from "@/components/log-session-dialog";
+import { TimerBar } from "@/components/timer";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { useLogSessionDialog } from "@/stores/log-session-dialog";
@@ -58,6 +59,7 @@ function RootLayout() {
             </Button>
           </div>
         </nav>
+        <TimerBar />
       </header>
       <main className="mx-auto max-w-6xl px-4 py-8">
         <Outlet />

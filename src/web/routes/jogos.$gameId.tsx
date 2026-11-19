@@ -9,6 +9,7 @@ import { type GameStatus, gameStatuses, gameStatusLabels } from "@shared/domain"
 import type { LibraryItem, UpdateLibraryEntryInput } from "@shared/library";
 import { GameCover } from "@/components/game-cover";
 import { SessionsTable } from "@/components/sessions-table";
+import { TimerButton } from "@/components/timer";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -93,9 +94,12 @@ function GamePage() {
           <section className="space-y-3">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-lg font-semibold">Sessões</h2>
-              <Button size="sm" onClick={() => openLogSession(item.gameId)}>
-                <Timer /> Registrar sessão
-              </Button>
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button size="sm" variant="outline" onClick={() => openLogSession(item.gameId)}>
+                  <Timer /> Registrar sessão
+                </Button>
+                <TimerButton gameId={item.gameId} size="sm" />
+              </div>
             </div>
             <SessionsTable gameId={item.gameId} />
           </section>
