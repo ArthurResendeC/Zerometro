@@ -1,0 +1,17 @@
+diff --git a/dist/esm/router.js b/dist/esm/router.js
+index a31886020d1dfff3c10ee27fea6ae781e6211f9a..8eab509738f61cacd325608a38c96522ddff6630 100644
+--- a/dist/esm/router.js
++++ b/dist/esm/router.js
+@@ -835,7 +835,11 @@ async function documentNavigation(router, href, { replace, ignoreBlocker }) {
+ * dedicated to HMR.
+ */
+ if (process.env.NODE_ENV !== "production") {
+-	RouterCore.prototype._replaceRouteChunk = replaceRouteChunk;
++	// zerometro: lê replaceRouteChunk só na chamada. O import circular com load-client.js
++	// chega como null aqui no dev server do Bun (HMR), quebrando o carregamento.
++	RouterCore.prototype._replaceRouteChunk = function(route, lazyFn) {
++		return replaceRouteChunk(route, lazyFn);
++	};
+ 	RouterCore.prototype._refreshRoute = async function() {
+ 		this._serverResult = void 0;
+ 		this.updateLatestLocation();
