@@ -2,7 +2,7 @@
 
 > Quanto falta pra zerar?
 
-Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa de quanto falta para zerar cada jogo. A ideia é também controlar tudo por IA através de um servidor **MCP** (ainda não implementado).
+Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa de quanto falta para zerar cada jogo. Também dá para consultar tudo por IA através de um servidor **MCP** (as tools de escrita ainda estão por vir).
 
 > 🧪 **Projeto de exemplo, feito para cada um hospedar o seu.** O Zerômetro é um projeto pessoal publicado como referência. A minha instância é privada: só entram os e-mails convidados (`ALLOWED_EMAILS`), então ela não serve como serviço público. Para usar, faça um fork e suba a sua (veja [Rodando localmente](#-rodando-localmente) e [Deploy](#-deploy-railway)).
 
@@ -21,11 +21,12 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 - **Estatísticas:** 🔥 ofensiva atual e recorde (com mínimo diário configurável), hoje, média diária e semanal, gráfico das últimas 8 semanas e jogos mais jogados
 - **Tempo para zerar:** história, história + extras e 100%, com o progresso estimado de cada jogo
 - **Efeitos sonoros 8 bits** (desligados por padrão): ao começar e parar sessões, zerar jogos e bater marcos da ofensiva, com volume nos ajustes
+- **Servidor MCP** em `/mcp` com login OAuth (conector do claude.ai, Claude Code), por enquanto só com tools de leitura
 - **Deploy na Railway** como código (`.railway/railway.ts`) + imagem Docker
 
 ### Ainda falta
 
-- [ ] **Servidor MCP** (`/mcp`) para controlar o app por IA (ver [Usando com IA](#-usando-com-ia-mcp))
+- [ ] **Tools de escrita no MCP** (começar/parar timer, registrar sessão, adicionar jogo, mudar status)
 - [ ] Tela inicial com listas do IGDB: lançamentos bem avaliados, em alta e próximos lançamentos
 - [ ] Heatmap anual estilo GitHub e gráficos com Recharts
 - [ ] Kanban da biblioteca com arrastar e soltar (o hook já existe: `useMoveGameStatus`)
@@ -56,14 +57,14 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 | IA                              | [Model Context Protocol](https://modelcontextprotocol.io) (Streamable HTTP) |
 | Dados de jogos                  | [IGDB API](https://api-docs.igdb.com)                                       |
 
-Um único processo Bun serve a API e o frontend (e, quando existir, o servidor MCP).
+Um único processo Bun serve a API, o servidor MCP e o frontend.
 
 ```
 src/
   server/
     routes/    # REST (/api/*) consumido pelo frontend
-    mcp/       # tools do servidor MCP (/mcp), ainda não implementado
-    services/  # regras de negócio, usadas por REST e (no futuro) pelo MCP
+    mcp/       # servidor MCP (/mcp) e as tools
+    services/  # regras de negócio, usadas por REST e MCP
     db/        # schema e migrations
   web/         # SPA React
   shared/      # schemas Zod e tipos compartilhados
@@ -122,11 +123,21 @@ Os padrões ficam no `[env]` do `mise.toml`; valores locais e segredos vão no `
 
 ## 🤖 Usando com IA (MCP)
 
-> ⚠️ **Ainda não implementado.** Hoje não existe nada em `/mcp`: a rota cai na SPA. Por isso conectar o Zerômetro como conector no Claude falha na etapa de login.
+O Zerômetro expõe um servidor MCP em `/mcp` (Streamable HTTP). O login é OAuth 2.1 com registro dinâmico de clientes: o conector se registra sozinho, você entra com o Google (só convidados) e autoriza na tela `/autorizar`. As tools rodam com os dados de quem autorizou.
 
-O plano é expor um servidor MCP em `/mcp` (Streamable HTTP), com o mesmo login do site via OAuth, para um cliente como o Claude ler e alterar a sua biblioteca (ex.: _"comecei a jogar Ocarina"_, _"joguei 2h de Persona ontem"_, _"zerei o Ocarina, nota 9"_).
+**Conectar no claude.ai:** Configurações → Conectores → Adicionar conector personalizado → URL `https://<seu-domínio>/mcp`. O site precisa estar acessível pela internet (o claude.ai conecta a partir dos servidores da Anthropic).
 
-**Tools planejadas:** `search_igdb`, `list_library`, `get_game`, `get_stats`, `list_sessions`, `get_active_session`, `start_session`, `stop_session`, `log_session`, `add_game`, `set_status`, `update_session`, `update_game_entry`, `remove_game`, `delete_session`. As destrutivas só vão executar com confirmação explícita.
+**Claude Code:**
+
+```bash
+claude mcp add --transport http zerometro https://<seu-domínio>/mcp
+```
+
+**Tools disponíveis (leitura):** `search_igdb`, `list_library`, `get_game`, `get_stats`, `list_sessions`, `get_active_session`. O jogo pode ser passado pelo id ou pelo nome (sem diferenciar acentos); se o nome for ambíguo, a tool devolve as opções.
+
+**Planejadas (escrita):** `start_session`, `stop_session`, `log_session`, `add_game`, `set_status`, `update_session`, `update_game_entry`, `remove_game`, `delete_session`. As destrutivas só vão executar com confirmação explícita.
+
+Para inspecionar localmente: `mise run mcp:inspect` e aponte para `http://localhost:3000/mcp`.
 
 ---
 
