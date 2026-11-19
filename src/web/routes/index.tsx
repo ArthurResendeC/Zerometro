@@ -80,7 +80,13 @@ function Dashboard() {
             {playing.items.map((item) => (
               <div key={item.gameId} className="flex flex-col gap-2">
                 <GameCard item={item} />
-                <TimerButton gameId={item.gameId} size="sm" variant="outline" compact />
+                <TimerButton
+                  gameId={item.gameId}
+                  size="sm"
+                  variant="outline"
+                  compact
+                  className="mt-auto"
+                />
               </div>
             ))}
           </GameGrid>
