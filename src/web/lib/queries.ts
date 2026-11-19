@@ -2,7 +2,9 @@ import { keepPreviousData, queryOptions, useMutation, useQueryClient } from "@ta
 import { toast } from "sonner";
 import { gameStatusLabels } from "@shared/domain";
 import type { AddToLibraryInput, LibraryListQuery, UpdateLibraryEntryInput } from "@shared/library";
+import type { ListSessionsQuery, LogSessionInput, UpdateSessionInput } from "@shared/sessions";
 import { api, unwrap } from "@/lib/api";
+import { formatMinutes } from "@/lib/format";
 
 // Query keys e queryOptions centralizados: rotas usam no loader e componentes no useQuery.
 
@@ -85,7 +87,88 @@ export function useRemoveFromLibrary() {
     onSuccess: (removed) => {
       toast.success(`${removed.name} removido da biblioteca`);
       queryClient.removeQueries({ queryKey: libraryKeys.item(removed.gameId) });
-      return queryClient.invalidateQueries({ queryKey: libraryKeys.all });
+      return invalidateGameData(queryClient);
+    },
+    onError,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Sessões
+
+export const sessionKeys = {
+  all: ["sessions"] as const,
+  list: (filters: ListSessionsQuery) => [...sessionKeys.all, "list", filters] as const,
+};
+
+export const sessionsQuery = (filters: ListSessionsQuery = {}) =>
+  queryOptions({
+    queryKey: sessionKeys.list(filters),
+    queryFn: async () =>
+      (
+        await unwrap(
+          api.sessions.$get({
+            query: {
+              ...(filters.gameId && { gameId: String(filters.gameId) }),
+              ...(filters.from && { from: filters.from }),
+              ...(filters.to && { to: filters.to }),
+              ...(filters.limit && { limit: String(filters.limit) }),
+            },
+          }),
+        )
+      ).sessions,
+  });
+
+/** Sessões mudam totais da biblioteca (e, depois, as estatísticas). */
+function invalidateGameData(queryClient: ReturnType<typeof useQueryClient>) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: libraryKeys.all }),
+    queryClient.invalidateQueries({ queryKey: sessionKeys.all }),
+  ]);
+}
+
+export function useLogSession() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: LogSessionInput) => unwrap(api.sessions.$post({ json: input })),
+    onSuccess: (result) => {
+      const { session, dayTotalMinutes, statusChangedTo } = result;
+      toast.success(`${formatMinutes(session.minutes)} de ${session.gameName} registrados`, {
+        description: [
+          `Total do dia: ${formatMinutes(dayTotalMinutes)}`,
+          statusChangedTo && `Agora em ${gameStatusLabels[statusChangedTo]}`,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      });
+      return invalidateGameData(queryClient);
+    },
+    onError,
+  });
+}
+
+export function useUpdateSession() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, patch }: { id: number; patch: UpdateSessionInput }) =>
+      (await unwrap(api.sessions[":id"].$patch({ param: { id: String(id) }, json: patch })))
+        .session,
+    onSuccess: () => {
+      toast.success("Sessão atualizada");
+      return invalidateGameData(queryClient);
+    },
+    onError,
+  });
+}
+
+export function useDeleteSession() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) =>
+      (await unwrap(api.sessions[":id"].$delete({ param: { id: String(id) } }))).deleted,
+    onSuccess: (deleted) => {
+      toast.success(`Sessão de ${formatMinutes(deleted.minutes)} apagada`);
+      return invalidateGameData(queryClient);
     },
     onError,
   });

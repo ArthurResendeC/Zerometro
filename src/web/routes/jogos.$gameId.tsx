@@ -1,13 +1,14 @@
 import { useForm } from "@tanstack/react-form";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, Timer, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
 import { todayIn } from "@shared/dates";
 import { type GameStatus, gameStatuses, gameStatusLabels } from "@shared/domain";
 import type { LibraryItem, UpdateLibraryEntryInput } from "@shared/library";
 import { GameCover } from "@/components/game-cover";
+import { SessionsTable } from "@/components/sessions-table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import { formatDate, formatHoursFromSeconds, formatMinutes, formatPercent } from "@/lib/format";
 import { libraryItemQuery, useRemoveFromLibrary, useUpdateLibraryEntry } from "@/lib/queries";
+import { useLogSessionDialog } from "@/stores/log-session-dialog";
 
 export const Route = createFileRoute("/jogos/$gameId")({
   params: {
@@ -56,6 +58,7 @@ export const Route = createFileRoute("/jogos/$gameId")({
 function GamePage() {
   const { gameId } = Route.useParams();
   const { data: item } = useSuspenseQuery(libraryItemQuery(gameId));
+  const openLogSession = useLogSessionDialog((state) => state.openNew);
 
   return (
     <div className="space-y-6">
@@ -86,7 +89,22 @@ function GamePage() {
           </header>
 
           <PlayedSummary item={item} />
-          <EntryForm key={item.updatedAt} item={item} />
+
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-lg font-semibold">Sessões</h2>
+              <Button size="sm" onClick={() => openLogSession(item.gameId)}>
+                <Timer /> Registrar sessão
+              </Button>
+            </div>
+            <SessionsTable gameId={item.gameId} />
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold">Detalhes</h2>
+            <EntryForm key={item.updatedAt} item={item} />
+          </section>
+
           <RemoveButton item={item} />
         </div>
       </div>
