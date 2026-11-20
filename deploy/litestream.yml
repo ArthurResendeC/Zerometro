@@ -12,6 +12,9 @@ dbs:
       region: ${BACKUP_REGION}
       access-key-id: ${BACKUP_ACCESS_KEY_ID}
       secret-access-key: ${BACKUP_SECRET_ACCESS_KEY}
+      # Buckets novos da Railway e o R2 usam virtual-hosted (bucket no subdomínio); MinIO e afins
+      # pedem path-style. Sem isto, o Litestream assume path-style sempre que há endpoint.
+      force-path-style: ${BACKUP_FORCE_PATH_STYLE}
 
 # Um snapshot completo por dia e 7 dias de histórico: dá para restaurar qualquer ponto da última
 # semana. Entre snapshots vão só as mudanças (sync a cada segundo, compactadas em 30s/5min/1h).

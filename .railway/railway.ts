@@ -6,7 +6,16 @@
 // O que muda de uma instância para outra vem do ambiente de quem roda o plan/apply (o mise
 // carrega o .env), não deste arquivo: cada pessoa sobe a própria instância a partir do mesmo
 // repositório. Ver "Deploy (Railway)" no README.
-import { defineRailway, github, preserve, project, service, volume } from "railway/iac";
+import {
+  bucket,
+  defineRailway,
+  github,
+  preserve,
+  project,
+  ref,
+  service,
+  volume,
+} from "railway/iac";
 
 /** Repositório de onde a Railway builda: o oficial, para todo push na main chegar a todas as instâncias. */
 const REPO = "ArthurResendeC/Zerometro";
@@ -21,6 +30,16 @@ const fromEnv = (name: string) => process.env[name]?.trim() || undefined;
 /** Domínio próprio (ex.: zerometro.exemplo.com). Sem ele, use o gerado por `railway domain`. */
 const domain = fromEnv("ZEROMETRO_DOMAIN");
 
+/**
+ * Backup do SQLite (Litestream, ver deploy/entrypoint.sh). Padrão: um bucket da Railway criado
+ * aqui. Com ZEROMETRO_BACKUP=externo, nenhum bucket é criado e as BACKUP_* (R2 ou outro S3) são
+ * definidas à mão com `railway variable set`; com ZEROMETRO_BACKUP=desligado, não há backup.
+ */
+const backupMode = fromEnv("ZEROMETRO_BACKUP") ?? "railway";
+if (!["railway", "externo", "desligado"].includes(backupMode)) {
+  throw new Error(`ZEROMETRO_BACKUP inválido: ${backupMode} (use railway, externo ou desligado)`);
+}
+
 export default defineRailway(() => {
   // SQLite com WAL: 1 GB sobra para anos de sessões; aumentar é online e não destrutivo.
   // Região fixa: sem ela, o plan lê a região de um volume existente como mudança.
@@ -28,6 +47,33 @@ export default defineRailway(() => {
     sizeMB: 1024,
     region: fromEnv("ZEROMETRO_VOLUME_REGION") ?? "us-west2",
   });
+
+  // Região do bucket é fixa depois de criado. Por padrão, longe do volume (us-west2): um
+  // problema na região do volume não leva o backup junto.
+  const backups =
+    backupMode === "railway"
+      ? bucket("zerometro-backups", {
+          region: (fromEnv("ZEROMETRO_BACKUP_REGION") ?? "iad") as "sjc" | "iad" | "ams" | "sin",
+        })
+      : undefined;
+
+  const backupEnv = backups
+    ? {
+        BACKUP_BUCKET: ref(backups, "BUCKET"),
+        BACKUP_ENDPOINT: ref(backups, "ENDPOINT"),
+        BACKUP_REGION: ref(backups, "REGION"),
+        BACKUP_ACCESS_KEY_ID: ref(backups, "ACCESS_KEY_ID"),
+        BACKUP_SECRET_ACCESS_KEY: ref(backups, "SECRET_ACCESS_KEY"),
+      }
+    : backupMode === "externo"
+      ? {
+          BACKUP_BUCKET: preserve(),
+          BACKUP_ENDPOINT: preserve(),
+          BACKUP_REGION: preserve(),
+          BACKUP_ACCESS_KEY_ID: preserve(),
+          BACKUP_SECRET_ACCESS_KEY: preserve(),
+        }
+      : {};
 
   const web = service("web", {
     // Cada push na main gera um deploy (a Railway precisa de acesso ao repositório no GitHub).
@@ -59,8 +105,9 @@ export default defineRailway(() => {
       ZEROMETRO_TOKEN: preserve(),
       IGDB_CLIENT_ID: preserve(),
       IGDB_CLIENT_SECRET: preserve(),
+      ...backupEnv,
     },
   });
 
-  return project("zerometro", { resources: [web, data] });
+  return project("zerometro", { resources: backups ? [web, data, backups] : [web, data] });
 });

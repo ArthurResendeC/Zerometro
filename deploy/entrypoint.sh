@@ -9,6 +9,7 @@ CONFIG=/app/litestream.yml
 export DATABASE_PATH="${DATABASE_PATH:-/data/zerometro.db}"
 export BACKUP_PATH="${BACKUP_PATH:-zerometro}"
 export BACKUP_REGION="${BACKUP_REGION:-auto}"
+export BACKUP_FORCE_PATH_STYLE="${BACKUP_FORCE_PATH_STYLE:-false}"
 
 if [ -z "${BACKUP_BUCKET:-}" ]; then
   echo "⚠️  Backup desligado: defina BACKUP_BUCKET e as demais BACKUP_* (ver README)"
