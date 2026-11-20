@@ -15,7 +15,9 @@ export function createSessionRoutes(deps: AppDeps) {
       return c.json({ sessions: listSessions(webContext(deps, c), c.req.valid("query")) });
     })
     .post("/", validate("json", logSessionSchema), (c) => {
-      return c.json(logSession(webContext(deps, c), c.req.valid("json")), 201);
+      const result = logSession(webContext(deps, c), c.req.valid("json"));
+      // Reenvio da fila offline: nada foi criado agora.
+      return c.json(result, result.alreadySaved ? 200 : 201);
     })
     .patch(
       "/:id",

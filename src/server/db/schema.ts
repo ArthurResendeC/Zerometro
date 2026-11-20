@@ -101,11 +101,19 @@ export const playSessions = sqliteTable(
     endedAt: text("ended_at"),
     note: text("note"),
     source: text("source", { enum: sessionSources }).notNull().default("manual"),
+    /**
+     * UUID gerado no aparelho para sessões registradas offline (fila de sincronização):
+     * reenviar o mesmo id devolve a sessão existente em vez de duplicar.
+     */
+    clientId: text("client_id"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     index("play_sessions_user_played_on_idx").on(t.userId, t.playedOn),
+    uniqueIndex("play_sessions_user_client_id_idx")
+      .on(t.userId, t.clientId)
+      .where(sql`${t.clientId} is not null`),
     index("play_sessions_user_game_played_on_idx").on(t.userId, t.gameId, t.playedOn),
     check("play_sessions_minutes_positive", sql`${t.minutes} is null or ${t.minutes} > 0`),
     // Sessão ativa (timer rodando) = início sem fim, e só ela tem minutos nulos.

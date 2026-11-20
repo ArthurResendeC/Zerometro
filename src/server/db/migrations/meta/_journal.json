@@ -43,6 +43,13 @@
       "when": 1795141945922,
       "tag": "0005_conclusoes",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1795195293294,
+      "tag": "0006_sessoes_offline",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,2 @@
+ALTER TABLE `play_sessions` ADD `client_id` text;--> statement-breakpoint
+CREATE UNIQUE INDEX `play_sessions_user_client_id_idx` ON `play_sessions` (`user_id`,`client_id`) WHERE "play_sessions"."client_id" is not null;

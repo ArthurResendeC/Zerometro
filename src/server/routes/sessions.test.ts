@@ -37,6 +37,22 @@ describe("/api/sessions", () => {
     expect(deleted.status).toBe(200);
   });
 
+  test("clientId repetido devolve 200 com a mesma sessão; clientId inválido é 400", async () => {
+    const { request, gameId } = await setup();
+    const body = { gameId, minutes: 30, clientId: "7c1e2b9a-3d4f-4a5b-8c6d-9e0f1a2b3c4d" };
+
+    const first = await request("/api/sessions", json(body));
+    const again = await request("/api/sessions", json(body));
+    expect(first.status).toBe(201);
+    expect(again.status).toBe(200);
+    const [a, b] = (await Promise.all([first.json(), again.json()])) as LogSessionResult[];
+    expect(b!.session.id).toBe(a!.session.id);
+    expect(b!.alreadySaved).toBe(true);
+
+    const invalid = await request("/api/sessions", json({ ...body, clientId: "abc" }));
+    expect(invalid.status).toBe(400);
+  });
+
   test("valida minutos, data e corpo vazio", async () => {
     const { request, gameId } = await setup();
 

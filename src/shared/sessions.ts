@@ -39,6 +39,8 @@ export interface LogSessionResult {
   statusChangedTo: GameStatus | null;
   /** Ofensiva antes e depois da sessão (ex.: 6 → 7). */
   streak: StreakChange;
+  /** Reenvio de algo que já tinha chegado (mesmo `clientId`/alvo): nada mudou agora. */
+  alreadySaved?: boolean;
 }
 
 const minutesSchema = z
@@ -57,6 +59,8 @@ export const logSessionSchema = z.object({
   /** Padrão: hoje. */
   playedOn: isoDateSchema.optional(),
   note: noteSchema.optional(),
+  /** UUID gerado no aparelho (fila offline): reenviar o mesmo id não duplica a sessão. */
+  clientId: z.uuid().optional(),
 });
 export type LogSessionInput = z.infer<typeof logSessionSchema>;
 

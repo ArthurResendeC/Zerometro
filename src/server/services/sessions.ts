@@ -130,6 +130,10 @@ export function logSession(
   input: LogSessionInput,
   options: { source?: SessionSource } = {},
 ): LogSessionResult {
+  // Reenvio da fila offline (resposta perdida, duas abas): devolve a sessão que já chegou.
+  const existingId = input.clientId && findSessionIdByClientId(ctx, input.clientId);
+  if (existingId) return savedSessionResult(ctx, existingId);
+
   const playedOn = input.playedOn ?? ctx.today;
   const source = options.source ?? (ctx.actor === "mcp" ? "mcp" : "manual");
   assertNotFuture(playedOn, ctx.today);
@@ -149,6 +153,7 @@ export function logSession(
         minutes: input.minutes,
         note: input.note || null,
         source,
+        clientId: input.clientId ?? null,
       })
       .returning({ id: playSessions.id })
       .get();
@@ -172,6 +177,29 @@ export function logSession(
       streak: { before: streakBefore, current: currentStreak(scope, ctx.today) },
     };
   });
+}
+
+/** Sessão (encerrada ou o timer rodando) que veio do aparelho com esse `clientId`. */
+export function findSessionIdByClientId({ db, userId }: UserScope, clientId: string) {
+  return db
+    .select({ id: playSessions.id })
+    .from(playSessions)
+    .where(and(eq(playSessions.userId, userId), eq(playSessions.clientId, clientId)))
+    .get()?.id;
+}
+
+/** Resultado de uma sessão já gravada, para reenvios: totais atuais e a ofensiva sem mudança. */
+export function savedSessionResult(ctx: ServiceContext, id: number): LogSessionResult {
+  const session = getSession(ctx, id);
+  const streak = currentStreak(ctx, ctx.today);
+  return {
+    session,
+    dayTotalMinutes: minutesOnDay(ctx, session.playedOn),
+    gameTotalMinutes: minutesOnGame(ctx, session.gameId),
+    statusChangedTo: null,
+    streak: { before: streak, current: streak },
+    alreadySaved: true,
+  };
 }
 
 export function updateSession(

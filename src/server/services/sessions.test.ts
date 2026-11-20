@@ -130,6 +130,48 @@ describe("logSession", () => {
   });
 });
 
+describe("logSession com clientId (fila offline)", () => {
+  const clientId = "0b9d3c1e-6f2a-4c8e-9a51-3d2f7e8b6a10";
+
+  test("reenviar o mesmo clientId devolve a sessão que já chegou, sem duplicar", () => {
+    const first = logSession(ctx, { gameId: persona, minutes: 45, clientId });
+    const again = logSession(ctx, { gameId: persona, minutes: 45, clientId });
+
+    expect(first.alreadySaved).toBeUndefined();
+    expect(again.alreadySaved).toBe(true);
+    expect(again.session.id).toBe(first.session.id);
+    expect(again.dayTotalMinutes).toBe(45);
+    expect(again.streak.before).toBe(again.streak.current);
+    expect(listSessions(ctx)).toHaveLength(1);
+    expect(
+      ctx.db
+        .select()
+        .from(activityLog)
+        .all()
+        .filter((a) => a.action === "session.log"),
+    ).toHaveLength(1);
+  });
+
+  test("o mesmo clientId de outro usuário é outra sessão", async () => {
+    const friend = createTestContext({ db: ctx.db, userId: "amigo" });
+    const friendPersona = (await addToLibrary(friend, igdb, { igdbId: 114283, status: "playing" }))
+      .gameId;
+
+    logSession(ctx, { gameId: persona, minutes: 45, clientId });
+    const theirs = logSession(friend, { gameId: friendPersona, minutes: 20, clientId });
+
+    expect(theirs.alreadySaved).toBeUndefined();
+    expect(listSessions(friend)).toHaveLength(1);
+    expect(listSessions(ctx)).toHaveLength(1);
+  });
+
+  test("sem clientId, cada registro é uma sessão nova", () => {
+    logSession(ctx, { gameId: persona, minutes: 10 });
+    logSession(ctx, { gameId: persona, minutes: 10 });
+    expect(listSessions(ctx)).toHaveLength(2);
+  });
+});
+
 describe("listSessions", () => {
   test("filtra por jogo e período, mais recentes primeiro", () => {
     logSession(ctx, { gameId: persona, minutes: 10, playedOn: "2026-11-10" });
