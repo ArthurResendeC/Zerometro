@@ -34,8 +34,16 @@ export const igdbSearchQuerySchema = z.object({
 
 export const igdbIdSchema = z.coerce.number().int().positive();
 
-export type CoverSize = "thumb" | "cover_small" | "cover_big" | "720p" | "1080p";
+export type CoverSize =
+  | "thumb"
+  | "cover_small"
+  | "cover_big"
+  | "screenshot_med"
+  | "screenshot_big"
+  | "720p"
+  | "1080p";
 
+/** Qualquer imagem do IGDB (capa, artwork, screenshot) pelo id, no tamanho pedido. */
 export function coverUrl(imageId: string, size: CoverSize = "cover_big"): string {
   return `https://images.igdb.com/igdb/image/upload/t_${size}/${imageId}.jpg`;
 }

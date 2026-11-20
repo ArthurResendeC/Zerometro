@@ -88,6 +88,10 @@ export const ArrowLeftIcon = pixelIcon(
   r(0, 3, 1, 2) + r(1, 2, 1, 4) + r(2, 1, 1, 6) + r(3, 3, 5, 2),
   "ArrowLeftIcon",
 );
+export const ArrowRightIcon = pixelIcon(
+  r(7, 3, 1, 2) + r(6, 2, 1, 4) + r(5, 1, 1, 6) + r(0, 3, 5, 2),
+  "ArrowRightIcon",
+);
 export const TimerIcon = pixelIcon(
   r(2, 0, 4, 1) +
     r(1, 1) +

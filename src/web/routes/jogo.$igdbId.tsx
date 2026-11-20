@@ -8,6 +8,7 @@ import { ArrowLeftIcon } from "@/components/icons";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AboutTab } from "@/features/game/about-tab";
 import { GameHero, type HeroGame } from "@/features/game/game-hero";
 import { MySessions } from "@/features/game/my-sessions";
 import { type GameTab, gameTabs, TabToggle } from "@/features/game/tab-toggle";
@@ -95,7 +96,11 @@ function GamePage() {
 
       <GameHero game={game} badges={item && <StatusBadge status={item.status} />} />
 
-      {tab === "sessoes" && item ? <MySessions item={item} /> : <AboutTab igdbId={igdbId} />}
+      {tab === "sessoes" && item ? (
+        <MySessions item={item} />
+      ) : (
+        <AboutTab igdbId={igdbId} item={item} />
+      )}
     </div>
   );
 }
@@ -120,18 +125,6 @@ function AddButtons({ game, onAdded }: { game: IgdbGamePage; onAdded: (tab: Game
         onAdded={() => onAdded("sobre")}
       />
     </div>
-  );
-}
-
-// Provisório: a aba "Sobre" de verdade vem nos próximos passos.
-function AboutTab({ igdbId }: { igdbId: number }) {
-  const { data: page, isPending, isError } = useQuery(gamePageQuery(igdbId));
-  if (isPending) return <Skeleton className="h-24" />;
-  if (isError) return <p className="text-muted-foreground">O IGDB não respondeu agora.</p>;
-  return (
-    <p className="leading-7 whitespace-pre-line">
-      {page.summary ?? "O IGDB não tem uma descrição deste jogo."}
-    </p>
   );
 }
 

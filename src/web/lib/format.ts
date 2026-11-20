@@ -62,3 +62,22 @@ export function formatReleaseDate(isoDate: string, precision: ReleasePrecision |
       return formatDate(isoDate);
   }
 }
+
+const integerFormat = new Intl.NumberFormat("pt-BR");
+
+/** 2351 → "2.351". */
+export function formatCount(value: number): string {
+  return integerFormat.format(value);
+}
+
+/** Dias de `from` até `to` (datas YYYY-MM-DD); negativo se `to` já passou. */
+export function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
+}
+
+/** Contagem regressiva para um lançamento: "Sai hoje", "Sai amanhã", "Faltam 96 dias". */
+export function formatCountdown(days: number): string {
+  if (days <= 0) return "Sai hoje";
+  if (days === 1) return "Sai amanhã";
+  return `Faltam ${formatCount(days)} dias`;
+}
