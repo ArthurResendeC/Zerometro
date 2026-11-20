@@ -1,0 +1,20 @@
+# Backup contínuo do SQLite (Litestream 0.5). Usado pelo deploy/entrypoint.sh dentro da imagem.
+# As variáveis ${...} vêm do ambiente do container (ver "Backup" no README):
+# - Railway: o .railway/railway.ts liga o bucket da Railway nas BACKUP_*;
+# - R2 ou outro S3: defina as BACKUP_* à mão.
+dbs:
+  - path: ${DATABASE_PATH}
+    replica:
+      type: s3
+      bucket: ${BACKUP_BUCKET}
+      path: ${BACKUP_PATH}
+      endpoint: ${BACKUP_ENDPOINT}
+      region: ${BACKUP_REGION}
+      access-key-id: ${BACKUP_ACCESS_KEY_ID}
+      secret-access-key: ${BACKUP_SECRET_ACCESS_KEY}
+
+# Um snapshot completo por dia e 7 dias de histórico: dá para restaurar qualquer ponto da última
+# semana. Entre snapshots vão só as mudanças (sync a cada segundo, compactadas em 30s/5min/1h).
+snapshot:
+  interval: 24h
+  retention: 168h
