@@ -14,7 +14,14 @@ import type { CompletionType } from "@shared/domain";
 import type { LibraryItem } from "@shared/library";
 import { RA_CONSOLES } from "@shared/ra-consoles";
 import { ExternalLink } from "@/components/external-link";
-import { CheckIcon, PlusIcon, SearchIcon, TrashIcon, TrophyIcon } from "@/components/icons";
+import {
+  CheckIcon,
+  DownloadIcon,
+  PlusIcon,
+  SearchIcon,
+  TrashIcon,
+  TrophyIcon,
+} from "@/components/icons";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,9 +53,11 @@ import {
   type AchievementChange,
   achievementCandidatesQuery,
   achievementsQuery,
+  steamProfileQuery,
   useAchievementChange,
   useLinkAchievementSet,
   useRefreshAchievements,
+  useSyncSteamGame,
   useUnlinkAchievementSet,
 } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -72,6 +81,8 @@ export function AchievementsTab({ item }: { item: LibraryItem }) {
   const { data } = useQuery(achievementsQuery(item.gameId));
   const change = useAchievementChange(item.gameId);
   const refresh = useRefreshAchievements(item.gameId);
+  const { data: steamProfile } = useQuery(steamProfileQuery());
+  const steamSync = useSyncSteamGame(item.gameId);
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<Sort>("source");
@@ -94,6 +105,11 @@ export function AchievementsTab({ item }: { item: LibraryItem }) {
   }
 
   const anySource = achievementSources.some((s) => data.sources[s]);
+  // Sincronizar faz sentido com o perfil conectado e uma lista da Steam ligada (ou nenhuma lista:
+  // a sincronização liga a da Steam se o jogo estiver na conta).
+  const canSyncSteam =
+    Boolean(steamProfile?.profile) &&
+    (data.sets.length === 0 || data.sets.some((s) => s.source === "steam"));
   if (!anySource && data.sets.length === 0) return <NotConfigured />;
 
   return (
@@ -103,6 +119,23 @@ export function AchievementsTab({ item }: { item: LibraryItem }) {
           <h2 className="display-md">Conquistas</h2>
           {data.sets.length > 0 && (
             <div className="flex flex-wrap justify-end">
+              {canSyncSteam && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={steamSync.isPending}
+                  onClick={() => steamSync.mutate()}
+                >
+                  <DownloadIcon />{" "}
+                  {steamSync.isPending ? (
+                    "Sincronizando…"
+                  ) : (
+                    <>
+                      Sincronizar<span className="hidden sm:inline"> com a Steam</span>
+                    </>
+                  )}
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="ghost"
@@ -128,6 +161,17 @@ export function AchievementsTab({ item }: { item: LibraryItem }) {
               Ligue a lista de conquistas da Steam ou do RetroAchievements e marque o que já
               conseguiu. Os nomes, ícones e a raridade vêm da fonte.
             </p>
+            {canSyncSteam && (
+              <div className="flex flex-wrap items-center gap-3">
+                <Button disabled={steamSync.isPending} onClick={() => steamSync.mutate()}>
+                  <DownloadIcon />{" "}
+                  {steamSync.isPending ? "Sincronizando…" : "Sincronizar com a Steam"}
+                </Button>
+                <p className="text-sm text-muted-foreground">
+                  Liga a lista da Steam e traz o que você já desbloqueou na sua conta.
+                </p>
+              </div>
+            )}
             <SetPicker item={item} sources={data.sources} />
           </Card>
         )}
@@ -410,7 +454,8 @@ function AchievementRow({
   const meta = [
     a.rarity !== null && formatRarity(a.rarity),
     a.points !== null && `${a.points} pts`,
-    a.unlockedAt && `desbloqueada em ${unlockedDay(a.unlockedAt)}`,
+    a.unlockedAt &&
+      `desbloqueada em ${unlockedDay(a.unlockedAt)}${a.origin === "sync" ? " (sincronizada)" : ""}`,
     a.removed && "removida da fonte",
   ].filter(Boolean);
 

@@ -37,6 +37,7 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { XpBar } from "@/components/ui/progress";
+import { PlaytimeSourceControl } from "@/features/steam/playtime-source";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDate, formatHoursFromSeconds, formatMinutes, formatPercent } from "@/lib/format";
 import { useRemoveFromLibrary, useUpdateLibraryEntry } from "@/lib/queries";
@@ -132,11 +133,10 @@ function PlayedSummary({ item }: { item: LibraryItem }) {
           <p className="text-xs text-muted-foreground">{progressText(item, item.progress)}</p>
         </div>
       )}
-      {item.priorMinutes > 0 && (
+      {item.playtimeSource === "sessions" && item.priorMinutes > 0 && (
         <p className="text-xs text-muted-foreground">
           {formatMinutes(item.priorMinutes)} antes do Zerômetro
-          {item.minutesPlayed > item.priorMinutes &&
-            ` + ${formatMinutes(item.minutesPlayed - item.priorMinutes)} em sessões`}
+          {item.sessionMinutes > 0 && ` + ${formatMinutes(item.sessionMinutes)} em sessões`}
         </p>
       )}
       <p className="text-xs text-muted-foreground">
@@ -145,6 +145,7 @@ function PlayedSummary({ item }: { item: LibraryItem }) {
           : `${item.sessionsCount} ${item.sessionsCount === 1 ? "sessão" : "sessões"}` +
             (item.lastPlayedOn ? ` · última em ${formatDate(item.lastPlayedOn)}` : "")}
       </p>
+      <PlaytimeSourceControl item={item} />
     </Card>
   );
 }
@@ -299,6 +300,8 @@ function EntryForm({ item }: { item: LibraryItem }) {
             <p className="text-sm text-muted-foreground">
               Tempo que você já tinha jogado antes de registrar aqui. Conta no total e no progresso
               do jogo, mas não na ofensiva nem nas médias.
+              {item.playtimeSource === "steam" &&
+                " Agora o tempo do jogo vem da Steam: este valor fica guardado e volta a contar se você escolher as sessões."}
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <DurationInput

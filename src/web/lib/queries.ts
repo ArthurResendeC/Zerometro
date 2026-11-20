@@ -29,6 +29,7 @@ import type {
   UpdateSessionInput,
 } from "@shared/sessions";
 import type { UpdateSettingsInput } from "@shared/settings";
+import type { LinkSteamProfileInput } from "@shared/steam";
 import type {
   StartTimerInput,
   StartTimerResult,
@@ -40,6 +41,7 @@ import { DEFAULT_TIME_ZONE, nextOccurrence, todayIn, zonedParts } from "@shared/
 import { reachedStreakMilestone } from "@/features/audio/sound-events";
 import type { SoundName } from "@/features/audio/sounds";
 import { useSound } from "@/features/audio/use-sound";
+import { gameSyncMessage, librarySyncMessage } from "@/features/steam/sync-messages";
 import {
   currentTimer,
   currentUserId,
@@ -1038,5 +1040,77 @@ export function useAchievementChange(gameId: number) {
         queryClient.invalidateQueries({ queryKey: key }),
         queryClient.invalidateQueries({ queryKey: libraryKeys.all }),
       ]),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Steam: o perfil de quem usa o app e a sincronização (conquistas e horas)
+
+export const steamKeys = { profile: ["steam", "profile"] as const };
+
+export const steamProfileQuery = () =>
+  queryOptions({
+    queryKey: steamKeys.profile,
+    queryFn: () => unwrap(api.steam.profile.$get()),
+    staleTime: 5 * 60_000,
+  });
+
+export function useLinkSteamProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: LinkSteamProfileInput) => unwrap(api.steam.profile.$put({ json: input })),
+    onSuccess: (data) => {
+      queryClient.setQueryData(steamKeys.profile, data);
+      if (data.profile) toast.success(`Steam conectada: ${data.profile.name}`);
+    },
+    onError,
+  });
+}
+
+export function useUnlinkSteamProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => unwrap(api.steam.profile.$delete()),
+    onSuccess: (data) => {
+      queryClient.setQueryData(steamKeys.profile, data);
+      toast.success("Steam desconectada");
+    },
+    onError,
+  });
+}
+
+/** Sincroniza um jogo; o item e as conquistas voltam atualizados na resposta. */
+export function useSyncSteamGame(gameId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      unwrap(api.library[":gameId"].steam.sync.$post({ param: { gameId: String(gameId) } })),
+    onSuccess: ({ sync, item, achievements }) => {
+      const { title, description } = gameSyncMessage(sync);
+      toast.success(title, { description });
+      setLibraryItem(queryClient, item);
+      return Promise.all([
+        setGameAchievements(queryClient, gameId, achievements),
+        queryClient.invalidateQueries({ queryKey: statsKeys.all }),
+      ]);
+    },
+    onError,
+  });
+}
+
+export function useSyncSteamLibrary() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => unwrap(api.steam.sync.$post()),
+    onSuccess: (sync) => {
+      const { title, description } = librarySyncMessage(sync);
+      toast.success(title, { description });
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: libraryKeys.all }),
+        queryClient.invalidateQueries({ queryKey: achievementKeys.all }),
+        queryClient.invalidateQueries({ queryKey: statsKeys.all }),
+      ]);
+    },
+    onError,
   });
 }

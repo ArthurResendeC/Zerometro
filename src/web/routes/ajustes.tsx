@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { LogOutIcon } from "@/components/icons";
 import { Label } from "@/components/ui/label";
 import { AudioSettingsCard } from "@/features/audio/audio-settings-card";
+import { SteamSettingsCard } from "@/features/steam/steam-settings-card";
 import { clearPersistedQueries } from "@/features/offline/query-persistence";
 import { signOut as endSession } from "@/lib/auth";
 import { formatMinutes } from "@/lib/format";
@@ -49,6 +50,7 @@ function SettingsPage() {
         description='Ao parar um timer ligado há mais que isso, o Zerômetro pergunta "jogou tudo isso mesmo?" e deixa corrigir o horário em que você parou.'
       />
       <AudioSettingsCard />
+      <SteamSettingsCard />
       <AccountCard />
     </div>
   );
