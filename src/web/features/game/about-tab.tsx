@@ -3,8 +3,10 @@ import { type ReactNode, useState } from "react";
 import type { IgdbGamePage } from "@shared/game-page";
 import type { TimeToBeat } from "@shared/igdb";
 import type { LibraryItem } from "@shared/library";
+import { metacriticSearchUrl, openCriticSearchUrl } from "@shared/review-sites";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ExternalLink } from "@/components/external-link";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNow } from "@/hooks/use-now";
@@ -42,7 +44,18 @@ export function AboutTab({ igdbId, item }: AboutTabProps) {
           O IGDB não respondeu agora, então faltam a sinopse, as notas e as imagens. Tente de novo
           daqui a pouco.
         </p>
-        {item?.timeToBeat && <Scoreboard stats={timeToBeatStats(item.timeToBeat)} note={null} />}
+        {item?.timeToBeat && (
+          <Scoreboard stats={timeToBeatStats(item.timeToBeat)} note="Tempo para zerar do IGDB" />
+        )}
+        {item && (
+          <p className="text-sm text-muted-foreground">
+            <RatingSources
+              name={item.name}
+              releaseYear={item.releaseYear}
+              intro="Enquanto isso, veja as notas"
+            />
+          </p>
+        )}
       </div>
     );
   }
@@ -107,10 +120,11 @@ function GameScoreboard({ game }: { game: IgdbGamePage }) {
   // Datas do IGDB são em UTC.
   const today = new Date(useNow(60 * 60_000)).toISOString().slice(0, 10);
   const upcoming = game.releaseDate !== null && game.releaseDate > today;
-  const stats: Stat[] = [];
+  const releaseStats: Stat[] = [];
+  const ratingStats: Stat[] = [];
 
   if (upcoming && game.releaseDate) {
-    stats.push({
+    releaseStats.push({
       label: "Lançamento",
       value: formatReleaseDate(game.releaseDate, game.releasePrecision),
       hint:
@@ -119,45 +133,97 @@ function GameScoreboard({ game }: { game: IgdbGamePage }) {
           : undefined,
     });
     if (game.hypes > 0) {
-      stats.push({
+      releaseStats.push({
         label: "Expectativa",
         value: formatCount(game.hypes),
         hint: game.hypes === 1 ? "pessoa acompanhando" : "pessoas acompanhando",
       });
     }
   }
+  // A nota é a média do IGDB; o número ao lado diz de quantas notas ela saiu.
   if (game.criticRating !== null) {
-    stats.push({
+    ratingStats.push({
       label: "Crítica",
       value: <ScoreChip score={game.criticRating} />,
-      hint: plural(game.criticRatingCount, "análise", "análises"),
+      hint: `média de ${plural(game.criticRatingCount, "análise", "análises")}`,
     });
   }
   if (game.userRating !== null) {
-    stats.push({
+    ratingStats.push({
       label: "Público",
       value: <ScoreChip score={game.userRating} />,
-      hint: plural(game.userRatingCount, "voto", "votos"),
+      hint: `média de ${plural(game.userRatingCount, "voto", "votos")}`,
     });
   }
+  const stats = [...releaseStats, ...ratingStats];
+  // Jogo lançado sempre ganha os links, mesmo sem nota no IGDB (é quando mais fazem falta).
+  const showSources = !upcoming || ratingStats.length > 0;
   const ttb = game.timeToBeat ? timeToBeatStats(game.timeToBeat) : [];
 
-  if (stats.length + ttb.length === 0) return null;
+  if (stats.length === 0 && !showSources && ttb.length === 0) return null;
   return (
     <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-      {stats.length > 0 && <Scoreboard stats={stats} note={null} />}
+      {(stats.length > 0 || showSources) && (
+        <Scoreboard
+          stats={stats}
+          note={
+            showSources && (
+              <RatingSources
+                name={game.name}
+                releaseYear={game.releaseYear}
+                intro={sourcesIntro(game)}
+              />
+            )
+          }
+          className={ttb.length === 0 ? "md:col-span-2" : undefined}
+        />
+      )}
       {ttb.length > 0 && (
         <Scoreboard
           stats={ttb}
           note={
             game.timeToBeatCount > 0
-              ? `Tempo para zerar segundo ${plural(game.timeToBeatCount, "pessoa", "pessoas")} no IGDB`
-              : "Tempo para zerar segundo o IGDB"
+              ? `Tempo para zerar do IGDB, informado por ${plural(game.timeToBeatCount, "pessoa", "pessoas")}`
+              : "Tempo para zerar do IGDB"
           }
-          className={stats.length === 0 ? "md:col-span-2" : undefined}
+          className={stats.length === 0 && !showSources ? "md:col-span-2" : undefined}
         />
       )}
     </div>
+  );
+}
+
+function sourcesIntro(game: IgdbGamePage): string {
+  if (game.criticRating === null && game.userRating === null) {
+    return "O IGDB ainda não tem notas deste jogo. Veja";
+  }
+  if (game.criticRating === null) return "Nota do IGDB, que ainda não tem a da crítica. Veja";
+  return "Notas do IGDB. Compare";
+}
+
+/** De onde vêm as notas, e onde conferir: o IGDB reúne bem menos análises que os agregadores. */
+function RatingSources({
+  name,
+  releaseYear,
+  intro,
+}: {
+  name: string;
+  releaseYear: number | null;
+  /** Começo da frase, que continua com "no Metacritic e no OpenCritic". */
+  intro: string;
+}) {
+  const link = "text-info underline underline-offset-4";
+  return (
+    <>
+      {intro} no{" "}
+      <ExternalLink href={metacriticSearchUrl(name)} className={link}>
+        Metacritic
+      </ExternalLink>{" "}
+      e no{" "}
+      <ExternalLink href={openCriticSearchUrl(name, releaseYear)} className={link}>
+        OpenCritic
+      </ExternalLink>
+    </>
   );
 }
 
@@ -178,21 +244,23 @@ function Scoreboard({
   className,
 }: {
   stats: Stat[];
-  note: string | null;
+  note: ReactNode;
   className?: string;
 }) {
   return (
     <Card className={cn("gap-3", className)}>
-      <dl className="grid grid-cols-[repeat(auto-fit,minmax(5.5rem,1fr))] gap-4">
-        {stats.map((s) => (
-          <div key={s.label}>
-            <dt className="display-xs text-muted-foreground">{s.label}</dt>
-            <dd className="mt-2 display-sm tabular-nums">{s.value}</dd>
-            {s.hint && <dd className="mt-1 text-xs text-muted-foreground">{s.hint}</dd>}
-          </div>
-        ))}
-      </dl>
-      {note && <p className="text-xs text-muted-foreground">{note}</p>}
+      {stats.length > 0 && (
+        <dl className="grid grid-cols-[repeat(auto-fit,minmax(5.5rem,1fr))] gap-4">
+          {stats.map((s) => (
+            <div key={s.label}>
+              <dt className="display-xs text-muted-foreground">{s.label}</dt>
+              <dd className="mt-2 display-sm tabular-nums">{s.value}</dd>
+              {s.hint && <dd className="mt-1 text-xs text-muted-foreground">{s.hint}</dd>}
+            </div>
+          ))}
+        </dl>
+      )}
+      {note && <p className="text-xs leading-5 text-muted-foreground">{note}</p>}
     </Card>
   );
 }

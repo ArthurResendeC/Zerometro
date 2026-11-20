@@ -132,7 +132,7 @@ function CoverTag({ feedKey, game, rank }: { feedKey: FeedKey; game: FeedGame; r
     return (
       <Badge
         className="absolute top-1 left-1 tabular-nums"
-        title={`Nota da crítica: ${game.criticRating} (${game.criticRatingCount} análises)`}
+        title={`Nota da crítica no IGDB: ${game.criticRating} (média de ${game.criticRatingCount} análises)`}
       >
         <StarIcon /> {game.criticRating}
       </Badge>

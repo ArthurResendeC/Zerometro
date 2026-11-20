@@ -17,7 +17,7 @@ import {
   themeLabel,
 } from "@shared/game-labels";
 import { igdbGameUrl } from "@shared/igdb";
-import { ExternalIcon } from "@/components/icons";
+import { ExternalLink } from "@/components/external-link";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { formatReleaseDate } from "@/lib/format";
@@ -43,7 +43,7 @@ export function GameDetails({ game }: { game: IgdbGamePage }) {
           <ul className="flex flex-wrap gap-2">
             {stores.map((link) => (
               <li key={link.kind}>
-                <ExternalLink
+                <StoreLink
                   link={link}
                   className={buttonVariants({ variant: "outline", size: "sm" })}
                 />
@@ -89,14 +89,14 @@ export function GameDetails({ game }: { game: IgdbGamePage }) {
         <ul className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
           {otherLinks.map((link) => (
             <li key={link.kind}>
-              <ExternalLink
+              <StoreLink
                 link={link}
                 className="text-info underline decoration-2 underline-offset-4"
               />
             </li>
           ))}
           <li>
-            <ExternalLink
+            <StoreLink
               link={{ kind: "official", url: igdbGameUrl(game) }}
               label="IGDB"
               className="text-info underline decoration-2 underline-offset-4"
@@ -117,7 +117,7 @@ function Block({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function ExternalLink({
+function StoreLink({
   link,
   label = gameLinkLabels[link.kind],
   className,
@@ -127,16 +127,9 @@ function ExternalLink({
   className?: string;
 }) {
   return (
-    <a
-      href={link.url}
-      target="_blank"
-      rel="noreferrer"
-      className={cn("inline-flex items-center gap-2", className)}
-    >
+    <ExternalLink href={link.url} className={cn("gap-2", className)}>
       {label}
-      <ExternalIcon className="size-2.5 opacity-70" />
-      <span className="sr-only">(abre em outra aba)</span>
-    </a>
+    </ExternalLink>
   );
 }
 
