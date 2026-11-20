@@ -97,6 +97,8 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 - **Conclusões e pós-jogo:** "zerei" é separado do status. Registre a história, a história + extras ou o 100% (com data, inclusive replays); um jogo zerado que você continua jogando fica em "Jogando" com o selo de zerado e o rótulo **Pós-jogo** (com filtro na biblioteca), e a barra de progresso passa a mirar o próximo nível
 - **Objetivos por jogo:** caixinhas ou contadores ("900 sementes Korok") com barra geral; concluir o último sugere marcar o jogo como 100%
 - **Conquistas da Steam e do RetroAchievements** (opcional, com a chave de cada um): a lista oficial do jogo, com ícone, descrição, raridade ("8% dos jogadores") e pontos do RA, e você marca o que já conseguiu. A da Steam é achada sozinha pelo IGDB; a do RA, pelo nome nos consoles do jogo (você confirma) ou colando o link. Secretas ficam borradas até pedir o spoiler; filtros, busca e ordem por raridade; completar a lista sugere marcar o 100%
+- **Sincronizar com a sua Steam** (opcional): conecte o perfil nos Ajustes (só a URL, sem senha; os detalhes de jogos precisam estar públicos) e traga as conquistas que você já desbloqueou, com a data de verdade, e as horas de cada jogo. É manual: um botão por jogo ou "Sincronizar tudo". Só adiciona desbloqueios, nunca desmarca o que você marcou
+- **Tempo jogado: sessões ou Steam, você escolhe por jogo.** No controle manual valem as sessões mais o tempo antes do Zerômetro; na Steam vale o total de lá. O tempo da Steam fica guardado à parte, e as sessões continuam contando na ofensiva e nas estatísticas nos dois casos
 - **Tempo jogado antes do Zerômetro:** para jogos que você já vinha jogando ("tenho 39h de Witcher 3"), sem inventar sessões; conta no total e no progresso do jogo, mas não na ofensiva nem nas médias
 - **Instalável como app** (PWA) no computador (Chrome, Edge, Safari) e no celular, com janela própria, atalhos no ícone e um aviso com o passo a passo de cada navegador
 - **Funciona sem internet:** o app abre offline com os dados já vistos neste aparelho (só leitura), e registrar sessão, "Comecei", "Parei" e trocar de jogo vão para uma fila no aparelho com o horário real. Quando a conexão volta, a fila é enviada em ordem e sem duplicar (mesmo com várias abas); o cabeçalho mostra o que está pendente e, se o servidor recusar algo (ex.: o timer já tinha começado em outro aparelho), o motivo, com a opção de descartar
@@ -122,7 +124,9 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 - [ ] Alertas de lançamento da lista de desejos
 - [ ] Sincronização de tempo jogado da Steam
 - [x] ~Conquistas da Steam e do RetroAchievements (lista da fonte, marcadas à mão)~
-- [ ] Sincronizar as conquistas com o perfil público da Steam e do RetroAchievements
+- [x] ~Sincronizar conquistas e horas com o perfil da Steam~
+- [ ] Sincronizar as conquistas com o perfil do RetroAchievements
+- [ ] Importar a biblioteca da Steam
 
 ---
 
@@ -182,39 +186,39 @@ mise run dev                 # http://localhost:3000
 
 Outras tarefas (`mise tasks` lista todas):
 
-| Tarefa                               | O que faz                                      |
-| ------------------------------------ | ---------------------------------------------- |
-| `mise run check`                     | formatação + lint + typecheck + testes         |
-| `mise run token`                     | gera um token de acesso novo                   |
-| `mise run fmt` / `mise run lint:fix` | formata (oxfmt) e corrige lint (oxlint)        |
-| `mise run build` / `mise run start`  | build de produção em `dist/` e execução        |
-| `mise run db:generate`               | gera migration a partir do schema              |
-| `mise run db:studio`                 | abre o Drizzle Studio                          |
-| `mise run mcp:inspect`               | abre o MCP Inspector                           |
-| `mise run igdb:smoke [termo]`        | testa busca e tempo para zerar no IGDB real    |
-| `mise run achievements:smoke`        | testa as listas de conquistas na Steam e no RA |
-| `mise run demo`                      | sobe com dados de exemplo em `data/demo.db`    |
-| `mise run demo:capture`              | congela as páginas de jogo do demo (IGDB real) |
-| `mise run demo:capture-achievements` | congela as conquistas do demo (Steam real)     |
-| `mise run icons`                     | gera os ícones PNG do app (PWA e iOS)          |
+| Tarefa                                 | O que faz                                                                        |
+| -------------------------------------- | -------------------------------------------------------------------------------- |
+| `mise run check`                       | formatação + lint + typecheck + testes                                           |
+| `mise run token`                       | gera um token de acesso novo                                                     |
+| `mise run fmt` / `mise run lint:fix`   | formata (oxfmt) e corrige lint (oxlint)                                          |
+| `mise run build` / `mise run start`    | build de produção em `dist/` e execução                                          |
+| `mise run db:generate`                 | gera migration a partir do schema                                                |
+| `mise run db:studio`                   | abre o Drizzle Studio                                                            |
+| `mise run mcp:inspect`                 | abre o MCP Inspector                                                             |
+| `mise run igdb:smoke [termo]`          | testa busca e tempo para zerar no IGDB real                                      |
+| `mise run achievements:smoke [perfil]` | testa as conquistas na Steam e no RA (e a sincronização, com um perfil da Steam) |
+| `mise run demo`                        | sobe com dados de exemplo em `data/demo.db`                                      |
+| `mise run demo:capture`                | congela as páginas de jogo do demo (IGDB real)                                   |
+| `mise run demo:capture-achievements`   | congela as conquistas do demo (Steam real)                                       |
+| `mise run icons`                       | gera os ícones PNG do app (PWA e iOS)                                            |
 
 ### Variáveis de ambiente
 
 Os padrões ficam no `[env]` do `mise.toml`; valores locais e segredos vão no `.env` (carregado pelo mise, não versionado).
 
-| Variável                                | Descrição                                                                                                                    |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET` | Credenciais do app na Twitch                                                                                                 |
-| `STEAM_WEB_API_KEY`                     | Chave da Steam Web API ([pedir aqui](https://steamcommunity.com/dev/apikey)). Opcional: sem ela, a Steam some das conquistas |
-| `RA_API_KEY`                            | Chave da API do RetroAchievements (no site: Settings → Keys). Opcional, idem                                                 |
-| `ZEROMETRO_TOKEN`                       | Token de acesso da instância (pelo menos 32 caracteres; `mise run token`). Obrigatório                                       |
-| `PUBLIC_URL`                            | URL pública do site (padrão: domínio da Railway ou `http://localhost:$PORT`)                                                 |
-| `DATABASE_PATH`                         | Caminho do arquivo SQLite (padrão: `data/zerometro.db` na raiz do projeto)                                                   |
-| `PORT`                                  | Porta do servidor (padrão: `3000`)                                                                                           |
-| `TZ`                                    | Fuso usado nas estatísticas (padrão: `America/Sao_Paulo`)                                                                    |
-| `ZEROMETRO_DOMAIN`                      | Só no deploy: domínio próprio da sua instância na Railway (ver [Deploy](#-deploy-railway))                                   |
-| `ZEROMETRO_VOLUME_REGION`               | Só no deploy: região do volume do SQLite (padrão: `us-west2`)                                                                |
-| `ZEROMETRO_BACKUP`                      | Só no deploy: onde fica o backup do banco (ver [Backup](#backup-do-banco))                                                   |
+| Variável                                | Descrição                                                                                                                                       |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET` | Credenciais do app na Twitch                                                                                                                    |
+| `STEAM_WEB_API_KEY`                     | Chave da Steam Web API ([pedir aqui](https://steamcommunity.com/dev/apikey)). Opcional: sem ela, a Steam some das conquistas e da sincronização |
+| `RA_API_KEY`                            | Chave da API do RetroAchievements (no site: Settings → Keys). Opcional, idem                                                                    |
+| `ZEROMETRO_TOKEN`                       | Token de acesso da instância (pelo menos 32 caracteres; `mise run token`). Obrigatório                                                          |
+| `PUBLIC_URL`                            | URL pública do site (padrão: domínio da Railway ou `http://localhost:$PORT`)                                                                    |
+| `DATABASE_PATH`                         | Caminho do arquivo SQLite (padrão: `data/zerometro.db` na raiz do projeto)                                                                      |
+| `PORT`                                  | Porta do servidor (padrão: `3000`)                                                                                                              |
+| `TZ`                                    | Fuso usado nas estatísticas (padrão: `America/Sao_Paulo`)                                                                                       |
+| `ZEROMETRO_DOMAIN`                      | Só no deploy: domínio próprio da sua instância na Railway (ver [Deploy](#-deploy-railway))                                                      |
+| `ZEROMETRO_VOLUME_REGION`               | Só no deploy: região do volume do SQLite (padrão: `us-west2`)                                                                                   |
+| `ZEROMETRO_BACKUP`                      | Só no deploy: onde fica o backup do banco (ver [Backup](#backup-do-banco))                                                                      |
 
 ---
 
@@ -246,7 +250,7 @@ Por segurança, o OAuth só devolve a pessoa para o claude.ai e para endereços 
 
 **Tools disponíveis (leitura):** `search_igdb`, `get_feeds` (as listas da tela inicial: bem avaliados, em alta e próximos), `list_library` (com filtro de pós-jogo), `get_game` (com conclusões, objetivos e conquistas), `list_objectives`, `list_achievements` (secretas sem spoiler, a menos que peça), `get_stats`, `get_period_stats` (um ano ou os últimos 12 meses: gêneros, horários, recordes e zerados), `list_sessions`, `get_active_session`. O jogo pode ser passado pelo id ou pelo nome (sem diferenciar acentos); se o nome for ambíguo, a tool devolve as opções.
 
-**Tools de escrita:** `start_session` / `stop_session` (o mesmo timer do site), `log_session` (sessão já jogada, ex.: "joguei 2h ontem"), `add_game` (pelo igdbId achado com `search_igdb`, opcionalmente com o tempo já jogado), `set_status`, `set_prior_playtime` (tempo jogado antes do Zerômetro, ex.: "já tenho 39h de Witcher 3"), `mark_completed` ("zerei o Ocarina mas vou continuar jogando", "platinei"), `add_objective` ("adiciona o objetivo 900 sementes Korok no BotW") `update_objective` ("peguei mais 10 sementes"), `link_achievement_set` (liga a lista da Steam pelo IGDB; no RA devolve as opções para escolher) e `set_achievement` ("peguei a conquista Farewell do Celeste", pelo nome aproximado). As que apagam (`remove_completion`, `delete_objective`) só executam com `confirm: true`; sem isso, mostram o que seria apagado. Tudo fica no histórico de atividade com actor `mcp`.
+**Tools de escrita:** `start_session` / `stop_session` (o mesmo timer do site), `log_session` (sessão já jogada, ex.: "joguei 2h ontem"), `add_game` (pelo igdbId achado com `search_igdb`, opcionalmente com o tempo já jogado), `set_status`, `set_prior_playtime` (tempo jogado antes do Zerômetro, ex.: "já tenho 39h de Witcher 3"), `mark_completed` ("zerei o Ocarina mas vou continuar jogando", "platinei"), `add_objective` ("adiciona o objetivo 900 sementes Korok no BotW") `update_objective` ("peguei mais 10 sementes"), `link_achievement_set` (liga a lista da Steam pelo IGDB; no RA devolve as opções para escolher) `set_achievement` ("peguei a conquista Farewell do Celeste", pelo nome aproximado), `sync_steam` ("sincroniza minhas conquistas do Celeste com a Steam", ou todos os jogos) e `set_playtime_source` ("usa o tempo da Steam no Hades"). As que apagam (`remove_completion`, `delete_objective`) só executam com `confirm: true`; sem isso, mostram o que seria apagado. Tudo fica no histórico de atividade com actor `mcp`.
 
 **Planejadas:** `update_session`, `update_game_entry`, `remove_game`, `delete_session`. As destrutivas só vão executar com confirmação explícita.
 
@@ -258,6 +262,7 @@ Para inspecionar localmente: `mise run mcp:inspect` e aponte para `http://localh
 
 - Dados de jogos e tempos para zerar fornecidos pelo [IGDB](https://www.igdb.com)
 - Conquistas (nomes, descrições, ícones e raridade) da [Steam](https://store.steampowered.com) e do [RetroAchievements](https://retroachievements.org), mostradas direto dos servidores deles, com link para a página do jogo na fonte. O Zerômetro só mostra metadados: nada de ROMs, hashes ou emuladores
+- Na sincronização com a Steam, a instância guarda só o seu SteamID público, o nome e o avatar do perfil, os desbloqueios e as horas por jogo, no próprio banco. "Desconectar" nos Ajustes apaga o perfil (o que já foi sincronizado fica)
 - O servidor OAuth do MCP (`src/server/oauth/`) foi adaptado do [my-scratchpad](https://github.com/Levieber/my-scratchpad) (MIT)
 - Projeto pessoal, sem afiliação com IGDB, Twitch, Valve, RetroAchievements ou qualquer publisher
 
