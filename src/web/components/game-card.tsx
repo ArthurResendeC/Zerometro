@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { progressTargetLabels } from "@shared/completions";
 import type { LibraryItem } from "@shared/library";
 import { GameCover } from "@/components/game-cover";
-import { CompletionBadge, StatusBadge } from "@/components/status-badge";
+import { CompletionBadge, completionAddsInfo, StatusBadge } from "@/components/status-badge";
 import { XpBar } from "@/components/ui/progress";
 import { formatMinutes, formatPercent } from "@/lib/format";
 
@@ -19,11 +19,10 @@ export function GameCard({ item, showStatus = false }: GameCardProps) {
   const finished = item.status === "finished";
   // Pós-jogo sempre aparece (está na aba "Jogando", mas já foi zerado).
   const statusShown = showStatus || item.displayState === "postgame";
-  // O selo de conclusão só some quando repetiria o de status ("Zerado" uma vez só).
+  // Sem o selo de status, o de conclusão sempre aparece; com ele, só se não repetir o "Zerado".
   const { completion } = item;
   const completionShown =
-    completion !== null &&
-    !(statusShown && finished && completion.best === "main" && completion.count === 1);
+    completion !== null && (!statusShown || completionAddsInfo(item.status, completion));
 
   return (
     <Link

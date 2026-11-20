@@ -5,7 +5,7 @@ import type { IgdbGamePage } from "@shared/game-page";
 import { igdbIdSchema } from "@shared/igdb";
 import { AddToLibraryButton, defaultAddStatus } from "@/components/add-to-library-button";
 import { ArrowLeftIcon } from "@/components/icons";
-import { CompletionBadge, StatusBadge } from "@/components/status-badge";
+import { CompletionBadge, completionAddsInfo, StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AboutTab } from "@/features/game/about-tab";
@@ -100,7 +100,9 @@ function GamePage() {
           item && (
             <>
               <StatusBadge status={item.displayState} />
-              {item.completion && <CompletionBadge completion={item.completion} />}
+              {completionAddsInfo(item.status, item.completion) && item.completion && (
+                <CompletionBadge completion={item.completion} />
+              )}
             </>
           )
         }

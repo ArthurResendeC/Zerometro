@@ -4,7 +4,7 @@ import {
   type DisplayState,
   displayStateLabels,
 } from "@shared/completions";
-import { completionTypeLabels, gameStatusLabels } from "@shared/domain";
+import { completionTypeLabels, type GameStatus, gameStatusLabels } from "@shared/domain";
 import { CheckIcon, PlayIcon, StarIcon, StatusIcon } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 
@@ -23,6 +23,17 @@ export function StatusBadge({ status, className }: { status: DisplayState; class
       <StatusIcon status={status} />
       {gameStatusLabels[status]}
     </Badge>
+  );
+}
+
+/**
+ * O selo de conclusão ao lado do de status só acrescenta algo se não repetir o "Zerado": some
+ * com o jogo em Zerados, zerado uma vez só e só a história.
+ */
+export function completionAddsInfo(status: GameStatus, completion: CompletionSummary | null) {
+  return (
+    completion !== null &&
+    !(status === "finished" && completion.best === "main" && completion.count === 1)
   );
 }
 
