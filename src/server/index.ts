@@ -7,6 +7,7 @@ import { createRootRoutes } from "./mcp/routes";
 import { createFeedsService } from "./services/feeds";
 import { createGamePagesService } from "./services/game-pages";
 import { createIgdbFromEnv } from "./services/igdb";
+import { PUBLIC_DIR, createPublicRoutes } from "./static";
 import index from "../web/index.html";
 
 const isProduction = env.NODE_ENV === "production";
@@ -57,14 +58,15 @@ const deps = {
 const app = createApp(deps);
 const root = createRootRoutes(deps);
 
-// Um único processo: API (Hono) em /api/*, MCP em /mcp, descoberta OAuth em /.well-known/*
-// e a SPA (HTML import do Bun) no resto.
+// Um único processo: API (Hono) em /api/*, MCP em /mcp, descoberta OAuth em /.well-known/*,
+// arquivos do PWA com URL fixa (ícones, /sw.js, /offline.html) e a SPA (HTML import do Bun) no resto.
 const server = Bun.serve({
   port: env.PORT,
   routes: {
     "/api/*": (req) => app.fetch(req),
     "/mcp": root.mcp,
     "/.well-known/*": root.wellKnown,
+    ...createPublicRoutes(PUBLIC_DIR),
     "/*": index,
   },
   development: !isProduction && { hmr: true, console: true },

@@ -25,6 +25,9 @@ if (!result.success) {
 
 // O servidor aplica as migrations no boot a partir de dist/migrations (import.meta.dir do bundle).
 cpSync("./src/server/db/migrations", "./dist/migrations", { recursive: true });
+// Arquivos do PWA com URL fixa (ícones do manifest, service worker, página offline): ver src/server/static.ts.
+cpSync("./src/web/public", "./dist/public", { recursive: true });
 
 for (const output of result.outputs) console.log(output.path);
 console.log("dist/migrations");
+console.log("dist/public");

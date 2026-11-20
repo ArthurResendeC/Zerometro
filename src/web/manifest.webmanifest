@@ -1,0 +1,29 @@
+{
+  "id": "/",
+  "name": "Zerômetro",
+  "short_name": "Zerômetro",
+  "description": "Quanto falta pra zerar? Backlog de jogos, sessões, ofensiva e estatísticas.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0f0e17",
+  "theme_color": "#0f0e17",
+  "categories": ["games", "entertainment", "productivity"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    { "name": "Biblioteca", "url": "/biblioteca" },
+    { "name": "Estatísticas", "url": "/estatisticas" },
+    { "name": "Adicionar jogo", "short_name": "Adicionar", "url": "/adicionar" }
+  ]
+}
