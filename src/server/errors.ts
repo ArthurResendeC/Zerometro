@@ -67,3 +67,21 @@ export class IgdbNotConfiguredError extends AppError {
 export interface ApiErrorBody {
   error: { code: string; message: string; issues?: unknown };
 }
+
+/** Steam ou RetroAchievements falhou (rede, HTTP de erro ou resposta inesperada). */
+export class AchievementSourceError extends AppError {
+  constructor(message: string, options?: ErrorOptions) {
+    super(502, "achievements_source_error", message, options);
+  }
+}
+
+/** A fonte de conquistas não tem chave configurada nesta instância. */
+export class AchievementSourceNotConfiguredError extends AppError {
+  constructor(sourceLabel: string, envVar: string) {
+    super(
+      503,
+      "achievements_source_not_configured",
+      `${sourceLabel} não configurado: defina ${envVar}`,
+    );
+  }
+}

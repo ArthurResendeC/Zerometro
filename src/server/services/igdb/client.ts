@@ -1,6 +1,7 @@
 import type { Db } from "../../db/client";
 import { IgdbError, IgdbNotConfiguredError } from "../../errors";
 import { deleteKv, getKv, setKv } from "../kv";
+import { createThrottle } from "../throttle";
 
 // Cliente HTTP de baixo nível do IGDB: token da Twitch (client credentials), rate limit e retry.
 
@@ -164,23 +165,5 @@ export function createMemoryTokenStore(initial: StoredToken | null = null): Toke
     clear: () => {
       token = null;
     },
-  };
-}
-
-/**
- * Garante um intervalo mínimo entre o início das requisições.
- * A reserva do horário é síncrona, então chamadas concorrentes formam uma fila.
- */
-export function createThrottle(
-  minIntervalMs: number,
-  now: () => number,
-  sleep: (ms: number) => Promise<unknown>,
-): () => Promise<void> {
-  let nextSlot = 0;
-  return async () => {
-    const current = now();
-    const slot = Math.max(current, nextSlot);
-    nextSlot = slot + minIntervalMs;
-    if (slot > current) await sleep(slot - current);
   };
 }

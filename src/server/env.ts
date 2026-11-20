@@ -7,6 +7,10 @@ const envSchema = z.object({
   TZ: z.string().min(1).default("America/Sao_Paulo"),
   IGDB_CLIENT_ID: z.string().optional(),
   IGDB_CLIENT_SECRET: z.string().optional(),
+  /** Chave da Steam Web API (lista de conquistas). Sem ela, a Steam fica desligada. */
+  STEAM_WEB_API_KEY: z.string().trim().optional(),
+  /** Chave da API do RetroAchievements. Sem ela, o RA fica desligado. */
+  RA_API_KEY: z.string().trim().optional(),
   /** Token de acesso da instância (site, API e MCP). Obrigatório para o servidor subir. */
   ZEROMETRO_TOKEN: z.string().trim().optional(),
   /** URL pública do site (padrão: domínio da Railway ou http://localhost:PORT). */

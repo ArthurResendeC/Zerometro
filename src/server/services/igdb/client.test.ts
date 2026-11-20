@@ -5,9 +5,9 @@ import {
   createIgdbClient,
   createKvTokenStore,
   createMemoryTokenStore,
-  createThrottle,
   type StoredToken,
 } from "./client";
+import { createThrottle } from "../throttle";
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = Date.parse("2026-11-19T12:00:00Z");

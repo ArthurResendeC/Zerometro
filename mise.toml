@@ -69,7 +69,7 @@ run = """
 docker rm -f zerometro-local >/dev/null 2>&1 || true
 docker run --rm --name zerometro-local -p 3000:8080 -e PORT=8080 \
   -v zerometro-data-local:/data -e PUBLIC_URL=http://localhost:3000 \
-  -e ZEROMETRO_TOKEN -e IGDB_CLIENT_ID -e IGDB_CLIENT_SECRET \
+  -e ZEROMETRO_TOKEN -e IGDB_CLIENT_ID -e IGDB_CLIENT_SECRET -e STEAM_WEB_API_KEY -e RA_API_KEY \
   zerometro:local
 """
 
@@ -134,6 +134,10 @@ run = "npx @modelcontextprotocol/inspector"
 [tasks."igdb:smoke"]
 description = "Testa busca e tempo para zerar no IGDB real (ex.: mise run igdb:smoke ocarina of time)"
 run = "bun scripts/igdb-smoke.ts"
+
+[tasks."achievements:smoke"]
+description = "Testa as listas de conquistas na Steam (Celeste) e no RetroAchievements (Super Metroid) reais"
+run = "bun scripts/achievements-smoke.ts"
 
 [tasks."demo:capture"]
 description = "Congela no demo as páginas de jogo do IGDB real (scripts/demo-game-pages.json); rodar antes do demo:seed quando quiser dados novos"
