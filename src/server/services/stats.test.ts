@@ -352,7 +352,8 @@ describe("recordes e zerados", () => {
       ["Undertale", "2026-02-15", "full", 2, 1],
     ]);
     expect(r.finishedSummary).toEqual({ games: 2, replays: 2, full: 2 });
-    expect(r.finishedByMonth.find((m) => m.month === "2026-02")?.count).toBe(2);
+    // Undertale zerou duas vezes em fevereiro: conta um jogo no mês.
+    expect(r.finishedByMonth.find((m) => m.month === "2026-02")?.count).toBe(1);
 
     const last = getRecords(ctx, { today: TEST_TODAY, year: 2025 });
     expect(last.finishedSummary).toEqual({ games: 1, replays: 0, full: 0 });

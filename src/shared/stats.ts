@@ -195,7 +195,7 @@ export interface Records {
   } | null;
   bestDay: { date: string; minutes: number } | null;
   bestWeek: { weekStart: string; minutes: number } | null;
-  /** Conclusões por mês (YYYY-MM), do primeiro ao último mês do período (até hoje). */
+  /** Jogos zerados por mês (YYYY-MM), do primeiro ao último mês do período (até hoje). */
   finishedByMonth: { month: string; count: number }[];
   /**
    * Jogos com alguma conclusão no período (mesmo que hoje estejam sendo jogados de novo), do

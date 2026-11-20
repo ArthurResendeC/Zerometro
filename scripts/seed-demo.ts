@@ -12,8 +12,10 @@ import {
   type NewGame,
   type NewLibraryEntry,
   type NewPlaySession,
+  completions,
   games,
   libraryEntries,
+  objectives,
   playSessions,
   user,
 } from "../src/server/db/schema";
@@ -24,7 +26,7 @@ import {
   zonedParts,
   zonedToInstant,
 } from "../src/shared/dates";
-import type { GameStatus, SessionSource } from "../src/shared/domain";
+import type { CompletionType, GameStatus, SessionSource } from "../src/shared/domain";
 import { type FeedGame, type FeedKey, feedKeys } from "../src/shared/feeds";
 import { saveFeedSnapshot } from "../src/server/services/feeds";
 import { saveGamePage } from "../src/server/services/game-pages";
@@ -79,7 +81,8 @@ const LIBRARY: Record<GameKey, EntrySpec> = {
   persona5: { status: "playing", platform: "PS5", notes: "Rota da Makoto." },
   bg3: { status: "playing", platform: "PC", notes: "Campanha co-op, ato 2.", priorHours: 25 },
   hades: { status: "finished", platform: "Switch", rating: 10 },
-  celeste: { status: "finished", platform: "Switch", rating: 9, notes: "Faltam os B-sides." },
+  // Zerada e de volta para os B-sides: pós-jogo.
+  celeste: { status: "playing", platform: "Switch", rating: 9, notes: "Faltam os B-sides." },
   hollowKnight: { status: "finished", platform: "Switch", rating: 9 },
   outerWilds: {
     status: "finished",
@@ -270,7 +273,7 @@ db.transaction((tx) => {
       status: spec.status,
       platformPlayed: spec.platform ?? null,
       startedAt: dates?.startedAt ?? startedAtOf[key] ?? null,
-      finishedAt: dates?.finishedAt ?? null,
+      finishedAt: spec.status === "finished" ? (dates?.finishedAt ?? null) : null,
       rating: spec.rating ?? null,
       notes: spec.notes ?? null,
       priorMinutes: (spec.priorHours ?? 0) * 60,
@@ -281,6 +284,46 @@ db.transaction((tx) => {
   for (const { game, ...session } of sessions) {
     tx.insert(playSessions)
       .values({ ...session, userId: LEGACY_OWNER_ID, gameId: gameIds.get(game)! })
+      .run();
+  }
+
+  // Conclusões: a história de cada zerado na data em que terminou, mais um 100% (Hades) e um
+  // replay em outro ano (Hollow Knight, zerado pela primeira vez uns 13 meses antes).
+  const extraCompletions: [GameKey, CompletionType, string][] = [
+    ["hades", "full", addDays(finishedDates.get("hades")!.finishedAt, 18)],
+    ["hollowKnight", "main", addDays(finishedDates.get("hollowKnight")!.finishedAt, -400)],
+  ];
+  for (const [key, { finishedAt }] of finishedDates) {
+    extraCompletions.push([key, "main", finishedAt]);
+  }
+  for (const [key, type, completedOn] of extraCompletions) {
+    tx.insert(completions)
+      .values({ userId: LEGACY_OWNER_ID, gameId: gameIds.get(key)!, type, completedOn })
+      .run();
+  }
+
+  // Objetivos: Celeste em pós-jogo, o 100% do Hades e as sementes Korok do Zelda.
+  const demoObjectives: [GameKey, string, number, number][] = [
+    ["celeste", "Lados B de todos os capítulos", 8, 3],
+    ["celeste", "Morangos", 175, 142],
+    ["celeste", "Corações de cristal", 8, 8],
+    ["celeste", "Capítulo 9: Adeus", 1, 0],
+    ["hades", "Todas as armas infernais", 6, 6],
+    ["hades", "Epílogo", 1, 1],
+    ["zeldaTotk", "Sementes Korok", 1000, 412],
+    ["zeldaTotk", "Todos os santuários", 152, 152],
+  ];
+  for (const [index, [key, title, target, progress]] of demoObjectives.entries()) {
+    tx.insert(objectives)
+      .values({
+        userId: LEGACY_OWNER_ID,
+        gameId: gameIds.get(key)!,
+        title,
+        target,
+        progress,
+        unlockedAt: progress >= target ? now.toISOString() : null,
+        sortOrder: index,
+      })
       .run();
   }
 

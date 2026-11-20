@@ -467,7 +467,7 @@ export function getRecords(
     longestSession: longestSession(scope, from, to),
     bestDay,
     bestWeek,
-    finishedByMonth: months.map((month) => ({ month, count: byMonth.get(month) ?? 0 })),
+    finishedByMonth: months.map((month) => ({ month, count: byMonth.get(month)?.size ?? 0 })),
     finished: finished.map(({ priorMinutes: _prior, ...game }) => game),
     finishedSummary: summary,
     paceRatio: story > 0 ? Math.round((played / story) * 100) / 100 : null,
@@ -494,7 +494,8 @@ function finishedInPeriod(scope: UserScope, from: string, to: string) {
   /** Maior nível já alcançado em cada jogo, conforme as conclusões vão passando. */
   const reached = new Map<number, number>();
   const byGame = new Map<number, FinishedGame & { priorMinutes: number }>();
-  const byMonth = new Map<string, number>();
+  /** Jogos distintos zerados em cada mês (história + 100% no mesmo mês contam uma vez). */
+  const byMonth = new Map<string, Set<number>>();
   /** Primeira conclusão de todas, quando ela cai no período. */
   const firstInPeriod = new Map<number, string>();
   let replays = 0;
@@ -510,7 +511,7 @@ function finishedInPeriod(scope: UserScope, from: string, to: string) {
     if (isReplay) replays++;
     if (before === undefined) firstInPeriod.set(row.gameId, row.completedOn);
     const month = row.completedOn.slice(0, 7);
-    byMonth.set(month, (byMonth.get(month) ?? 0) + 1);
+    byMonth.set(month, (byMonth.get(month) ?? new Set()).add(row.gameId));
 
     const game = byGame.get(row.gameId);
     if (game) {

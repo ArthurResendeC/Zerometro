@@ -277,7 +277,7 @@ function Counter({
         }}
         className="h-9 w-20 text-center tabular-nums"
       />
-      <span className="text-sm whitespace-nowrap text-muted-foreground tabular-nums">
+      <span className="w-14 text-sm whitespace-nowrap text-muted-foreground tabular-nums">
         / {target}
       </span>
       <Button
