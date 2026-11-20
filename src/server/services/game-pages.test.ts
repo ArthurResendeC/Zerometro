@@ -33,7 +33,7 @@ describe("gamePages", () => {
     expect(value.name).toBe("Persona 5 Royal");
     expect(updatedAt).toBe(TEST_NOW.toISOString());
     expect(igdb.calls.getGamePage).toEqual([ID]);
-    expect(getKv(db, `igdb:game:v1:${ID}`)).toContain("Persona 5 Royal");
+    expect(getKv(db, `igdb:game:v3:${ID}`)).toContain("Persona 5 Royal");
   });
 
   test("cache com menos de 24h não chama o IGDB; vencido devolve e atualiza", async () => {
@@ -55,7 +55,7 @@ describe("gamePages", () => {
     const { db, pages, errors } = setup();
 
     await expect(pages.get(999)).rejects.toBeInstanceOf(NotFoundError);
-    expect(getKv(db, "igdb:game:v1:999")).toBeNull();
+    expect(getKv(db, "igdb:game:v3:999")).toBeNull();
     expect(errors).toEqual([]);
   });
 
@@ -90,7 +90,7 @@ describe("gamePages", () => {
 
   test("cache corrompido ou de formato antigo é tratado como vazio", async () => {
     const { db, igdb, pages } = setup();
-    setKv(db, `igdb:game:v1:${ID}`, JSON.stringify({ value: { name: "sem id" }, updatedAt: "x" }));
+    setKv(db, `igdb:game:v3:${ID}`, JSON.stringify({ value: { name: "sem id" }, updatedAt: "x" }));
 
     expect((await pages.get(ID)).value.name).toBe("Persona 5 Royal");
     expect(igdb.calls.getGamePage).toHaveLength(1);

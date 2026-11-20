@@ -1,19 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import type { GameStatus } from "@shared/domain";
 import { type Feed, type FeedGame, type FeedKey, feedTitles } from "@shared/feeds";
 import { genreLabel } from "@shared/genres";
 import { igdbGameUrl } from "@shared/igdb";
 import type { LibraryItem } from "@shared/library";
 import { GameCover } from "@/components/game-cover";
-import { PlusIcon, StarIcon } from "@/components/icons";
+import { AddToLibraryButton, defaultAddStatus } from "@/components/add-to-library-button";
+import { StarIcon } from "@/components/icons";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNow } from "@/hooks/use-now";
 import { formatReleaseDate } from "@/lib/format";
-import { feedsQuery, libraryListQuery, useAddToLibrary } from "@/lib/queries";
+import { feedsQuery, libraryListQuery } from "@/lib/queries";
 
 /**
  * Listas do IGDB no fim da home. Carrega à parte (sem suspense): a home nunca espera o IGDB.
@@ -129,7 +128,13 @@ function FeedGameCard({
             <StatusBadge status={libraryItem.status} />
           </Link>
         ) : (
-          libraryLoaded && <QuickAdd game={game} today={today} />
+          libraryLoaded && (
+            <AddToLibraryButton
+              game={game}
+              status={defaultAddStatus(game.releaseDate, today)}
+              className="w-[calc(100%-0.5rem)]"
+            />
+          )
         )}
       </div>
     </li>
@@ -156,26 +161,6 @@ function CoverTag({ feedKey, game, rank }: { feedKey: FeedKey; game: FeedGame; r
     );
   }
   return null;
-}
-
-/** Já lançado vai para "Próximos"; ainda por lançar, para a lista de desejos. */
-function QuickAdd({ game, today }: { game: FeedGame; today: string }) {
-  const add = useAddToLibrary();
-  const released = game.releaseDate !== null && game.releaseDate <= today;
-  const status: GameStatus = released ? "backlog" : "wishlist";
-
-  return (
-    <Button
-      size="sm"
-      variant="outline"
-      className="w-[calc(100%-0.5rem)]"
-      disabled={add.isPending}
-      onClick={() => add.mutate({ igdbId: game.igdbId, status })}
-      aria-label={`Adicionar ${game.name} ${released ? "aos próximos" : "aos desejos"}`}
-    >
-      <PlusIcon /> {released ? "Próximos" : "Desejos"}
-    </Button>
-  );
 }
 
 function FeedRowSkeleton({ title }: { title: string }) {

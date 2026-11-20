@@ -9,7 +9,7 @@ import { type Cached, createKvCache, writeCached } from "./kv-cache";
 // usuários). A tabela `games` continua sendo só o cache dos jogos da biblioteca.
 
 /** Sobe quando o formato de `IgdbGamePage` mudar: o cache antigo é ignorado. */
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 3;
 
 export interface GamePagesService {
   /** NotFoundError se o jogo não existir no IGDB; IgdbError se o IGDB falhar sem cache. */

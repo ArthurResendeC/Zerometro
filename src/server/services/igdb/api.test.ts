@@ -263,9 +263,14 @@ describe("getGamePage", () => {
             { organization: 6, rating_category: { rating: "16" } },
           ],
           artworks: [
-            { image_id: "retrato", width: 600, height: 800 },
-            { image_id: "largo", width: 1920, height: 620 },
-            { image_id: "mais-largo", width: 5981, height: 920 },
+            { image_id: "retrato", width: 600, height: 800, artwork_type: 2 },
+            { image_id: "faixa", width: 5981, height: 920, artwork_type: 1 },
+            { image_id: "logo", width: 4321, height: 2495, artwork_type: 7 },
+            { image_id: "transparente", width: 3840, height: 2160, alpha_channel: true },
+            { image_id: "com-logo", width: 3840, height: 2160, artwork_type: 3 },
+            { image_id: "sem-tipo", width: 1920, height: 1080 },
+            { image_id: "artwork", width: 2560, height: 1440, artwork_type: 1 },
+            { image_id: "arte-principal", width: 1920, height: 620, artwork_type: 2 },
           ],
           screenshots: Array.from({ length: 15 }, (_, i) => ({ image_id: `sc${i}` })),
           expansions: [ref(240009, "Shadow of the Erdtree")],
@@ -297,7 +302,7 @@ describe("getGamePage", () => {
       gameModes: ["Single player"],
       perspectives: ["Third person"],
       engines: ["Dantelion"],
-      heroImageId: "mais-largo",
+      heroImageId: "arte-principal",
       ageRating: { org: "classind", rating: "16" },
       timeToBeat: { mainSec: 156960, extraSec: null, completeSec: null },
       timeToBeatCount: 28,
@@ -482,5 +487,36 @@ describe("getGamePage", () => {
 
     const vazio = fakeClient({});
     expect(await createIgdbApi(vazio.client).getGamePage(999)).toBeNull();
+  });
+});
+
+describe("getGamePage: banner", () => {
+  test("sem arte principal: artwork comum mais largo; só logotipos → screenshot", async () => {
+    const comum = fakeClient({
+      games: [
+        {
+          id: 1,
+          name: "Comum",
+          artworks: [
+            { image_id: "conceito", width: 3840, height: 2160, artwork_type: 4 },
+            { image_id: "menor", width: 1280, height: 720, artwork_type: 1 },
+            { image_id: "maior", width: 2560, height: 1440 },
+          ],
+        },
+      ],
+    });
+    expect((await createIgdbApi(comum.client).getGamePage(1))?.heroImageId).toBe("maior");
+
+    const soLogos = fakeClient({
+      games: [
+        {
+          id: 2,
+          name: "Só logos",
+          artworks: [{ image_id: "logo", width: 3840, height: 2160, artwork_type: 6 }],
+          screenshots: [{ image_id: "sc1" }],
+        },
+      ],
+    });
+    expect((await createIgdbApi(soLogos.client).getGamePage(2))?.heroImageId).toBe("sc1");
   });
 });

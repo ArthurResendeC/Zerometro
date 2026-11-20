@@ -130,7 +130,13 @@ interface RawGamePage extends RawFeedGame {
     status?: number;
     platform?: { name: string; abbreviation?: string };
   }[];
-  artworks?: { image_id: string; width?: number; height?: number }[];
+  artworks?: {
+    image_id: string;
+    width?: number;
+    height?: number;
+    artwork_type?: number;
+    alpha_channel?: boolean;
+  }[];
   screenshots?: { image_id: string }[];
   videos?: { video_id: string; name?: string }[];
   websites?: { url: string; type?: number }[];
@@ -186,6 +192,8 @@ const PAGE_FIELDS = [
   "artworks.image_id",
   "artworks.width",
   "artworks.height",
+  "artworks.artwork_type",
+  "artworks.alpha_channel",
   "screenshots.image_id",
   "videos.video_id",
   "videos.name",
@@ -209,8 +217,17 @@ const PAGE_FIELDS = [
 const MAX_SCREENSHOTS = 12;
 const MAX_VIDEOS = 8;
 const MAX_SERIES = 20;
-/** Artwork só vira banner se for bem mais largo que alto. */
+/** Artwork só vira banner se for bem mais largo que alto, sem ser uma faixa estreita. */
 const MIN_HERO_RATIO = 1.5;
+const MAX_HERO_RATIO = 4;
+/**
+ * `artwork_types` que servem de banner, do melhor para o pior: 2 arte principal sem logo,
+ * 1 artwork (e 15, artwork antigo), 3 arte principal com logo, 4 arte conceitual. Os outros
+ * (logotipos, ícones, capas alternativas, infográficos) ficam de fora. Sem tipo (cadastros
+ * antigos) conta como artwork comum.
+ */
+const HERO_ARTWORK_PRIORITY: Record<number, number> = { 2: 0, 1: 1, 15: 1, 3: 2, 4: 3 };
+const UNTYPED_ARTWORK_PRIORITY = 1;
 /** Jogos "principais" numa série (jogo, remake, remaster), como nas listas da home. */
 const MAIN_GAME_TYPES = new Set([0, 8, 9]);
 
@@ -454,12 +471,24 @@ function toGamePage(raw: RawGamePage, ttb: RawTimeToBeat | null): IgdbGamePage {
   };
 }
 
-/** O artwork paisagem mais largo; retratos e quadrados não servem de banner. */
+/**
+ * O melhor artwork paisagem pelo tipo (arte principal sem logo primeiro); empate → o mais
+ * largo. Logotipos e imagens com transparência ficam de fora: no banner viram um fundo preto.
+ */
 function pickHero(artworks: NonNullable<RawGamePage["artworks"]>): string | null {
-  let best: { id: string; width: number } | null = null;
+  let best: { id: string; priority: number; width: number } | null = null;
   for (const a of artworks) {
-    if (!a.width || !a.height || a.width / a.height < MIN_HERO_RATIO) continue;
-    if (!best || a.width > best.width) best = { id: a.image_id, width: a.width };
+    const { image_id: id, width = 0, height = 0 } = a;
+    const priority =
+      a.artwork_type === undefined
+        ? UNTYPED_ARTWORK_PRIORITY
+        : HERO_ARTWORK_PRIORITY[a.artwork_type];
+    const ratio = height > 0 ? width / height : 0;
+    if (priority === undefined || a.alpha_channel) continue;
+    if (ratio < MIN_HERO_RATIO || ratio > MAX_HERO_RATIO) continue;
+    if (!best || priority < best.priority || (priority === best.priority && width > best.width)) {
+      best = { id, priority, width };
+    }
   }
   return best?.id ?? null;
 }

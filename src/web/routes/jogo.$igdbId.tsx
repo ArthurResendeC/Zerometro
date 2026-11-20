@@ -1,27 +1,26 @@
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { genreLabel } from "@shared/genres";
+import type { IgdbGamePage } from "@shared/game-page";
 import { igdbIdSchema } from "@shared/igdb";
-import { GameCover } from "@/components/game-cover";
+import { AddToLibraryButton, defaultAddStatus } from "@/components/add-to-library-button";
 import { ArrowLeftIcon } from "@/components/icons";
 import { StatusBadge } from "@/components/status-badge";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GameHero, type HeroGame } from "@/features/game/game-hero";
 import { MySessions } from "@/features/game/my-sessions";
+import { type GameTab, gameTabs, TabToggle } from "@/features/game/tab-toggle";
+import { useNow } from "@/hooks/use-now";
 import { ApiError } from "@/lib/api";
 import { gamePageQuery, libraryByIgdbQuery } from "@/lib/queries";
 
 // Página do jogo, aberta pelo id do IGDB (na biblioteca ou não). Duas abas: "Sobre" (dados do
 // IGDB) e "Minhas sessões" (só para jogos da biblioteca). O cabeçalho é o mesmo nas duas.
 
-const tabs = ["sobre", "sessoes"] as const;
-type Tab = (typeof tabs)[number];
-
 const searchSchema = z.object({
   /** Sem aba: "sessoes" se o jogo estiver na biblioteca, senão "sobre". */
-  aba: z.enum(tabs).optional().catch(undefined),
+  aba: z.enum(gameTabs).optional().catch(undefined),
 });
 
 export const Route = createFileRoute("/jogo/$igdbId")({
@@ -53,76 +52,74 @@ function GamePage() {
   const { data: item } = useSuspenseQuery(libraryByIgdbQuery(igdbId));
   const page = useQuery(gamePageQuery(igdbId));
 
-  const tab: Tab = item ? (aba ?? "sessoes") : "sobre";
-  const setTab = (next: Tab) => void navigate({ search: { aba: next }, replace: true });
+  const tab: GameTab = item ? (aba ?? "sessoes") : "sobre";
+  const setTab = (next: GameTab) => void navigate({ search: { aba: next }, replace: true });
 
-  // Cabeçalho: o que a biblioteca já sabe; senão, o IGDB.
-  const game = item ?? page.data;
-  if (!game) return <PageFallback error={page.error} loading={page.isPending} />;
+  // O básico vem da biblioteca (sem esperar o IGDB, sem pulo quando ele chega); o IGDB
+  // completa o banner, os estúdios e o selo de status.
+  const base = item ?? page.data;
+  if (!base) return <PageFallback error={page.error} loading={page.isPending} />;
+  const game: HeroGame = {
+    name: base.name,
+    coverImageId: base.coverImageId,
+    releaseYear: base.releaseYear,
+    genres: base.genres,
+    platforms: base.platforms,
+    // undefined = ainda carregando (banner vazio); null = sem artwork (capa desfocada).
+    heroImageId: page.isError ? null : page.data?.heroImageId,
+    developers: page.data?.developers,
+    publishers: page.data?.publishers,
+    releaseStatus: page.data?.status,
+  };
 
   return (
     <div className="space-y-6">
-      <Button asChild variant="ghost" size="sm" className="-ml-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-2">
+        <Button asChild variant="ghost" size="sm" className="-ml-2">
+          {item ? (
+            <Link to="/biblioteca">
+              <ArrowLeftIcon /> Biblioteca
+            </Link>
+          ) : (
+            <Link to="/">
+              <ArrowLeftIcon /> Início
+            </Link>
+          )}
+        </Button>
         {item ? (
-          <Link to="/biblioteca">
-            <ArrowLeftIcon /> Biblioteca
-          </Link>
+          <TabToggle tab={tab} onChange={setTab} />
         ) : (
-          <Link to="/">
-            <ArrowLeftIcon /> Início
-          </Link>
+          page.data && <AddButtons game={page.data} onAdded={setTab} />
         )}
-      </Button>
-
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-8 md:grid-cols-[220px_minmax(0,1fr)]">
-        <div className="mx-auto w-44 self-start bg-card p-2.5 pixel-frame md:w-full">
-          <GameCover name={game.name} imageId={game.coverImageId} size="720p" />
-        </div>
-
-        <div className="space-y-6">
-          <header className="space-y-2">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <h1 className="text-[32px] leading-9">{game.name}</h1>
-              {item && <TabToggle tab={tab} onChange={setTab} />}
-            </div>
-            <p className="text-muted-foreground">
-              {[game.releaseYear, ...game.genres.map(genreLabel)].filter(Boolean).join(" · ")}
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {item && <StatusBadge status={item.status} />}
-              {game.platforms.map((p) => (
-                <Badge key={p} variant="outline">
-                  {p}
-                </Badge>
-              ))}
-            </div>
-          </header>
-
-          {tab === "sessoes" && item ? <MySessions item={item} /> : <AboutTab igdbId={igdbId} />}
-        </div>
       </div>
+
+      <GameHero game={game} badges={item && <StatusBadge status={item.status} />} />
+
+      {tab === "sessoes" && item ? <MySessions item={item} /> : <AboutTab igdbId={igdbId} />}
     </div>
   );
 }
 
-const tabLabels: Record<Tab, string> = { sobre: "Sobre o jogo", sessoes: "Minhas sessões" };
-
-function TabToggle({ tab, onChange }: { tab: Tab; onChange: (tab: Tab) => void }) {
+/**
+ * Jogo fora da biblioteca: já lançado → "Próximos" (ou "Jogando", se já começou);
+ * por lançar → "Desejos". Começar a jogar leva para a aba das sessões.
+ */
+function AddButtons({ game, onAdded }: { game: IgdbGamePage; onAdded: (tab: GameTab) => void }) {
+  // Datas do IGDB são em UTC.
+  const today = new Date(useNow(60 * 60_000)).toISOString().slice(0, 10);
+  const status = defaultAddStatus(game.releaseDate, today);
   return (
-    <fieldset className="flex">
-      <legend className="sr-only">Ver</legend>
-      {tabs.map((t) => (
-        <Button
-          key={t}
-          size="sm"
-          variant={t === tab ? "default" : "outline"}
-          aria-pressed={t === tab}
-          onClick={() => onChange(t)}
-        >
-          {tabLabels[t]}
-        </Button>
-      ))}
-    </fieldset>
+    <div className="flex flex-wrap justify-end">
+      {status === "backlog" && (
+        <AddToLibraryButton game={game} status="playing" onAdded={() => onAdded("sessoes")} />
+      )}
+      <AddToLibraryButton
+        game={game}
+        status={status}
+        variant="default"
+        onAdded={() => onAdded("sobre")}
+      />
+    </div>
   );
 }
 
