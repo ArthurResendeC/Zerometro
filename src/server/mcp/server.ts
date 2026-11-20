@@ -1,5 +1,12 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
+import {
+  type AchievementItem,
+  type AchievementSetItem,
+  type AchievementWriteResult,
+  achievementSourceLabels,
+  achievementSourceSchema,
+} from "../../shared/achievements";
 import { isoDateSchema, localTimeSchema } from "../../shared/dates";
 import { type CompletionItem, displayStateLabels } from "../../shared/completions";
 import {
@@ -21,6 +28,13 @@ import { sessionLengthBuckets } from "../../shared/stats";
 import { type LogSessionResult, noteSchema } from "../../shared/sessions";
 import type { AppDeps } from "../app";
 import { AppError, TimerActiveError } from "../errors";
+import {
+  findSetCandidates,
+  linkSet,
+  listGameAchievements,
+  resolveAchievement,
+  setAchievementUnlocked,
+} from "../services/achievements";
 import {
   getCompletion,
   listCompletions,
@@ -51,7 +65,7 @@ import { getActiveSession, startTimer, stopTimer } from "../services/timer";
 // Servidor MCP do Zerômetro: tools finas por cima dos `services/` (as mesmas regras da API
 // REST), sempre no escopo do usuário dono do access token e com actor "mcp".
 
-export type McpDeps = Pick<AppDeps, "db" | "igdb" | "feeds" | "clock">;
+export type McpDeps = Pick<AppDeps, "db" | "igdb" | "feeds" | "achievements" | "clock">;
 
 const gameRefSchema = z
   .union([z.number().int().positive(), z.string().trim().min(1)])
@@ -131,6 +145,8 @@ function gameSummary(item: LibraryItem) {
     /** Para onde o progresso aponta: história antes de zerar; depois extras e 100%. */
     progressTarget: item.progressTarget,
     objectives: item.objectives,
+    /** Conquistas das listas da Steam/RA que o jogo segue (null se não segue nenhuma). */
+    achievements: item.achievements,
     rating: item.rating,
     startedAt: item.startedAt,
     finishedAt: item.finishedAt,
@@ -247,6 +263,9 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
           sessionsCount: item.sessionsCount,
           completions: listCompletions(scope, item.gameId).map(completionSummary),
           objectives: listObjectives(scope, item.gameId).map(objectiveSummary),
+          achievementSets: listGameAchievements(scope, deps.achievements, item.gameId).sets.map(
+            setSummary,
+          ),
           recentSessions: listSessions(scope, { gameId: item.gameId, limit: 10 }).map(
             ({ id, playedOn, minutes, source, note }) => ({ id, playedOn, minutes, source, note }),
           ),
@@ -709,6 +728,140 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
       }),
   );
 
+  server.registerTool(
+    "list_achievements",
+    {
+      title: "Conquistas de um jogo",
+      description:
+        "Lista as conquistas das listas da Steam/RetroAchievements que o jogo segue, com ids, se já foram desbloqueadas, raridade (% dos jogadores) e pontos (RA). Secretas ainda trancadas vêm sem nome e descrição: não revele, a menos que o usuário peça. Se o jogo não segue nenhuma lista, use link_achievement_set.",
+      inputSchema: z.object({
+        game: gameRefSchema,
+        filter: z
+          .enum(["all", "missing", "unlocked"])
+          .optional()
+          .describe("missing = faltando; unlocked = desbloqueadas (padrão: all)"),
+        reveal_secrets: z
+          .boolean()
+          .optional()
+          .describe("true só se o usuário pedir spoiler das conquistas secretas"),
+      }),
+      annotations: readOnly,
+    },
+    ({ game, filter = "all", reveal_secrets }) =>
+      run(() => {
+        const scope = ctx();
+        const item = resolveLibraryGame(scope, game);
+        const data = listGameAchievements(scope, deps.achievements, item.gameId);
+        return {
+          gameId: item.gameId,
+          name: item.name,
+          summary: data.summary,
+          sets: data.sets.map((set) => ({
+            ...setSummary(set),
+            achievements: set.achievements
+              .filter((a) => matchesFilter(a, filter))
+              .map((a) => achievementSummary(a, reveal_secrets === true)),
+          })),
+          ...(data.sets.length === 0 && {
+            hint: "O jogo não segue nenhuma lista: use link_achievement_set.",
+          }),
+        };
+      }),
+  );
+
+  server.registerTool(
+    "link_achievement_set",
+    {
+      title: "Ligar lista de conquistas",
+      description:
+        "Liga ao jogo a lista de conquistas da Steam ou do RetroAchievements. Sem external_id: na Steam liga a do appid que o IGDB conhece; no RA (ou se a Steam não tiver), só devolve as sugestões (busca pelo nome nos consoles do jogo) para o usuário escolher. Com external_id (id ou URL da loja/página do RA), liga essa.",
+      inputSchema: z.object({
+        game: gameRefSchema,
+        source: achievementSourceSchema.describe("steam ou retroachievements"),
+        external_id: z
+          .string()
+          .trim()
+          .min(1)
+          .max(300)
+          .optional()
+          .describe("Id ou URL do jogo na fonte (ex.: 504230 ou retroachievements.org/game/1446)"),
+        search: z
+          .string()
+          .trim()
+          .min(2)
+          .max(100)
+          .optional()
+          .describe("Outro nome para buscar no RA"),
+      }),
+      annotations: { ...write, openWorldHint: true },
+    },
+    ({ game, source, external_id, search }) =>
+      run(async () => {
+        const scope = ctx();
+        const item = resolveLibraryGame(scope, game);
+        let id = external_id;
+        if (!id) {
+          const found = await findSetCandidates(scope, deps.achievements, deps.igdb, item.gameId, {
+            ...(search && { q: search }),
+          });
+          const steam = found.candidates.find((c) => c.source === "steam");
+          if (source === "steam" && steam) {
+            id = steam.externalId;
+          } else {
+            return {
+              linked: false,
+              candidates: found.candidates
+                .filter((c) => c.source === source)
+                .map(
+                  ({ externalId, title, platform, achievementsCount, points, subset, linked }) => ({
+                    externalId,
+                    title,
+                    platform,
+                    achievementsCount,
+                    points,
+                    subset,
+                    linked,
+                  }),
+                ),
+              errors: found.errors,
+              message: `Nada foi ligado. Mostre as opções ao usuário e chame de novo com external_id (${achievementSourceLabels[source]}).`,
+            };
+          }
+        }
+        const result = await linkSet(scope, deps.achievements, item.gameId, { source, id });
+        return { linked: true, summary: result.summary, sets: result.sets.map(setSummary) };
+      }),
+  );
+
+  server.registerTool(
+    "set_achievement",
+    {
+      title: "Marcar conquista",
+      description:
+        'Marca (ou desmarca, com unlocked: false) uma conquista das listas do jogo, pelo id (em list_achievements) ou pelo nome aproximado ("peguei a conquista Farewell do Celeste"). Nome ambíguo devolve as opções. Se a resposta trouxer suggestFullCompletion, pergunte se quer marcar o jogo como 100% (mark_completed com full).',
+      inputSchema: z.object({
+        game: gameRefSchema,
+        achievement: z
+          .union([z.number().int().positive(), z.string().trim().min(1).max(200)])
+          .describe("Id da conquista ou parte do nome"),
+        unlocked: z.boolean().default(true),
+        date: isoDateSchema.optional().describe("Dia em que desbloqueou (padrão: agora)"),
+      }),
+      annotations: write,
+    },
+    ({ game, achievement, unlocked, date }) =>
+      run(() => {
+        const scope = ctx();
+        const item = resolveLibraryGame(scope, game);
+        const target = resolveAchievement(scope, deps.achievements, item.gameId, achievement);
+        const result = setAchievementUnlocked(scope, deps.achievements, item.gameId, target.id, {
+          unlocked,
+          ...(date && { unlockedOn: date }),
+        });
+        return achievementWritten(result);
+      }),
+  );
+
   return server;
 }
 
@@ -740,6 +893,52 @@ function objectiveWritten(result: ObjectiveWriteResult) {
     suggestFullCompletion: result.suggestFullCompletion,
     ...(result.suggestFullCompletion && {
       hint: "Todos os objetivos concluídos: pergunte se o usuário quer marcar o jogo como 100% (mark_completed com type full).",
+    }),
+  };
+}
+
+function matchesFilter(a: AchievementItem, filter: "all" | "missing" | "unlocked") {
+  return filter === "all" || (filter === "unlocked") === (a.unlockedAt !== null);
+}
+
+function setSummary(set: AchievementSetItem) {
+  return {
+    setId: set.id,
+    source: set.source,
+    sourceLabel: achievementSourceLabels[set.source],
+    title: set.title,
+    platform: set.platform,
+    url: set.url,
+    total: set.total,
+    unlocked: set.unlocked,
+    ...(set.points > 0 && { points: set.points, pointsUnlocked: set.pointsUnlocked }),
+  };
+}
+
+/** Secreta ainda trancada vai sem nome e descrição (spoiler), a menos que peçam. */
+function achievementSummary(a: AchievementItem, revealSecrets = true) {
+  const hide = a.hidden && !a.unlockedAt && !revealSecrets;
+  return {
+    id: a.id,
+    title: hide ? null : a.title,
+    description: hide ? null : a.description,
+    secret: a.hidden,
+    unlocked: a.unlockedAt !== null,
+    unlockedAt: a.unlockedAt,
+    rarityPercent: a.rarity === null ? null : Math.round(a.rarity * 10) / 10,
+    points: a.points,
+    ...(a.removed && { removedFromSource: true }),
+  };
+}
+
+function achievementWritten(result: AchievementWriteResult) {
+  return {
+    achievements: result.achievements.map((a) => achievementSummary(a)),
+    summary: result.summary,
+    allDoneNow: result.allDoneNow,
+    suggestFullCompletion: result.suggestFullCompletion,
+    ...(result.suggestFullCompletion && {
+      hint: "Todas as conquistas desbloqueadas: pergunte se o usuário quer marcar o jogo como 100% (mark_completed com type full).",
     }),
   };
 }

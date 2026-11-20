@@ -25,7 +25,7 @@ import {
   games,
   userAchievementSets,
 } from "../db/schema";
-import { AppError, NotFoundError, ValidationError } from "../errors";
+import { AppError, ConflictError, NotFoundError, ValidationError } from "../errors";
 import type { AchievementCatalog } from "./achievement-catalog";
 import { logActivity } from "./activity";
 import type { ServiceContext, UserScope } from "./context";
@@ -432,4 +432,51 @@ function unlockInstant(ctx: ServiceContext, unlockedOn: string | undefined): str
     throw new ValidationError("A data do desbloqueio não pode ser no futuro");
   }
   return zonedToInstant(unlockedOn, "12:00", ctx.timeZone).toISOString();
+}
+
+// ---------------------------------------------------------------------------
+// Achar pelo nome (MCP: "peguei a conquista X do Celeste")
+
+const normalizeName = (name: string) =>
+  name
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+/**
+ * A conquista das listas do jogo pelo id ou pelo nome. Nome igual (sem acento, maiúsculas e
+ * pontuação) ganha; senão, vale uma única que contenha o termo. Mais de uma → ConflictError
+ * com as opções, sem chutar.
+ */
+export function resolveAchievement(
+  scope: UserScope,
+  catalog: AchievementCatalog,
+  gameId: number,
+  ref: string | number,
+): AchievementItem {
+  const all = listGameAchievements(scope, catalog, gameId).sets.flatMap((s) => s.achievements);
+  if (all.length === 0) throw new NotFoundError("Este jogo não segue nenhuma lista de conquistas");
+  if (typeof ref === "number") {
+    const byId = all.find((a) => a.id === ref);
+    if (!byId) throw new NotFoundError(`Conquista ${ref} não está nas listas deste jogo`);
+    return byId;
+  }
+  const term = normalizeName(ref);
+  if (!term) throw new ValidationError("Informe o nome ou o id da conquista");
+  const exact = all.filter((a) => normalizeName(a.title) === term);
+  const candidates =
+    exact.length > 0 ? exact : all.filter((a) => normalizeName(a.title).includes(term));
+  const [only] = candidates;
+  if (candidates.length === 1 && only) return only;
+  if (candidates.length === 0) {
+    throw new NotFoundError(`Nenhuma conquista com "${ref}" no nome (use list_achievements)`);
+  }
+  throw new ConflictError(
+    `"${ref}" bate com ${candidates.length} conquistas: ${candidates
+      .slice(0, 10)
+      .map((a) => `${a.title} (id ${a.id})`)
+      .join(", ")}. Use o id.`,
+  );
 }

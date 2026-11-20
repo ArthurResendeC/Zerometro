@@ -168,6 +168,7 @@ describe("tools", () => {
       "get_game",
       "get_period_stats",
       "get_stats",
+      "list_achievements",
       "list_library",
       "list_objectives",
       "list_sessions",
@@ -407,6 +408,57 @@ describe("tools", () => {
     expect(preview.data.confirmationNeeded).toBe(true);
     const deleted = await callJson(client, "delete_objective", { objective_id: id, confirm: true });
     expect(deleted.data).toMatchObject({ deleted: { id }, summary: { total: 0 } });
+
+    await client.close();
+  });
+
+  test("conquistas: liga a da Steam pelo IGDB, lista sem spoiler, marca pelo nome e sugere 100%", async () => {
+    const client = await connect(t, await authorize(t));
+    await callJson(client, "add_game", { igdbId: 114283, status: "playing" });
+
+    const empty = await callJson(client, "list_achievements", { game: "persona" });
+    expect(empty.data.hint).toContain("link_achievement_set");
+
+    const ra = await callJson(client, "link_achievement_set", {
+      game: "persona",
+      source: "retroachievements",
+    });
+    expect(ra.data).toMatchObject({ linked: false, candidates: [] });
+
+    const linked = await callJson(client, "link_achievement_set", {
+      game: "persona",
+      source: "steam",
+    });
+    expect(linked.data).toMatchObject({ linked: true, summary: { total: 3, unlocked: 0 } });
+
+    const listed = await callJson(client, "list_achievements", { game: "persona" });
+    const secret = listed.data.sets[0].achievements[2];
+    expect(secret).toMatchObject({ title: null, description: null, secret: true });
+
+    const one = await callJson(client, "set_achievement", {
+      game: "persona",
+      achievement: "primeiro palacio",
+      date: "2026-11-01",
+    });
+    expect(one.data.achievements[0]).toMatchObject({ title: "Primeiro palácio", unlocked: true });
+
+    await callJson(client, "set_achievement", { game: "persona", achievement: "Confidente" });
+    const last = await callJson(client, "set_achievement", {
+      game: "persona",
+      achievement: "Final verdadeiro",
+    });
+    expect(last.data).toMatchObject({ allDoneNow: true, suggestFullCompletion: true });
+    expect(last.data.hint).toContain("mark_completed");
+
+    const missing = await callJson(client, "set_achievement", {
+      game: "persona",
+      achievement: "zzz",
+    });
+    expect(missing.isError).toBe(true);
+
+    const game = await callJson(client, "get_game", { game: "persona" });
+    expect(game.data.achievements).toMatchObject({ total: 3, unlocked: 3 });
+    expect(game.data.achievementSets[0]).toMatchObject({ source: "steam", unlocked: 3 });
 
     await client.close();
   });
