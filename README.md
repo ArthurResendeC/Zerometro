@@ -45,14 +45,14 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
       <br><sub><b>Biblioteca</b> · cartuchos por status, com o progresso estimado como barra de XP</sub>
     </td>
     <td width="50%" valign="top">
-      <img src="docs/readme/jogo.png" alt="Aba Minhas sessões do Celeste em pós-jogo: selos Pós-jogo e Zerado, tempo jogado contra os tempos do IGDB, barra rumo à história + extras, a conclusão registrada e os objetivos (contadores de lados B e morangos, caixinha do capítulo 9)">
-      <br><sub><b>Minhas sessões</b> · outra aba da página do jogo: tempo jogado contra os tempos do IGDB, conclusões (aqui em pós-jogo, rumo aos extras) e objetivos</sub>
+      <img src="docs/readme/jogo.png" alt="Aba Minhas sessões do Celeste em pós-jogo: selos Pós-jogo e Zerado, tempo jogado contra os tempos do IGDB, barra rumo à história + extras, a escolha de onde vem o tempo jogado (Sessões ou Steam, com o tempo na Steam e o botão Sincronizar com a Steam), a conclusão registrada e os objetivos (contadores de lados B e morangos, caixinha do capítulo 9)">
+      <br><sub><b>Minhas sessões</b> · outra aba da página do jogo: tempo jogado contra os tempos do IGDB (pelas sessões ou pela Steam, você escolhe), conclusões (aqui em pós-jogo, rumo aos extras) e objetivos</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/readme/conquistas.png" alt="Aba Conquistas do Celeste: lista da Steam ligada, 12 de 32 desbloqueadas, filtros, busca e ordem; conquistas desbloqueadas com ícone, raridade e data, secretas trancadas borradas com Mostrar spoiler">
-      <br><sub><b>Conquistas</b> · a lista da Steam ou do RetroAchievements, com raridade; você marca o que já fez, e as secretas ficam borradas até pedir o spoiler</sub>
+      <img src="docs/readme/conquistas.png" alt="Aba Conquistas do Celeste: lista da Steam ligada, botão Sincronizar com a Steam, 12 de 32 desbloqueadas, filtros, busca e ordem; conquistas desbloqueadas com ícone, raridade e data, secretas trancadas borradas com Mostrar spoiler">
+      <br><sub><b>Conquistas</b> · a lista da Steam ou do RetroAchievements, com raridade; você marca o que já fez (ou sincroniza com a sua Steam), e as secretas ficam borradas até pedir o spoiler</sub>
     </td>
     <td width="50%" valign="top">
       <img src="docs/readme/registrar-sessao.png" alt="Modal de registrar sessão com jogo, duração, dia e nota">
@@ -71,8 +71,8 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
       <img src="docs/readme/entrar.png" alt="Tela de login com o token de acesso">
       <br><sub><b>Login</b> · token de acesso da instância, vale 30 dias por aparelho</sub>
       <br><br>
-      <img src="docs/readme/ajustes.png" alt="Ajustes: mínimo diário da ofensiva, aviso de sessão longa e efeitos sonoros" width="60%">
-      <br><sub><b>Ajustes</b> · mínimo da ofensiva, aviso de sessão longa e sons 8 bits</sub>
+      <img src="docs/readme/ajustes.png" alt="Ajustes: mínimo diário da ofensiva, aviso de sessão longa, efeitos sonoros e a conta Steam conectada (Sincronizar tudo, Desconectar e a última sincronização automática)" width="60%">
+      <br><sub><b>Ajustes</b> · mínimo da ofensiva, aviso de sessão longa, sons 8 bits e a sua Steam, que sincroniza sozinha ao abrir o app</sub>
     </td>
   </tr>
 </table>
