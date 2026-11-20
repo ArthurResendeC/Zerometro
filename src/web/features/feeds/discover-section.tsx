@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { type Feed, type FeedGame, type FeedKey, feedTitles } from "@shared/feeds";
 import { genreLabel } from "@shared/genres";
 import type { LibraryItem } from "@shared/library";
-import { GameRow, GameRowCard } from "@/components/game-row";
+import { GameCarousel, GameCarouselCard } from "@/components/game-row";
 import { AddToLibraryButton, defaultAddStatus } from "@/components/add-to-library-button";
 import { StarIcon } from "@/components/icons";
 import { StatusBadge } from "@/components/status-badge";
@@ -58,22 +58,19 @@ interface FeedRowProps {
 
 function FeedRow({ feed, inLibrary, today }: FeedRowProps) {
   return (
-    <div className="space-y-3">
-      <h3 className="display-xs text-muted-foreground">{feedTitles[feed.key]}</h3>
-      <GameRow>
-        {feed.games.map((game, i) => (
-          <FeedGameCard
-            key={game.igdbId}
-            feedKey={feed.key}
-            game={game}
-            rank={i + 1}
-            libraryItem={inLibrary?.get(game.igdbId)}
-            libraryLoaded={Boolean(inLibrary)}
-            today={today}
-          />
-        ))}
-      </GameRow>
-    </div>
+    <GameCarousel title={feedTitles[feed.key]}>
+      {feed.games.map((game, i) => (
+        <FeedGameCard
+          key={game.igdbId}
+          feedKey={feed.key}
+          game={game}
+          rank={i + 1}
+          libraryItem={inLibrary?.get(game.igdbId)}
+          libraryLoaded={Boolean(inLibrary)}
+          today={today}
+        />
+      ))}
+    </GameCarousel>
   );
 }
 
@@ -102,7 +99,7 @@ function FeedGameCard({
       : releaseDate;
 
   return (
-    <GameRowCard
+    <GameCarouselCard
       game={game}
       tag={<CoverTag feedKey={feedKey} game={game} rank={rank} />}
       meta={meta || ""}
@@ -150,9 +147,10 @@ function CoverTag({ feedKey, game, rank }: { feedKey: FeedKey; game: FeedGame; r
 
 function FeedRowSkeleton({ title }: { title: string }) {
   return (
-    <div className="space-y-3" aria-hidden>
-      <p className="display-xs text-muted-foreground">{title}</p>
-      <div className="flex gap-3 overflow-hidden sm:gap-4">
+    // Mesmas medidas do GameCarousel (cabeçalho da altura das setas, pt-3 pb-1): nada pula ao carregar.
+    <div aria-hidden>
+      <p className="flex min-h-11 items-center display-xs text-muted-foreground">{title}</p>
+      <div className="flex gap-3 overflow-hidden pt-3 pb-1 sm:gap-4">
         {Array.from({ length: 6 }, (_, i) => (
           <div key={i} className="w-28 shrink-0 space-y-2 sm:w-36">
             <Skeleton className="m-1 aspect-3/4" />
