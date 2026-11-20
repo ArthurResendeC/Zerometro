@@ -4,9 +4,12 @@ import { createAuth, resolvePublicUrl, tokenProblem } from "./auth";
 import { db } from "./db";
 import { runMigrations } from "./db/client";
 import { createRootRoutes } from "./mcp/routes";
+import { createAchievementCatalog } from "./services/achievement-catalog";
 import { createFeedsService } from "./services/feeds";
 import { createGamePagesService } from "./services/game-pages";
 import { createIgdbFromEnv } from "./services/igdb";
+import { createRetroAchievementsFromEnv } from "./services/retroachievements";
+import { createSteamFromEnv } from "./services/steam";
 import { PUBLIC_DIR, createPublicRoutes } from "./static";
 import index from "../web/index.html";
 
@@ -40,6 +43,12 @@ const deps = {
   igdb,
   feeds: createFeedsService({ db, igdb, clock }),
   gamePages: createGamePagesService({ db, igdb, clock }),
+  achievements: createAchievementCatalog({
+    db,
+    clock,
+    steam: createSteamFromEnv(env),
+    retroachievements: createRetroAchievementsFromEnv(env),
+  }),
   clock,
 };
 const app = createApp(deps);

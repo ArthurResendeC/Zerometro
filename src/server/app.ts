@@ -17,6 +17,7 @@ import { createSessionRoutes } from "./routes/sessions";
 import { createSettingsRoutes } from "./routes/settings";
 import { createStatsRoutes } from "./routes/stats";
 import { createTimerRoutes } from "./routes/timer";
+import type { AchievementCatalog } from "./services/achievement-catalog";
 import type { Clock } from "./services/context";
 import type { FeedsService } from "./services/feeds";
 import type { GamePagesService } from "./services/game-pages";
@@ -31,6 +32,8 @@ export interface AppDeps {
   feeds: FeedsService;
   /** Dados do IGDB da página de cada jogo (cache compartilhado entre requisições). */
   gamePages: GamePagesService;
+  /** Listas de conquistas da Steam e do RetroAchievements (cache compartilhado). */
+  achievements: AchievementCatalog;
   /** Relógio e fuso do usuário; injetável para testes. */
   clock: Clock;
   /** Log de requisições (desligado nos testes). */

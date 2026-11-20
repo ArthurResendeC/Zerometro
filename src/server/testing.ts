@@ -12,6 +12,9 @@ import type { Clock, ServiceContext } from "./services/context";
 import { createFeedsService } from "./services/feeds";
 import { createGamePagesService } from "./services/game-pages";
 import type { IgdbApi } from "./services/igdb";
+import type { AchievementSourceApi, FetchedAchievementSet } from "./services/achievement-sources";
+import { createAchievementCatalog } from "./services/achievement-catalog";
+import type { RaGameListEntry, RetroAchievementsApi } from "./services/retroachievements";
 
 export function fakeIgdbGame(overrides: Partial<IgdbGameDetails> = {}): IgdbGameDetails {
   return {
@@ -112,6 +115,117 @@ export function createFakeIgdb(
   };
 }
 
+// ---------------------------------------------------------------------------
+// Conquistas
+
+/** Lista da Steam com 3 conquistas (a última secreta), como a do P5R do `fakeIgdbGame`. */
+export function fakeSteamSet(
+  overrides: Partial<FetchedAchievementSet> = {},
+): FetchedAchievementSet {
+  return {
+    source: "steam",
+    externalId: "1687950",
+    title: "Persona 5 Royal",
+    platform: null,
+    achievements: [
+      { externalId: "ACH_1", title: "Primeiro palácio", rarity: 80 },
+      { externalId: "ACH_2", title: "Confidente máximo", rarity: 30 },
+      { externalId: "ACH_3", title: "Final verdadeiro", rarity: 8, hidden: true },
+    ].map((a, sortOrder) =>
+      Object.assign(
+        {
+          description: null,
+          iconUrl: `https://cdn.steam/${a.externalId}.jpg`,
+          iconLockedUrl: `https://cdn.steam/${a.externalId}_gray.jpg`,
+          points: null,
+          hidden: false,
+          sortOrder,
+        },
+        a,
+      ),
+    ),
+    ...overrides,
+  };
+}
+
+/** Lista do RA (Super Metroid, 2 conquistas com pontos). */
+export function fakeRaSet(overrides: Partial<FetchedAchievementSet> = {}): FetchedAchievementSet {
+  return {
+    source: "retroachievements",
+    externalId: "1446",
+    title: "Super Metroid",
+    platform: "SNES/Super Famicom",
+    achievements: [
+      { externalId: "8", title: "Morph Ball", points: 5, rarity: 90 },
+      { externalId: "9", title: "Kraid", points: 10, rarity: 25 },
+    ].map((a, sortOrder) =>
+      Object.assign(
+        { description: null, iconUrl: null, iconLockedUrl: null, hidden: false, sortOrder },
+        a,
+      ),
+    ),
+    ...overrides,
+  };
+}
+
+export function fakeRaGame(overrides: Partial<RaGameListEntry> = {}): RaGameListEntry {
+  return {
+    id: 1446,
+    title: "Super Metroid",
+    consoleId: 3,
+    consoleName: "SNES/Super Famicom",
+    iconUrl: null,
+    achievements: 2,
+    points: 15,
+    ...overrides,
+  };
+}
+
+/** Fonte em memória: devolve a lista pelo id (cópia), ou falha com `failWith`. */
+export function createFakeSource(
+  sets: FetchedAchievementSet[],
+  options: { enabled?: boolean; failWith?: Error } = {},
+): AchievementSourceApi & { calls: number[]; sets: FetchedAchievementSet[] } {
+  const calls: number[] = [];
+  return {
+    enabled: options.enabled ?? true,
+    calls,
+    sets,
+    async getAchievementSet(id) {
+      calls.push(id);
+      if (options.failWith) throw options.failWith;
+      return structuredClone(sets.find((s) => s.externalId === String(id)) ?? null);
+    },
+  };
+}
+
+export function createFakeRa(
+  sets: FetchedAchievementSet[] = [fakeRaSet()],
+  lists: Record<number, RaGameListEntry[]> = { 3: [fakeRaGame()] },
+  options: { enabled?: boolean; failWith?: Error } = {},
+): RetroAchievementsApi & ReturnType<typeof createFakeSource> & { listCalls: number[] } {
+  const listCalls: number[] = [];
+  return {
+    ...createFakeSource(sets, options),
+    listCalls,
+    async getGameList(consoleId) {
+      listCalls.push(consoleId);
+      if (options.failWith) throw options.failWith;
+      return lists[consoleId] ?? [];
+    },
+  };
+}
+
+export function createTestCatalog(
+  db: Db,
+  clock: Pick<Clock, "now"> = createTestClock(),
+  sources: { steam?: AchievementSourceApi; retroachievements?: RetroAchievementsApi } = {},
+) {
+  const steam = sources.steam ?? createFakeSource([fakeSteamSet()]);
+  const retroachievements = sources.retroachievements ?? createFakeRa();
+  return createAchievementCatalog({ db, clock, steam, retroachievements, onError: () => {} });
+}
+
 /** "Hoje" fixo nos testes (uma quinta-feira). */
 export const TEST_TODAY = "2026-11-19";
 /** "Agora" fixo: 15h de TEST_TODAY em São Paulo (UTC-3). */
@@ -166,7 +280,13 @@ export const TEST_TOKEN = "token-de-teste-com-mais-de-32-caracteres";
  * sessão (como o site depois de entrar); `fetchRoot` roteia como o Bun.serve (MCP e OAuth na raiz).
  */
 export async function createTestApp(
-  overrides: { db?: Db; igdb?: IgdbApi; clock?: ReturnType<typeof createTestClock> } = {},
+  overrides: {
+    db?: Db;
+    igdb?: IgdbApi;
+    clock?: ReturnType<typeof createTestClock>;
+    steam?: AchievementSourceApi;
+    retroachievements?: RetroAchievementsApi;
+  } = {},
 ) {
   const db = overrides.db ?? createTestDb();
   const igdb = overrides.igdb ?? createFakeIgdb();
@@ -179,7 +299,8 @@ export async function createTestApp(
   });
   const feeds = createFeedsService({ db, igdb, clock });
   const gamePages = createGamePagesService({ db, igdb, clock });
-  const deps = { db, auth, igdb, feeds, gamePages, clock };
+  const achievements = createTestCatalog(db, clock, overrides);
+  const deps = { db, auth, igdb, feeds, gamePages, achievements, clock };
   const app = createApp({ ...deps, logRequests: false });
   const root = createRootRoutes(deps);
   /** Mesmo roteamento do Bun.serve (index.ts), sem a SPA. */
@@ -215,6 +336,7 @@ export async function createTestApp(
     igdb,
     feeds,
     gamePages,
+    achievements,
     clock,
     auth,
     cookie,

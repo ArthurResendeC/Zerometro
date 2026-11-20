@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+  achievementCandidatesQuerySchema,
+  achievementSetParamSchema,
+  linkAchievementSetSchema,
+} from "../../shared/achievements";
 import { markCompletedSchema } from "../../shared/completions";
 import { addObjectiveSchema, reorderObjectivesSchema } from "../../shared/objectives";
 import { igdbIdSchema } from "../../shared/igdb";
@@ -11,6 +16,13 @@ import {
 import type { AppDeps } from "../app";
 import { createRouter, webContext } from "../lib/hono";
 import { validate } from "../lib/validate";
+import {
+  findSetCandidates,
+  linkSet,
+  listGameAchievements,
+  refreshGameSets,
+  unlinkSet,
+} from "../services/achievements";
 import { listCompletions, markCompleted } from "../services/completions";
 import { addObjective, listObjectives, reorderObjectives } from "../services/objectives";
 import {
@@ -97,6 +109,49 @@ export function createLibraryRoutes(deps: AppDeps) {
           return c.json({ objectives: reorderObjectives(webContext(deps, c), gameId, ids) });
         },
       )
+      .get("/:gameId/achievements", validate("param", gameIdParamSchema), (c) => {
+        const { gameId } = c.req.valid("param");
+        return c.json(listGameAchievements(webContext(deps, c), deps.achievements, gameId));
+      })
+      .get(
+        "/:gameId/achievements/candidates",
+        validate("param", gameIdParamSchema),
+        validate("query", achievementCandidatesQuerySchema),
+        async (c) => {
+          const { gameId } = c.req.valid("param");
+          const ctx = webContext(deps, c);
+          const result = await findSetCandidates(
+            ctx,
+            deps.achievements,
+            deps.igdb,
+            gameId,
+            c.req.valid("query"),
+          );
+          return c.json(result);
+        },
+      )
+      .post(
+        "/:gameId/achievements/sets",
+        validate("param", gameIdParamSchema),
+        validate("json", linkAchievementSetSchema),
+        async (c) => {
+          const { gameId } = c.req.valid("param");
+          const ctx = webContext(deps, c);
+          return c.json(await linkSet(ctx, deps.achievements, gameId, c.req.valid("json")), 201);
+        },
+      )
+      .delete(
+        "/:gameId/achievements/sets/:setId",
+        validate("param", achievementSetParamSchema),
+        (c) => {
+          const { gameId, setId } = c.req.valid("param");
+          return c.json(unlinkSet(webContext(deps, c), deps.achievements, gameId, setId));
+        },
+      )
+      .post("/:gameId/achievements/refresh", validate("param", gameIdParamSchema), async (c) => {
+        const { gameId } = c.req.valid("param");
+        return c.json(await refreshGameSets(webContext(deps, c), deps.achievements, gameId));
+      })
       .delete("/:gameId", validate("param", gameIdParamSchema), (c) => {
         return c.json({
           removed: removeFromLibrary(webContext(deps, c), c.req.valid("param").gameId),
