@@ -14,6 +14,7 @@ import {
   completionTypeSchema,
   gameStatusLabels,
   gameStatusSchema,
+  playtimeSourceSchema,
 } from "../../shared/domain";
 import { feedKeys, feedTitles } from "../../shared/feeds";
 import { genreLabel } from "../../shared/genres";
@@ -44,6 +45,7 @@ import {
 import { createContext, type ServiceContext } from "../services/context";
 import {
   addToLibrary,
+  getLibraryItem,
   listLibrary,
   resolveLibraryGame,
   updateLibraryEntry,
@@ -59,13 +61,17 @@ import {
 } from "../services/objectives";
 import { listSessions, logSession } from "../services/sessions";
 import { getSettings } from "../services/settings";
+import { syncSteamGame, syncSteamLibrary } from "../services/steam-sync";
 import { getHeatmap, getPeriodBreakdown, getRecords, getRhythm, getStats } from "../services/stats";
 import { getActiveSession, startTimer, stopTimer } from "../services/timer";
 
 // Servidor MCP do Zerômetro: tools finas por cima dos `services/` (as mesmas regras da API
 // REST), sempre no escopo do usuário dono do access token e com actor "mcp".
 
-export type McpDeps = Pick<AppDeps, "db" | "igdb" | "feeds" | "achievements" | "clock">;
+export type McpDeps = Pick<
+  AppDeps,
+  "db" | "igdb" | "feeds" | "achievements" | "steamUser" | "clock"
+>;
 
 const gameRefSchema = z
   .union([z.number().int().positive(), z.string().trim().min(1)])
@@ -129,8 +135,13 @@ function gameSummary(item: LibraryItem) {
     statusLabel: gameStatusLabels[item.status],
     platformPlayed: item.platformPlayed,
     releaseYear: item.releaseYear,
+    /** Total que vale para o progresso (pelas sessões + tempo anterior, ou pela Steam). */
     minutesPlayed: item.minutesPlayed,
+    sessionMinutes: item.sessionMinutes,
     priorMinutes: item.priorMinutes,
+    /** sessions = controle manual; steam = o total vem da Steam (sync_steam). */
+    playtimeSource: item.playtimeSource,
+    steamPlaytime: item.steamPlaytime,
     displayState: item.displayState,
     displayStateLabel:
       item.displayState === "postgame"
@@ -511,7 +522,7 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     {
       title: "Tempo jogado antes do Zerômetro",
       description:
-        'Define quanto o usuário jogou de um jogo antes de começar a registrar no Zerômetro ("já tenho 39h de Witcher 3"). Substitui o valor anterior (não soma). Esse tempo não tem data: entra no total e no progresso do jogo, mas não nas estatísticas (ofensiva, médias, semanas, mais jogados). Para tempo jogado num dia específico, use log_session.',
+        'Define quanto o usuário jogou de um jogo antes de começar a registrar no Zerômetro ("já tenho 39h de Witcher 3"). Substitui o valor anterior (não soma). Esse tempo não tem data: entra no total e no progresso do jogo, mas não nas estatísticas (ofensiva, médias, semanas, mais jogados). Para tempo jogado num dia específico, use log_session. Se o jogo usa o tempo da Steam (playtimeSource steam), este valor fica guardado mas só conta quando voltar para as sessões (set_playtime_source).',
       inputSchema: z.object({
         game: gameRefSchema,
         minutes: priorMinutesSchema.describe("Total de minutos jogados antes (0 para limpar)"),
@@ -859,6 +870,67 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
           ...(date && { unlockedOn: date }),
         });
         return achievementWritten(result);
+      }),
+  );
+
+  server.registerTool(
+    "sync_steam",
+    {
+      title: "Sincronizar com a Steam",
+      description:
+        "Traz da conta Steam do usuário (o perfil conectado nos Ajustes do site) as conquistas desbloqueadas, com a data real, e o tempo total de cada jogo. Com game: só esse jogo; sem game: todos os da biblioteca que estão na conta (pode levar um tempo). Só adiciona desbloqueios, nunca desmarca. Um jogo na conta sem lista de conquistas ganha a da Steam. O tempo da Steam fica guardado à parte (steamPlaytime): só vira o tempo jogado se o jogo usar a Steam como fonte (set_playtime_source). Se o perfil não estiver conectado ou esconder os jogos, a mensagem de erro diz o que o usuário precisa fazer.",
+      inputSchema: z.object({
+        game: gameRefSchema.optional().describe("Um jogo só; omita para sincronizar todos"),
+      }),
+      annotations: { ...write, openWorldHint: true },
+    },
+    ({ game }) =>
+      run(async () => {
+        const scope = ctx();
+        const steamDeps = {
+          catalog: deps.achievements,
+          igdb: deps.igdb,
+          steamUser: deps.steamUser,
+        };
+        if (game !== undefined) {
+          const { gameId } = resolveLibraryGame(scope, game);
+          const sync = await syncSteamGame(scope, steamDeps, gameId);
+          return { sync, game: gameSummary(getLibraryItem(scope, gameId)) };
+        }
+        const result = await syncSteamLibrary(scope, steamDeps);
+        return {
+          syncedAt: result.syncedAt,
+          newUnlocks: result.newUnlocks,
+          games: result.games
+            .filter((g) => g.owned || g.newUnlocks > 0 || g.error)
+            .map(({ gameId, name, steamMinutes, newUnlocks, linkedSet, error }) =>
+              Object.assign(
+                { gameId, name, steamMinutes, newUnlocks },
+                linkedSet && { linkedSet },
+                error && { error },
+              ),
+            ),
+        };
+      }),
+  );
+
+  server.registerTool(
+    "set_playtime_source",
+    {
+      title: "Fonte do tempo jogado",
+      description:
+        'Escolhe de onde vem o tempo jogado de um jogo: "sessions" (controle manual: sessões registradas + tempo antes do Zerômetro) ou "steam" (o total da Steam, da última sync_steam). As sessões continuam contando na ofensiva e nas estatísticas nos dois casos. Para usar "steam", sincronize o jogo antes.',
+      inputSchema: z.object({
+        game: gameRefSchema,
+        source: playtimeSourceSchema.describe("sessions ou steam"),
+      }),
+      annotations: { ...write, idempotentHint: true },
+    },
+    ({ game, source }) =>
+      run(() => {
+        const scope = ctx();
+        const { gameId } = resolveLibraryGame(scope, game);
+        return gameSummary(updateLibraryEntry(scope, gameId, { playtimeSource: source }).item);
       }),
   );
 

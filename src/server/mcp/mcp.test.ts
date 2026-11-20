@@ -3,6 +3,7 @@ import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/cli
 import { activityLog } from "../db/schema";
 import {
   createFakeIgdb,
+  createFakeSteamUser,
   createTestApp,
   fakeFeedGame,
   fakeIgdbGame,
@@ -459,6 +460,42 @@ describe("tools", () => {
     const game = await callJson(client, "get_game", { game: "persona" });
     expect(game.data.achievements).toMatchObject({ total: 3, unlocked: 3 });
     expect(game.data.achievementSets[0]).toMatchObject({ source: "steam", unlocked: 3 });
+
+    await client.close();
+  });
+
+  test("steam: sem perfil dá a dica; sincroniza um jogo e usa o tempo da Steam", async () => {
+    t = await createTestApp({
+      igdb,
+      steamUser: createFakeSteamUser({
+        owned: { 1687950: 3000 },
+        unlocked: { 1687950: [{ apiName: "ACH_1", unlockedAt: null }] },
+      }),
+    });
+    const client = await connect(t, await authorize(t));
+    await callJson(client, "add_game", { igdbId: 114283, status: "playing" });
+
+    const unlinked = await callJson(client, "sync_steam", { game: "persona" });
+    expect(unlinked.isError).toBe(true);
+    expect(unlinked.text).toContain("Ajustes");
+
+    await t.request("/api/steam/profile", { ...json({ profile: "robinwalker" }), method: "PUT" });
+    const synced = await callJson(client, "sync_steam", { game: "persona" });
+    expect(synced.data.sync).toMatchObject({ newUnlocks: 1, steamMinutes: 3000, linkedSet: true });
+    expect(synced.data.game).toMatchObject({
+      playtimeSource: "sessions",
+      steamPlaytime: { minutes: 3000 },
+      achievements: { total: 3, unlocked: 1 },
+    });
+
+    const steam = await callJson(client, "set_playtime_source", {
+      game: "persona",
+      source: "steam",
+    });
+    expect(steam.data).toMatchObject({ playtimeSource: "steam", minutesPlayed: 3000 });
+
+    const all = await callJson(client, "sync_steam", {});
+    expect(all.data).toMatchObject({ newUnlocks: 0, games: [{ name: "Persona 5 Royal" }] });
 
     await client.close();
   });
