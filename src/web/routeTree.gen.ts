@@ -16,6 +16,7 @@ import { Route as AutorizarRouteImport } from "./routes/autorizar"
 import { Route as BibliotecaRouteImport } from "./routes/biblioteca"
 import { Route as EntrarRouteImport } from "./routes/entrar"
 import { Route as EstatisticasRouteImport } from "./routes/estatisticas"
+import { Route as JogoIgdbIdRouteImport } from "./routes/jogo.$igdbId"
 import { Route as JogosGameIdRouteImport } from "./routes/jogos.$gameId"
 
 const IndexRoute = IndexRouteImport.update({
@@ -53,6 +54,11 @@ const EstatisticasRoute = EstatisticasRouteImport.update({
   path: "/estatisticas",
   getParentRoute: () => rootRouteImport,
 } as any)
+const JogoIgdbIdRoute = JogoIgdbIdRouteImport.update({
+  id: "/jogo/$igdbId",
+  path: "/jogo/$igdbId",
+  getParentRoute: () => rootRouteImport,
+} as any)
 const JogosGameIdRoute = JogosGameIdRouteImport.update({
   id: "/jogos/$gameId",
   path: "/jogos/$gameId",
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   "/biblioteca": typeof BibliotecaRoute
   "/entrar": typeof EntrarRoute
   "/estatisticas": typeof EstatisticasRoute
+  "/jogo/$igdbId": typeof JogoIgdbIdRoute
   "/jogos/$gameId": typeof JogosGameIdRoute
 }
 export interface FileRoutesByTo {
@@ -77,6 +84,7 @@ export interface FileRoutesByTo {
   "/biblioteca": typeof BibliotecaRoute
   "/entrar": typeof EntrarRoute
   "/estatisticas": typeof EstatisticasRoute
+  "/jogo/$igdbId": typeof JogoIgdbIdRoute
   "/jogos/$gameId": typeof JogosGameIdRoute
 }
 export interface FileRoutesById {
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   "/biblioteca": typeof BibliotecaRoute
   "/entrar": typeof EntrarRoute
   "/estatisticas": typeof EstatisticasRoute
+  "/jogo/$igdbId": typeof JogoIgdbIdRoute
   "/jogos/$gameId": typeof JogosGameIdRoute
 }
 export interface FileRouteTypes {
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | "/biblioteca"
     | "/entrar"
     | "/estatisticas"
+    | "/jogo/$igdbId"
     | "/jogos/$gameId"
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | "/biblioteca"
     | "/entrar"
     | "/estatisticas"
+    | "/jogo/$igdbId"
     | "/jogos/$gameId"
   id:
     | "__root__"
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | "/biblioteca"
     | "/entrar"
     | "/estatisticas"
+    | "/jogo/$igdbId"
     | "/jogos/$gameId"
   fileRoutesById: FileRoutesById
 }
@@ -131,6 +143,7 @@ export interface RootRouteChildren {
   BibliotecaRoute: typeof BibliotecaRoute
   EntrarRoute: typeof EntrarRoute
   EstatisticasRoute: typeof EstatisticasRoute
+  JogoIgdbIdRoute: typeof JogoIgdbIdRoute
   JogosGameIdRoute: typeof JogosGameIdRoute
 }
 
@@ -185,6 +198,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof EstatisticasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    "/jogo/$igdbId": {
+      id: "/jogo/$igdbId"
+      path: "/jogo/$igdbId"
+      fullPath: "/jogo/$igdbId"
+      preLoaderRoute: typeof JogoIgdbIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     "/jogos/$gameId": {
       id: "/jogos/$gameId"
       path: "/jogos/$gameId"
@@ -203,6 +223,7 @@ const rootRouteChildren: RootRouteChildren = {
   BibliotecaRoute: BibliotecaRoute,
   EntrarRoute: EntrarRoute,
   EstatisticasRoute: EstatisticasRoute,
+  JogoIgdbIdRoute: JogoIgdbIdRoute,
   JogosGameIdRoute: JogosGameIdRoute,
 }
 export const routeTree = rootRouteImport

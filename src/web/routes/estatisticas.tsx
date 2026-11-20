@@ -124,7 +124,7 @@ function GamesCard({ breakdown }: { breakdown: PeriodBreakdown }) {
           color="var(--primary)"
           items={breakdown.games.map((game) => ({
             key: game.gameId,
-            gameId: game.gameId,
+            igdbId: game.igdbId,
             label: game.name,
             minutes: game.minutes,
             leading: (

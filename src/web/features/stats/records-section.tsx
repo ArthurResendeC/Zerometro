@@ -47,8 +47,8 @@ export function RecordsSection({ records }: { records: Records }) {
             longestSession ? (
               <>
                 <Link
-                  to="/jogos/$gameId"
-                  params={{ gameId: longestSession.gameId }}
+                  to="/jogo/$igdbId"
+                  params={{ igdbId: longestSession.igdbId }}
                   className="underline decoration-dotted underline-offset-4 hover:text-foreground"
                 >
                   {longestSession.name}
@@ -138,8 +138,8 @@ function FinishedRow({ game }: { game: FinishedGame }) {
   return (
     <li>
       <Link
-        to="/jogos/$gameId"
-        params={{ gameId: game.gameId }}
+        to="/jogo/$igdbId"
+        params={{ igdbId: game.igdbId }}
         className="-m-1 flex items-center gap-3 p-1 hover:bg-accent"
       >
         <GameCover

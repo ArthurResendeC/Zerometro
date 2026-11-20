@@ -158,8 +158,8 @@ function TopGames({ games }: { games: Stats["topGames"] }) {
         {games.map((game) => (
           <li key={game.gameId}>
             <Link
-              to="/jogos/$gameId"
-              params={{ gameId: game.gameId }}
+              to="/jogo/$igdbId"
+              params={{ igdbId: game.igdbId }}
               className="flex items-center gap-4 p-2 hover:bg-accent"
             >
               <GameCover

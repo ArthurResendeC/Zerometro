@@ -1,7 +1,12 @@
 import { keepPreviousData, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { type GameStatus, gameStatusLabels } from "@shared/domain";
-import type { AddToLibraryInput, LibraryListQuery, UpdateLibraryEntryInput } from "@shared/library";
+import type {
+  AddToLibraryInput,
+  LibraryItem,
+  LibraryListQuery,
+  UpdateLibraryEntryInput,
+} from "@shared/library";
 import type {
   ListSessionsQuery,
   LogSessionInput,
@@ -24,6 +29,7 @@ export const libraryKeys = {
   all: ["library"] as const,
   list: (filters: LibraryListQuery) => [...libraryKeys.all, "list", filters] as const,
   item: (gameId: number) => [...libraryKeys.all, "item", gameId] as const,
+  byIgdb: (igdbId: number) => [...libraryKeys.all, "igdb", igdbId] as const,
 };
 
 export const libraryListQuery = (filters: LibraryListQuery = {}) =>
@@ -46,6 +52,27 @@ export const libraryItemQuery = (gameId: number) =>
     queryKey: libraryKeys.item(gameId),
     queryFn: async () =>
       (await unwrap(api.library[":gameId"].$get({ param: { gameId: String(gameId) } }))).item,
+  });
+
+/** O jogo na biblioteca pelo id do IGDB; null se não estiver nela. */
+export const libraryByIgdbQuery = (igdbId: number) =>
+  queryOptions({
+    queryKey: libraryKeys.byIgdb(igdbId),
+    queryFn: async () =>
+      (await unwrap(api.library.igdb[":igdbId"].$get({ param: { igdbId: String(igdbId) } }))).item,
+  });
+
+/** Dados do IGDB para a aba "Sobre" (o servidor guarda por 1 dia). */
+export const gamePageQuery = (igdbId: number) =>
+  queryOptions({
+    queryKey: ["igdb", "game", igdbId],
+    queryFn: async () =>
+      (await unwrap(api.igdb.games[":igdbId"].$get({ param: { igdbId: String(igdbId) } }))).game,
+    staleTime: 60 * 60_000,
+    // 404 (jogo inexistente) e 503 (IGDB não configurado) não melhoram tentando de novo.
+    retry: (failures, error) =>
+      !(error instanceof ApiError && (error.status === 404 || error.status === 503)) &&
+      failures < 2,
   });
 
 export const igdbSearchQuery = (q: string) =>
@@ -76,10 +103,17 @@ export function useAddToLibrary() {
       (await unwrap(api.library.$post({ json: input }))).item,
     onSuccess: (item) => {
       toast.success(`${item.name} adicionado em ${gameStatusLabels[item.status]}`);
+      setLibraryItem(queryClient, item);
       return queryClient.invalidateQueries({ queryKey: libraryKeys.all });
     },
     onError,
   });
+}
+
+/** O item aparece por duas chaves: pelo id interno e pelo id do IGDB (página do jogo). */
+function setLibraryItem(queryClient: ReturnType<typeof useQueryClient>, item: LibraryItem) {
+  queryClient.setQueryData(libraryKeys.item(item.gameId), item);
+  queryClient.setQueryData(libraryKeys.byIgdb(item.igdbId), item);
 }
 
 function patchLibraryEntry(gameId: number, patch: UpdateLibraryEntryInput) {
@@ -102,7 +136,7 @@ export function useUpdateLibraryEntry(gameId: number) {
     mutationFn: (patch: UpdateLibraryEntryInput) => patchLibraryEntry(gameId, patch),
     onSuccess: (result) => {
       playMostImportant(libraryChangeSounds(result));
-      queryClient.setQueryData(libraryKeys.item(gameId), result.item);
+      setLibraryItem(queryClient, result.item);
       return queryClient.invalidateQueries({ queryKey: libraryKeys.all });
     },
     onError,
@@ -122,7 +156,7 @@ export function useMoveGameStatus() {
       patchLibraryEntry(gameId, { status }),
     onSuccess: (result) => {
       playMostImportant(libraryChangeSounds(result));
-      queryClient.setQueryData(libraryKeys.item(result.item.gameId), result.item);
+      setLibraryItem(queryClient, result.item);
       return queryClient.invalidateQueries({ queryKey: libraryKeys.all });
     },
     onError,
@@ -137,6 +171,11 @@ export function useRemoveFromLibrary() {
     onSuccess: (removed) => {
       toast.success(`${removed.name} removido da biblioteca`);
       queryClient.removeQueries({ queryKey: libraryKeys.item(removed.gameId) });
+      // A página do jogo continua aberta, agora como "fora da biblioteca".
+      queryClient.setQueriesData<LibraryItem | null>(
+        { queryKey: [...libraryKeys.all, "igdb"] },
+        (old) => (old?.gameId === removed.gameId ? null : old),
+      );
       return invalidateGameData(queryClient);
     },
     onError,

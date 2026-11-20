@@ -106,8 +106,8 @@ export function TimerBar() {
           className="hidden w-7 shrink-0 sm:block"
         />
         <Link
-          to="/jogos/$gameId"
-          params={{ gameId: active.gameId }}
+          to="/jogo/$igdbId"
+          params={{ igdbId: active.igdbId }}
           className="min-w-0 truncate hover:underline"
         >
           <span className="hidden text-muted-foreground sm:inline">Jogando </span>

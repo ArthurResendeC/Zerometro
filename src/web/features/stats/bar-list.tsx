@@ -13,8 +13,8 @@ export interface BarListItem {
   hint?: ReactNode;
   /** Algo antes do nome (ex.: a capa). */
   leading?: ReactNode;
-  /** A linha vira link para a página do jogo. */
-  gameId?: number;
+  /** A linha vira link para a página do jogo (pelo id do IGDB). */
+  igdbId?: number;
 }
 
 interface BarListProps {
@@ -54,12 +54,12 @@ export function BarList({ items, color = "var(--chart-2)" }: BarListProps) {
         );
         return (
           <li key={item.key}>
-            {item.gameId === undefined ? (
+            {item.igdbId === undefined ? (
               row
             ) : (
               <Link
-                to="/jogos/$gameId"
-                params={{ gameId: item.gameId }}
+                to="/jogo/$igdbId"
+                params={{ igdbId: item.igdbId }}
                 className="-m-1 block p-1 hover:bg-accent"
               >
                 {row}

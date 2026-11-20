@@ -85,7 +85,7 @@ function ResultRow({ game, existing }: { game: IgdbGameSummary; existing?: Libra
       </div>
 
       {existing ? (
-        <Link to="/jogos/$gameId" params={{ gameId: existing.gameId }}>
+        <Link to="/jogo/$igdbId" params={{ igdbId: existing.igdbId }}>
           <StatusBadge status={existing.status} />
         </Link>
       ) : (
