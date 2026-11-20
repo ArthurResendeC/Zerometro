@@ -25,7 +25,8 @@ const CONSENT_PATH = "/autorizar";
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   // Tudo exige login, menos a própria tela de login.
   beforeLoad: async ({ context, location }) => {
-    const session = await context.queryClient.ensureQueryData(sessionQuery());
+    // Sem rede e sem sessão guardada no aparelho, não há como saber: vai para o login.
+    const session = await context.queryClient.ensureQueryData(sessionQuery()).catch(() => null);
     const onLogin = location.pathname === LOGIN_PATH;
     if (!session && !onLogin) {
       throw redirect({ to: LOGIN_PATH, search: { redirect: location.href } });

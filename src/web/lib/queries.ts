@@ -512,8 +512,16 @@ export const authKeys = { session: ["auth", "session"] as const };
 export const sessionQuery = () =>
   queryOptions({
     queryKey: authKeys.session,
-    queryFn: async () => (await authClient.getSession()).data ?? null,
+    queryFn: async () => {
+      const { data, error } = await authClient.getSession();
+      // Sem rede (ou servidor fora do ar) não é "deslogado": falha e mantém a sessão do cache.
+      if (error) throw new Error(error.message ?? "Não deu para verificar o login");
+      return data ?? null;
+    },
     staleTime: 5 * 60_000,
+    // Offline sem nada guardado: falha na hora (cai no login) em vez de esperar a rede voltar.
+    networkMode: "always",
+    retry: false,
   });
 
 // ---------------------------------------------------------------------------

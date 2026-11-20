@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/card";
 import { LogOutIcon } from "@/components/icons";
 import { Label } from "@/components/ui/label";
 import { AudioSettingsCard } from "@/features/audio/audio-settings-card";
+import { clearPersistedQueries } from "@/features/offline/query-persistence";
 import { authClient } from "@/lib/auth-client";
 import { formatMinutes } from "@/lib/format";
 import { settingsQuery, useUpdateSettings } from "@/lib/queries";
@@ -65,8 +66,9 @@ function AccountCard() {
   const signOut = async () => {
     setPending(true);
     await authClient.signOut();
-    // Nada do usuário anterior pode sobrar no cache.
+    // Nada do usuário anterior pode sobrar no cache (nem no guardado para uso offline).
     queryClient.clear();
+    await clearPersistedQueries();
     await router.navigate({ to: "/entrar" });
   };
 

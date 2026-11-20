@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
+import { PERSIST_MAX_AGE_MS, restorePersistedQueries } from "@/features/offline/query-persistence";
 import { listenForInstallPrompt } from "@/features/pwa/install-prompt";
 import { registerServiceWorker } from "@/features/pwa/service-worker";
 import { ApiError } from "@/lib/api";
@@ -21,9 +22,11 @@ const queryClient = new QueryClient({
   queryCache: new QueryCache({ onError: onUnauthorized }),
   mutationCache: new MutationCache({ onError: onUnauthorized }),
   defaultOptions: {
-    // 401 não melhora tentando de novo.
     queries: {
+      // 401 não melhora tentando de novo.
       retry: (count, error) => !(error instanceof ApiError && error.status === 401) && count < 3,
+      // O cache vai para o IndexedDB (app offline): precisa durar tanto quanto o guardado.
+      gcTime: PERSIST_MAX_AGE_MS,
     },
   },
 });
@@ -41,6 +44,9 @@ declare module "@tanstack/react-router" {
     router: typeof router;
   }
 }
+
+// Antes do render: o login e os dados da última visita vêm do cache guardado quando não há rede.
+await restorePersistedQueries(queryClient);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
