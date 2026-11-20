@@ -10,6 +10,7 @@ import { createFeedRoutes } from "./routes/feeds";
 import { healthRoutes } from "./routes/health";
 import { createIgdbRoutes } from "./routes/igdb";
 import { createLibraryRoutes } from "./routes/library";
+import { createObjectiveRoutes } from "./routes/objectives";
 import { createSessionRoutes } from "./routes/sessions";
 import { createSettingsRoutes } from "./routes/settings";
 import { createStatsRoutes } from "./routes/stats";
@@ -76,6 +77,7 @@ export function createApp(deps: AppDeps) {
       .route("/library", createLibraryRoutes(deps))
       .route("/sessions", createSessionRoutes(deps))
       .route("/completions", createCompletionRoutes(deps))
+      .route("/objectives", createObjectiveRoutes(deps))
       .route("/stats", createStatsRoutes(deps))
       .route("/settings", createSettingsRoutes(deps))
       .route("/timer", createTimerRoutes(deps))

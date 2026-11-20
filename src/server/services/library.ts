@@ -145,6 +145,19 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
     .groupBy(completions.gameId)
     .as("done");
 
+  const goals = db
+    .select({
+      gameId: objectives.gameId,
+      total: sql<number>`count(*)`.as("objectives_total"),
+      unlocked: sql<number>`sum(${objectives.progress} >= ${objectives.target})`.as(
+        "objectives_unlocked",
+      ),
+    })
+    .from(objectives)
+    .where(eq(objectives.userId, userId))
+    .groupBy(objectives.gameId)
+    .as("goals");
+
   const rows = db
     .select({
       game: games,
@@ -156,11 +169,14 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
       completions: done.count,
       firstCompletedOn: done.first,
       lastCompletedOn: done.last,
+      objectivesTotal: goals.total,
+      objectivesUnlocked: goals.unlocked,
     })
     .from(libraryEntries)
     .innerJoin(games, eq(games.id, libraryEntries.gameId))
     .leftJoin(totals, eq(totals.gameId, games.id))
     .leftJoin(done, eq(done.gameId, games.id))
+    .leftJoin(goals, eq(goals.gameId, games.id))
     .where(and(eq(libraryEntries.userId, userId), ...filters))
     // Jogados recentemente primeiro; depois os mexidos por último.
     .orderBy(
@@ -202,6 +218,9 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
       status: entry.status,
       displayState: displayStateOf(entry.status, completion),
       completion,
+      objectives: row.objectivesTotal
+        ? { total: row.objectivesTotal, unlocked: row.objectivesUnlocked ?? 0 }
+        : null,
       platformPlayed: entry.platformPlayed,
       startedAt: entry.startedAt,
       finishedAt: entry.finishedAt,

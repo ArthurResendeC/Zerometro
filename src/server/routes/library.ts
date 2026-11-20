@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { markCompletedSchema } from "../../shared/completions";
+import { addObjectiveSchema, reorderObjectivesSchema } from "../../shared/objectives";
 import { igdbIdSchema } from "../../shared/igdb";
 import {
   addToLibrarySchema,
@@ -11,6 +12,7 @@ import type { AppDeps } from "../app";
 import { createRouter, webContext } from "../lib/hono";
 import { validate } from "../lib/validate";
 import { listCompletions, markCompleted } from "../services/completions";
+import { addObjective, listObjectives, reorderObjectives } from "../services/objectives";
 import {
   addToLibrary,
   countByStatus,
@@ -70,6 +72,29 @@ export function createLibraryRoutes(deps: AppDeps) {
         (c) => {
           const { gameId } = c.req.valid("param");
           return c.json(markCompleted(webContext(deps, c), gameId, c.req.valid("json")), 201);
+        },
+      )
+      .get("/:gameId/objectives", validate("param", gameIdParamSchema), (c) => {
+        const { gameId } = c.req.valid("param");
+        return c.json({ objectives: listObjectives(webContext(deps, c), gameId) });
+      })
+      .post(
+        "/:gameId/objectives",
+        validate("param", gameIdParamSchema),
+        validate("json", addObjectiveSchema),
+        (c) => {
+          const { gameId } = c.req.valid("param");
+          return c.json(addObjective(webContext(deps, c), gameId, c.req.valid("json")), 201);
+        },
+      )
+      .put(
+        "/:gameId/objectives/order",
+        validate("param", gameIdParamSchema),
+        validate("json", reorderObjectivesSchema),
+        (c) => {
+          const { gameId } = c.req.valid("param");
+          const { ids } = c.req.valid("json");
+          return c.json({ objectives: reorderObjectives(webContext(deps, c), gameId, ids) });
         },
       )
       .delete("/:gameId", validate("param", gameIdParamSchema), (c) => {

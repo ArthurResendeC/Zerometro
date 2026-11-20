@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { CompletionSummary, DisplayState } from "./completions";
+import type { ObjectivesSummary } from "./objectives";
 import { isoDateSchema } from "./dates";
 import { type CompletionType, type GameStatus, gameStatusSchema } from "./domain";
 import type { TimeToBeat } from "./igdb";
@@ -21,6 +22,8 @@ export interface LibraryItem {
   displayState: DisplayState;
   /** Conclusões (null se nunca zerou). */
   completion: CompletionSummary | null;
+  /** Objetivos feitos/total (null se o jogo não tem objetivos). */
+  objectives: ObjectivesSummary | null;
   platformPlayed: string | null;
   startedAt: string | null;
   finishedAt: string | null;
