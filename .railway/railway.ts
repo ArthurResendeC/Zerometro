@@ -105,6 +105,9 @@ export default defineRailway(() => {
       ZEROMETRO_TOKEN: preserve(),
       IGDB_CLIENT_ID: preserve(),
       IGDB_CLIENT_SECRET: preserve(),
+      // Conquistas (opcionais): sem a chave, a fonte fica desligada.
+      STEAM_WEB_API_KEY: preserve(),
+      RA_API_KEY: preserve(),
       ...backupEnv,
     },
   });

@@ -88,11 +88,12 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 - **Registro de sessões:** manual ("joguei 2h ontem") ou pelo **timer** ("Comecei a jogar" / "Parei"), que roda no servidor e não se perde ao fechar a aba
 - **Estatísticas:** 🔥 ofensiva atual e recorde (com mínimo diário configurável), hoje, média diária e semanal, gráfico das últimas 8 semanas e heatmap dos últimos 12 meses na tela inicial
 - **Página de estatísticas** (últimos 12 meses ou um ano): heatmap estilo GitHub, gêneros e jogos mais jogados, média por dia da semana, hora do dia (sessões de timer), duração das sessões, recordes (maior sessão, melhor dia e semana), zerados por mês (com replays e 100% à parte) e seu ritmo comparado ao tempo da história no IGDB
-- **Página de cada jogo**, na biblioteca ou não, com duas abas: **Sobre o jogo** (banner, notas da crítica e do público, tempos para zerar, sinopse, trailer, imagens, onde comprar, lançamento por plataforma, português do Brasil, classificação indicativa e jogos relacionados para ir de jogo em jogo) e **Minhas sessões** (tempo jogado, progresso, conclusões, objetivos, sessões e detalhes)
+- **Página de cada jogo**, na biblioteca ou não, com as abas **Sobre o jogo** (banner, notas da crítica e do público, tempos para zerar, sinopse, trailer, imagens, onde comprar, lançamento por plataforma, português do Brasil, classificação indicativa e jogos relacionados para ir de jogo em jogo), **Minhas sessões** (tempo jogado, progresso, conclusões, objetivos, sessões e detalhes) e **Conquistas**
 - **Descobrir na tela inicial:** listas do IGDB com os lançamentos bem avaliados, os jogos em alta e os próximos lançamentos, atualizadas uma vez por dia, com botão de adicionar (próximos ou desejos) e o status dos que já estão na biblioteca
 - **Tempo para zerar:** história, história + extras e 100%, com o progresso estimado de cada jogo
 - **Conclusões e pós-jogo:** "zerei" é separado do status. Registre a história, a história + extras ou o 100% (com data, inclusive replays); um jogo zerado que você continua jogando fica em "Jogando" com o selo de zerado e o rótulo **Pós-jogo** (com filtro na biblioteca), e a barra de progresso passa a mirar o próximo nível
 - **Objetivos por jogo:** caixinhas ou contadores ("900 sementes Korok") com barra geral; concluir o último sugere marcar o jogo como 100%
+- **Conquistas da Steam e do RetroAchievements** (opcional, com a chave de cada um): a lista oficial do jogo, com ícone, descrição, raridade ("8% dos jogadores") e pontos do RA, e você marca o que já conseguiu. A da Steam é achada sozinha pelo IGDB; a do RA, pelo nome nos consoles do jogo (você confirma) ou colando o link. Secretas ficam borradas até pedir o spoiler; filtros, busca e ordem por raridade; completar a lista sugere marcar o 100%
 - **Tempo jogado antes do Zerômetro:** para jogos que você já vinha jogando ("tenho 39h de Witcher 3"), sem inventar sessões; conta no total e no progresso do jogo, mas não na ofensiva nem nas médias
 - **Instalável como app** (PWA) no computador (Chrome, Edge, Safari) e no celular, com janela própria, atalhos no ícone e um aviso com o passo a passo de cada navegador
 - **Funciona sem internet:** o app abre offline com os dados já vistos neste aparelho (só leitura), e registrar sessão, "Comecei", "Parei" e trocar de jogo vão para uma fila no aparelho com o horário real. Quando a conexão volta, a fila é enviada em ordem e sem duplicar (mesmo com várias abas); o cabeçalho mostra o que está pendente e, se o servidor recusar algo (ex.: o timer já tinha começado em outro aparelho), o motivo, com a opção de descartar
@@ -117,26 +118,28 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 - [ ] Retrospectiva do ano
 - [ ] Alertas de lançamento da lista de desejos
 - [ ] Sincronização de tempo jogado da Steam
-- [ ] Conquistas da Steam e do RetroAchievements nos objetivos (a tabela já aceita a fonte)
+- [x] ~Conquistas da Steam e do RetroAchievements (lista da fonte, marcadas à mão)~
+- [ ] Sincronizar as conquistas com o perfil público da Steam e do RetroAchievements
 
 ---
 
 ## 🧱 Stack
 
-| Camada                          | Tecnologia                                                                  |
-| ------------------------------- | --------------------------------------------------------------------------- |
-| Runtime                         | [Bun](https://bun.sh)                                                       |
-| API                             | [Hono](https://hono.dev)                                                    |
-| Banco                           | SQLite (`bun:sqlite`) + [Drizzle ORM](https://orm.drizzle.team)             |
-| Frontend                        | React + TypeScript                                                          |
-| Rotas / dados / forms / tabelas | [TanStack](https://tanstack.com) Router, Query, Form e Table                |
-| UI                              | [shadcn/ui](https://ui.shadcn.com) + Tailwind CSS                           |
-| Estado de UI                    | Zustand                                                                     |
-| Validação                       | Zod (compartilhado entre API, frontend e MCP)                               |
-| Acesso                          | Token da instância + cookie assinado; OAuth 2.1 próprio para o MCP          |
-| IA                              | [Model Context Protocol](https://modelcontextprotocol.io) (Streamable HTTP) |
-| Dados de jogos                  | [IGDB API](https://api-docs.igdb.com)                                       |
-| Backup                          | [Litestream](https://litestream.io) para um bucket S3 (Railway, R2…)        |
+| Camada                          | Tecnologia                                                                                                        |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Runtime                         | [Bun](https://bun.sh)                                                                                             |
+| API                             | [Hono](https://hono.dev)                                                                                          |
+| Banco                           | SQLite (`bun:sqlite`) + [Drizzle ORM](https://orm.drizzle.team)                                                   |
+| Frontend                        | React + TypeScript                                                                                                |
+| Rotas / dados / forms / tabelas | [TanStack](https://tanstack.com) Router, Query, Form e Table                                                      |
+| UI                              | [shadcn/ui](https://ui.shadcn.com) + Tailwind CSS                                                                 |
+| Estado de UI                    | Zustand                                                                                                           |
+| Validação                       | Zod (compartilhado entre API, frontend e MCP)                                                                     |
+| Acesso                          | Token da instância + cookie assinado; OAuth 2.1 próprio para o MCP                                                |
+| IA                              | [Model Context Protocol](https://modelcontextprotocol.io) (Streamable HTTP)                                       |
+| Dados de jogos                  | [IGDB API](https://api-docs.igdb.com)                                                                             |
+| Conquistas                      | [Steam Web API](https://steamcommunity.com/dev) e [RetroAchievements API](https://api-docs.retroachievements.org) |
+| Backup                          | [Litestream](https://litestream.io) para um bucket S3 (Railway, R2…)                                              |
 
 Um único processo Bun serve a API, o servidor MCP e o frontend.
 
@@ -186,6 +189,7 @@ Outras tarefas (`mise tasks` lista todas):
 | `mise run db:studio`                 | abre o Drizzle Studio                          |
 | `mise run mcp:inspect`               | abre o MCP Inspector                           |
 | `mise run igdb:smoke [termo]`        | testa busca e tempo para zerar no IGDB real    |
+| `mise run achievements:smoke`        | testa as listas de conquistas na Steam e no RA |
 | `mise run demo`                      | sobe com dados de exemplo em `data/demo.db`    |
 | `mise run demo:capture`              | congela as páginas de jogo do demo (IGDB real) |
 | `mise run icons`                     | gera os ícones PNG do app (PWA e iOS)          |
@@ -194,17 +198,19 @@ Outras tarefas (`mise tasks` lista todas):
 
 Os padrões ficam no `[env]` do `mise.toml`; valores locais e segredos vão no `.env` (carregado pelo mise, não versionado).
 
-| Variável                                | Descrição                                                                                  |
-| --------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET` | Credenciais do app na Twitch                                                               |
-| `ZEROMETRO_TOKEN`                       | Token de acesso da instância (pelo menos 32 caracteres; `mise run token`). Obrigatório     |
-| `PUBLIC_URL`                            | URL pública do site (padrão: domínio da Railway ou `http://localhost:$PORT`)               |
-| `DATABASE_PATH`                         | Caminho do arquivo SQLite (padrão: `data/zerometro.db` na raiz do projeto)                 |
-| `PORT`                                  | Porta do servidor (padrão: `3000`)                                                         |
-| `TZ`                                    | Fuso usado nas estatísticas (padrão: `America/Sao_Paulo`)                                  |
-| `ZEROMETRO_DOMAIN`                      | Só no deploy: domínio próprio da sua instância na Railway (ver [Deploy](#-deploy-railway)) |
-| `ZEROMETRO_VOLUME_REGION`               | Só no deploy: região do volume do SQLite (padrão: `us-west2`)                              |
-| `ZEROMETRO_BACKUP`                      | Só no deploy: onde fica o backup do banco (ver [Backup](#backup-do-banco))                 |
+| Variável                                | Descrição                                                                                                                    |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET` | Credenciais do app na Twitch                                                                                                 |
+| `STEAM_WEB_API_KEY`                     | Chave da Steam Web API ([pedir aqui](https://steamcommunity.com/dev/apikey)). Opcional: sem ela, a Steam some das conquistas |
+| `RA_API_KEY`                            | Chave da API do RetroAchievements (no site: Settings → Keys). Opcional, idem                                                 |
+| `ZEROMETRO_TOKEN`                       | Token de acesso da instância (pelo menos 32 caracteres; `mise run token`). Obrigatório                                       |
+| `PUBLIC_URL`                            | URL pública do site (padrão: domínio da Railway ou `http://localhost:$PORT`)                                                 |
+| `DATABASE_PATH`                         | Caminho do arquivo SQLite (padrão: `data/zerometro.db` na raiz do projeto)                                                   |
+| `PORT`                                  | Porta do servidor (padrão: `3000`)                                                                                           |
+| `TZ`                                    | Fuso usado nas estatísticas (padrão: `America/Sao_Paulo`)                                                                    |
+| `ZEROMETRO_DOMAIN`                      | Só no deploy: domínio próprio da sua instância na Railway (ver [Deploy](#-deploy-railway))                                   |
+| `ZEROMETRO_VOLUME_REGION`               | Só no deploy: região do volume do SQLite (padrão: `us-west2`)                                                                |
+| `ZEROMETRO_BACKUP`                      | Só no deploy: onde fica o backup do banco (ver [Backup](#backup-do-banco))                                                   |
 
 ---
 
@@ -234,9 +240,9 @@ claude mcp add --transport http zerometro https://<seu-domínio>/mcp \
 
 Por segurança, o OAuth só devolve a pessoa para o claude.ai e para endereços locais (`localhost`, usado pelo Claude Code e pelo MCP Inspector). Trocar o `ZEROMETRO_TOKEN` desconecta todos os conectores.
 
-**Tools disponíveis (leitura):** `search_igdb`, `get_feeds` (as listas da tela inicial: bem avaliados, em alta e próximos), `list_library` (com filtro de pós-jogo), `get_game` (com conclusões e objetivos), `list_objectives`, `get_stats`, `get_period_stats` (um ano ou os últimos 12 meses: gêneros, horários, recordes e zerados), `list_sessions`, `get_active_session`. O jogo pode ser passado pelo id ou pelo nome (sem diferenciar acentos); se o nome for ambíguo, a tool devolve as opções.
+**Tools disponíveis (leitura):** `search_igdb`, `get_feeds` (as listas da tela inicial: bem avaliados, em alta e próximos), `list_library` (com filtro de pós-jogo), `get_game` (com conclusões, objetivos e conquistas), `list_objectives`, `list_achievements` (secretas sem spoiler, a menos que peça), `get_stats`, `get_period_stats` (um ano ou os últimos 12 meses: gêneros, horários, recordes e zerados), `list_sessions`, `get_active_session`. O jogo pode ser passado pelo id ou pelo nome (sem diferenciar acentos); se o nome for ambíguo, a tool devolve as opções.
 
-**Tools de escrita:** `start_session` / `stop_session` (o mesmo timer do site), `log_session` (sessão já jogada, ex.: "joguei 2h ontem"), `add_game` (pelo igdbId achado com `search_igdb`, opcionalmente com o tempo já jogado), `set_status`, `set_prior_playtime` (tempo jogado antes do Zerômetro, ex.: "já tenho 39h de Witcher 3"), `mark_completed` ("zerei o Ocarina mas vou continuar jogando", "platinei"), `add_objective` ("adiciona o objetivo 900 sementes Korok no BotW") e `update_objective` ("peguei mais 10 sementes"). As que apagam (`remove_completion`, `delete_objective`) só executam com `confirm: true`; sem isso, mostram o que seria apagado. Tudo fica no histórico de atividade com actor `mcp`.
+**Tools de escrita:** `start_session` / `stop_session` (o mesmo timer do site), `log_session` (sessão já jogada, ex.: "joguei 2h ontem"), `add_game` (pelo igdbId achado com `search_igdb`, opcionalmente com o tempo já jogado), `set_status`, `set_prior_playtime` (tempo jogado antes do Zerômetro, ex.: "já tenho 39h de Witcher 3"), `mark_completed` ("zerei o Ocarina mas vou continuar jogando", "platinei"), `add_objective` ("adiciona o objetivo 900 sementes Korok no BotW") `update_objective` ("peguei mais 10 sementes"), `link_achievement_set` (liga a lista da Steam pelo IGDB; no RA devolve as opções para escolher) e `set_achievement` ("peguei a conquista Farewell do Celeste", pelo nome aproximado). As que apagam (`remove_completion`, `delete_objective`) só executam com `confirm: true`; sem isso, mostram o que seria apagado. Tudo fica no histórico de atividade com actor `mcp`.
 
 **Planejadas:** `update_session`, `update_game_entry`, `remove_game`, `delete_session`. As destrutivas só vão executar com confirmação explícita.
 
@@ -247,8 +253,9 @@ Para inspecionar localmente: `mise run mcp:inspect` e aponte para `http://localh
 ## 🙏 Créditos
 
 - Dados de jogos e tempos para zerar fornecidos pelo [IGDB](https://www.igdb.com)
+- Conquistas (nomes, descrições, ícones e raridade) da [Steam](https://store.steampowered.com) e do [RetroAchievements](https://retroachievements.org), mostradas direto dos servidores deles, com link para a página do jogo na fonte. O Zerômetro só mostra metadados: nada de ROMs, hashes ou emuladores
 - O servidor OAuth do MCP (`src/server/oauth/`) foi adaptado do [my-scratchpad](https://github.com/Levieber/my-scratchpad) (MIT)
-- Projeto pessoal, sem afiliação com IGDB, Twitch ou qualquer publisher
+- Projeto pessoal, sem afiliação com IGDB, Twitch, Valve, RetroAchievements ou qualquer publisher
 
 ---
 
@@ -294,6 +301,8 @@ mise run deploy:apply              # cria o serviço, o volume, o bucket do back
 # O token de produção é o que você vai digitar para entrar: guarde num gerenciador de senhas.
 railway variable set --service web "$(mise run -q token)" --skip-deploys
 railway variable set --service web IGDB_CLIENT_ID=... IGDB_CLIENT_SECRET=... --skip-deploys
+# (opcional) conquistas: uma ou as duas
+railway variable set --service web STEAM_WEB_API_KEY=... RA_API_KEY=... --skip-deploys
 
 # Sem domínio próprio: gera https://<nome>.up.railway.app
 railway domain --service web
