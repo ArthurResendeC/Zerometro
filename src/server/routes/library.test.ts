@@ -37,6 +37,27 @@ describe("/api/library", () => {
     expect(missing.status).toBe(404);
   });
 
+  test("busca pelo id do IGDB: item, null fora da biblioteca, só do próprio usuário", async () => {
+    const { request, loginAs } = await createTestApp();
+    await request("/api/library", json({ igdbId: 114283, status: "backlog" }));
+
+    const found = await request("/api/library/igdb/114283");
+    expect(found.status).toBe(200);
+    expect(((await found.json()) as { item: LibraryItem }).item).toMatchObject({
+      igdbId: 114283,
+      status: "backlog",
+    });
+
+    const missing = await request("/api/library/igdb/999");
+    expect(missing.status).toBe(200);
+    expect(await missing.json()).toEqual({ item: null });
+
+    const friend = await loginAs("amigo@zerometro.test");
+    expect(await (await friend.request("/api/library/igdb/114283")).json()).toEqual({ item: null });
+
+    expect((await request("/api/library/igdb/abc")).status).toBe(400);
+  });
+
   test("duplicado → 409", async () => {
     const { request } = await createTestApp();
     await request("/api/library", json({ igdbId: 114283, status: "backlog" }));

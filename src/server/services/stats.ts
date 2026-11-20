@@ -210,6 +210,7 @@ function topGames(
   return db
     .select({
       gameId: games.id,
+      igdbId: games.igdbId,
       name: games.name,
       coverImageId: games.coverImageId,
       minutes,
@@ -442,6 +443,7 @@ export function getRecords(
     .filter((item) => item.finishedAt && item.finishedAt >= from && item.finishedAt <= to)
     .map((item) => ({
       gameId: item.gameId,
+      igdbId: item.igdbId,
       name: item.name,
       coverImageId: item.coverImageId,
       finishedAt: item.finishedAt!,
@@ -493,6 +495,7 @@ function longestSession(
         minutes: sql<number>`${playSessions.minutes}`,
         playedOn: playSessions.playedOn,
         gameId: games.id,
+        igdbId: games.igdbId,
         name: games.name,
       })
       .from(playSessions)

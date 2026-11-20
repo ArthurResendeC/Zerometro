@@ -8,6 +8,8 @@ import { type LogSessionResult, noteSchema } from "./sessions";
 export interface ActiveSession {
   id: number;
   gameId: number;
+  /** Id no IGDB: é por ele que a página do jogo é aberta. */
+  igdbId: number;
   gameName: string;
   coverImageId: string | null;
   /** Dia em que começou: a sessão inteira conta nele, mesmo passando da meia-noite. */

@@ -305,6 +305,7 @@ describe("recordes e zerados", () => {
       minutes: 100,
       playedOn: "2026-11-03",
       gameId: persona,
+      igdbId: 114283,
       name: "Persona 5 Royal",
     });
     expect(r.bestDay).toEqual({ date: "2026-11-03", minutes: 100 });

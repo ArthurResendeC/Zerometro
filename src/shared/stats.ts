@@ -38,6 +38,8 @@ export interface WeekStats {
 
 export interface TopGame {
   gameId: number;
+  /** Id no IGDB: é por ele que a página do jogo é aberta. */
+  igdbId: number;
   name: string;
   coverImageId: string | null;
   minutes: number;
@@ -157,6 +159,8 @@ export interface Rhythm {
 
 export interface FinishedGame {
   gameId: number;
+  /** Id no IGDB: é por ele que a página do jogo é aberta. */
+  igdbId: number;
   name: string;
   coverImageId: string | null;
   finishedAt: string;
@@ -171,7 +175,13 @@ export interface Records {
   from: string;
   to: string;
   year: number | null;
-  longestSession: { minutes: number; playedOn: string; gameId: number; name: string } | null;
+  longestSession: {
+    minutes: number;
+    playedOn: string;
+    gameId: number;
+    igdbId: number;
+    name: string;
+  } | null;
   bestDay: { date: string; minutes: number } | null;
   bestWeek: { weekStart: string; minutes: number } | null;
   /** Zerados por mês (YYYY-MM), do primeiro ao último mês do período (até hoje). */

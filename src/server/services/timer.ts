@@ -34,6 +34,7 @@ export function getActiveSession({ db, userId }: UserScope): ActiveSession | nul
       .select({
         id: playSessions.id,
         gameId: playSessions.gameId,
+        igdbId: games.igdbId,
         gameName: games.name,
         coverImageId: games.coverImageId,
         playedOn: playSessions.playedOn,

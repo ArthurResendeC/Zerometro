@@ -33,6 +33,11 @@ export function getLibraryItem(scope: UserScope, gameId: number): LibraryItem {
   return item;
 }
 
+/** O item da biblioteca pelo id do IGDB; null se o jogo não estiver nela. */
+export function findLibraryItemByIgdbId(scope: UserScope, igdbId: number): LibraryItem | null {
+  return selectItems(scope, [eq(games.igdbId, igdbId)])[0] ?? null;
+}
+
 /** Minúsculas e sem acento, para comparar nomes ("Pokémon" = "pokemon"). */
 const normalizeName = (name: string) =>
   name
