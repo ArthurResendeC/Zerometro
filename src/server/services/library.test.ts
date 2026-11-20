@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { activityLog, games, playSessions } from "../db/schema";
+import { activityLog, completions, games, objectives, playSessions } from "../db/schema";
 import { AmbiguousGameError, ConflictError, NotFoundError, ValidationError } from "../errors";
 import { createFakeIgdb, createTestContext, fakeIgdbGame, TEST_TODAY } from "../testing";
 import type { ServiceContext } from "./context";
@@ -207,16 +207,24 @@ describe("tempo anterior ao Zerômetro", () => {
 });
 
 describe("removeFromLibrary", () => {
-  test("tira o jogo da biblioteca, apaga as sessões e devolve o resumo", async () => {
+  test("tira o jogo da biblioteca, apaga sessões, conclusões e objetivos e devolve o resumo", async () => {
     const { gameId } = await addToLibrary(ctx, igdb, { igdbId: 114283, status: "playing" });
     addSession(gameId, "2026-11-18", 90);
     addSession(gameId, "2026-11-19", 45);
+    const { userId } = ctx;
+    ctx.db
+      .insert(completions)
+      .values({ userId, gameId, type: "main", completedOn: "2026-11-19" })
+      .run();
+    ctx.db.insert(objectives).values({ userId, gameId, title: "Todos os confidants" }).run();
 
     expect(previewRemoval(ctx, gameId)).toEqual({
       gameId,
       name: "Persona 5 Royal",
       sessionsCount: 2,
       minutesPlayed: 135,
+      completionsCount: 1,
+      objectivesCount: 1,
     });
 
     removeFromLibrary(ctx, gameId);
@@ -225,6 +233,8 @@ describe("removeFromLibrary", () => {
     // O jogo continua no cache do IGDB (compartilhado entre usuários).
     expect(ctx.db.select().from(games).all()).toHaveLength(1);
     expect(ctx.db.select().from(playSessions).all()).toHaveLength(0);
+    expect(ctx.db.select().from(completions).all()).toHaveLength(0);
+    expect(ctx.db.select().from(objectives).all()).toHaveLength(0);
     expect(ctx.db.select().from(activityLog).all().at(-1)?.action).toBe("library.remove");
   });
 });

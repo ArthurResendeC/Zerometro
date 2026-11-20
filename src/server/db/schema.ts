@@ -1,6 +1,21 @@
 import { sql } from "drizzle-orm";
-import { uniqueIndex, check, index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import { activityActors, gameStatuses, sessionSources, ttbSources } from "../../shared/domain";
+import {
+  uniqueIndex,
+  check,
+  index,
+  integer,
+  real,
+  sqliteTable,
+  text,
+} from "drizzle-orm/sqlite-core";
+import {
+  activityActors,
+  completionTypes,
+  gameStatuses,
+  objectiveSources,
+  sessionSources,
+  ttbSources,
+} from "../../shared/domain";
 import { user } from "./auth-schema";
 
 export * from "./auth-schema";
@@ -105,6 +120,68 @@ export const playSessions = sqliteTable(
   ],
 );
 
+/**
+ * Conclusões de um jogo (história, + extras, 100%), com data. Um jogo pode ter várias (replays).
+ * Independe do status: um jogo zerado que voltei a jogar fica "jogando" com conclusão (pós-jogo).
+ */
+export const completions = sqliteTable(
+  "completions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: userId(),
+    gameId: integer("game_id")
+      .notNull()
+      .references(() => games.id, { onDelete: "cascade" }),
+    type: text("type", { enum: completionTypes }).notNull(),
+    /** Dia (no fuso do usuário) em que zerou. */
+    completedOn: text("completed_on").notNull(),
+    note: text("note"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("completions_user_game_completed_on_idx").on(t.userId, t.gameId, t.completedOn),
+    index("completions_user_completed_on_idx").on(t.userId, t.completedOn),
+  ],
+);
+
+/**
+ * Objetivos de um jogo: checkbox (alvo 1) ou contador (ex.: 900 sementes Korok).
+ * Hoje só manuais; `source`/`external_id`/`icon_url`/`rarity` são para conquistas da Steam/RA.
+ */
+export const objectives = sqliteTable(
+  "objectives",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: userId(),
+    gameId: integer("game_id")
+      .notNull()
+      .references(() => games.id, { onDelete: "cascade" }),
+    source: text("source", { enum: objectiveSources }).notNull().default("manual"),
+    /** Id na fonte externa (nulo nos manuais). */
+    externalId: text("external_id"),
+    title: text("title").notNull(),
+    description: text("description"),
+    iconUrl: text("icon_url"),
+    /** % global de quem desbloqueou (fontes externas). */
+    rarity: real("rarity"),
+    target: integer("target").notNull().default(1),
+    progress: integer("progress").notNull().default(0),
+    /** Quando o progresso chegou ao alvo (ISO UTC); nulo enquanto não chega. */
+    unlockedAt: text("unlocked_at"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("objectives_user_game_idx").on(t.userId, t.gameId, t.sortOrder),
+    uniqueIndex("objectives_external_idx")
+      .on(t.userId, t.gameId, t.source, t.externalId)
+      .where(sql`${t.externalId} is not null`),
+    check("objectives_target_positive", sql`${t.target} >= 1`),
+    check("objectives_progress_range", sql`${t.progress} between 0 and ${t.target}`),
+  ],
+);
+
 /** Auditoria: o que mudou e por onde (web, MCP ou job). */
 export const activityLog = sqliteTable(
   "activity_log",
@@ -132,4 +209,6 @@ export type LibraryEntry = typeof libraryEntries.$inferSelect;
 export type NewLibraryEntry = typeof libraryEntries.$inferInsert;
 export type PlaySession = typeof playSessions.$inferSelect;
 export type NewPlaySession = typeof playSessions.$inferInsert;
+export type Completion = typeof completions.$inferSelect;
+export type Objective = typeof objectives.$inferSelect;
 export type ActivityLogEntry = typeof activityLog.$inferSelect;

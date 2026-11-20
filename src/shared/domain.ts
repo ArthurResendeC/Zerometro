@@ -32,3 +32,19 @@ export type ActivityActor = z.infer<typeof activityActorSchema>;
 
 export const ttbSources = ["igdb", "hltb"] as const;
 export type TtbSource = (typeof ttbSources)[number];
+
+/** Até onde cheguei num jogo, do menor para o maior: história, história + extras, 100%. */
+export const completionTypes = ["main", "extras", "full"] as const;
+export const completionTypeSchema = z.enum(completionTypes);
+export type CompletionType = z.infer<typeof completionTypeSchema>;
+
+export const completionTypeLabels: Record<CompletionType, string> = {
+  main: "História",
+  extras: "História + extras",
+  full: "100%",
+};
+
+/** Objetivos manuais hoje; conquistas da Steam/RetroAchievements no futuro. */
+export const objectiveSources = ["manual", "steam", "retroachievements"] as const;
+export const objectiveSourceSchema = z.enum(objectiveSources);
+export type ObjectiveSource = z.infer<typeof objectiveSourceSchema>;

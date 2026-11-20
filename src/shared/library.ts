@@ -46,6 +46,8 @@ export interface RemovalSummary {
   name: string;
   sessionsCount: number;
   minutesPlayed: number;
+  completionsCount: number;
+  objectivesCount: number;
 }
 
 export const gameIdParamSchema = z.object({ gameId: z.coerce.number().int().positive() });

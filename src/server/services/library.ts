@@ -10,7 +10,7 @@ import {
   type UpdateLibraryEntryInput,
   type UpdateLibraryEntryResult,
 } from "../../shared/library";
-import { games, libraryEntries, playSessions } from "../db/schema";
+import { completions, games, libraryEntries, objectives, playSessions } from "../db/schema";
 import { AmbiguousGameError, ConflictError, NotFoundError, ValidationError } from "../errors";
 import { logActivity } from "./activity";
 import type { ServiceContext, UserScope } from "./context";
@@ -235,22 +235,32 @@ export function updateLibraryEntry(
 /** O que seria apagado ao remover o jogo (usado para confirmação no site e no MCP). */
 export function previewRemoval(scope: UserScope, gameId: number): RemovalSummary {
   const item = getLibraryItem(scope, gameId);
+  const count = (table: typeof completions | typeof objectives) =>
+    scope.db
+      .select({ count: sql<number>`count(*)` })
+      .from(table)
+      .where(and(eq(table.userId, scope.userId), eq(table.gameId, gameId)))
+      .get()?.count ?? 0;
   return {
     gameId,
     name: item.name,
     sessionsCount: item.sessionsCount,
     minutesPlayed: item.minutesPlayed,
+    completionsCount: count(completions),
+    objectivesCount: count(objectives),
   };
 }
 
-/** Remove o jogo da biblioteca junto com todas as sessões dele. */
+/** Remove o jogo da biblioteca junto com as sessões, conclusões e objetivos dele. */
 export function removeFromLibrary(ctx: ServiceContext, gameId: number): RemovalSummary {
   const summary = previewRemoval(ctx, gameId);
   ctx.db.transaction((tx) => {
     // O jogo continua no cache do IGDB (`games`, compartilhado); saem só os dados do usuário.
-    tx.delete(playSessions)
-      .where(and(eq(playSessions.userId, ctx.userId), eq(playSessions.gameId, gameId)))
-      .run();
+    for (const table of [playSessions, completions, objectives]) {
+      tx.delete(table)
+        .where(and(eq(table.userId, ctx.userId), eq(table.gameId, gameId)))
+        .run();
+    }
     tx.delete(libraryEntries)
       .where(and(eq(libraryEntries.userId, ctx.userId), eq(libraryEntries.gameId, gameId)))
       .run();
