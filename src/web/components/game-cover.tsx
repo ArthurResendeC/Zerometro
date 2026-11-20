@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { type CoverSize, coverUrl } from "@shared/igdb";
 import { cn } from "@/lib/utils";
 
@@ -10,10 +11,12 @@ interface GameCoverProps {
 
 /**
  * Capa do IGDB em 3:4, sem filtro, cantos retos e contorno de 2px.
- * Sem capa: xadrez de 4px com as iniciais do jogo em fonte pixelada.
+ * Sem capa (ou se ela não carregar, ex.: offline sem cache): xadrez de 4px com as iniciais
+ * do jogo em fonte pixelada.
  */
 export function GameCover({ name, imageId, size = "cover_big", className }: GameCoverProps) {
-  if (!imageId) {
+  const [failedId, setFailedId] = useState<string | null>(null);
+  if (!imageId || failedId === imageId) {
     return (
       <div
         className={cn(
@@ -37,6 +40,7 @@ export function GameCover({ name, imageId, size = "cover_big", className }: Game
       src={coverUrl(imageId, size)}
       alt={`Capa de ${name}`}
       loading="lazy"
+      onError={() => setFailedId(imageId)}
       className={cn(
         "aspect-3/4 w-full bg-muted object-cover shadow-[0_0_0_2px_var(--pixel-shadow)]",
         className,

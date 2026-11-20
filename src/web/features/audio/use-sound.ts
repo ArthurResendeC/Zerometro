@@ -9,8 +9,11 @@ function play(name: SoundName): void {
   if (enabled && volume > 0) playSound(name, volume);
 }
 
-/** Uma ação pode disparar vários eventos: toca só o mais importante (ver `pickSound`). */
-function playMostImportant(events: Parameters<typeof pickSound>[0]): void {
+/**
+ * Uma ação pode disparar vários eventos: toca só o mais importante (ver `pickSound`).
+ * Exportada para quem toca fora de componentes (ex.: a sincronização da fila offline).
+ */
+export function playMostImportant(events: Parameters<typeof pickSound>[0]): void {
   const sound = pickSound(events);
   if (sound) play(sound);
 }

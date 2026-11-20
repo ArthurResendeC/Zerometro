@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { PERSIST_MAX_AGE_MS, restorePersistedQueries } from "@/features/offline/query-persistence";
+import { initOutboxSync } from "@/features/offline/sync";
 import { listenForInstallPrompt } from "@/features/pwa/install-prompt";
 import { registerServiceWorker } from "@/features/pwa/service-worker";
 import { ApiError } from "@/lib/api";
@@ -56,5 +57,6 @@ createRoot(document.getElementById("root")!).render(
   </StrictMode>,
 );
 
+initOutboxSync(queryClient);
 listenForInstallPrompt();
 registerServiceWorker();

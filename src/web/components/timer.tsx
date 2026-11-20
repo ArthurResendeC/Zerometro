@@ -1,10 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { create } from "zustand";
-import { DEFAULT_TIME_ZONE, addDays, zonedParts, zonedToInstant } from "@shared/dates";
+import { DEFAULT_TIME_ZONE, nextOccurrence, zonedParts } from "@shared/dates";
 import { MAX_MINUTES_PER_DAY } from "@shared/sessions";
-import type { ActiveSession } from "@shared/timer";
 import { GameCover } from "@/components/game-cover";
 import { CloseIcon, PlayIcon, StopIcon } from "@/components/icons";
 import {
@@ -28,6 +27,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { currentUserId } from "@/features/offline/actions";
+import { useUserOutbox } from "@/features/offline/outbox";
+import { type EffectiveTimer, effectiveTimer } from "@/features/offline/outbox-core";
 import { useNow } from "@/hooks/use-now";
 import { formatDate, formatMinutes } from "@/lib/format";
 import {
@@ -43,13 +45,18 @@ import type { VariantProps } from "class-variance-authority";
 // ---------------------------------------------------------------------------
 // Estado
 
-/** Timer ativo + cronômetro corrigido pelo relógio do servidor. */
+/**
+ * Timer ativo + cronômetro corrigido pelo relógio do servidor. É o "efetivo": o do servidor com
+ * as ações feitas offline (fila) aplicadas por cima, inclusive um timer que ainda não chegou lá.
+ */
 function useActiveTimer() {
   const { data } = useQuery(timerQuery());
-  return { active: data?.active ?? null, clockOffsetMs: data?.clockOffsetMs ?? 0 };
+  const items = useUserOutbox(currentUserId(useQueryClient()));
+  const active = effectiveTimer(data?.active ?? null, items, DEFAULT_TIME_ZONE);
+  return { active, clockOffsetMs: data?.clockOffsetMs ?? 0 };
 }
 
-function elapsedMs(active: ActiveSession, now: number, clockOffsetMs: number): number {
+function elapsedMs(active: EffectiveTimer, now: number, clockOffsetMs: number): number {
   return Math.max(0, now + clockOffsetMs - Date.parse(active.startedAt));
 }
 
@@ -113,6 +120,14 @@ export function TimerBar() {
           <span className="hidden text-muted-foreground sm:inline">Jogando </span>
           <span>{active.gameName}</span>
         </Link>
+        {active.pending && (
+          <span
+            className="shrink-0 display-xs text-muted-foreground"
+            title="Começou sem conexão: vai para o servidor quando ela voltar"
+          >
+            offline
+          </span>
+        )}
         <span
           className="display-sm text-primary tabular-nums sm:display-md"
           role="timer"
@@ -179,7 +194,7 @@ function LongSessionForm({
   clockOffsetMs,
   onDone,
 }: {
-  active: ActiveSession;
+  active: EffectiveTimer;
   clockOffsetMs: number;
   onDone: () => void;
 }) {
@@ -193,7 +208,9 @@ function LongSessionForm({
   const tooLong = elapsedMinutes > MAX_MINUTES_PER_DAY;
 
   // Prévia da duração com o horário informado (mesma regra do servidor: antes do início = dia seguinte).
-  const end = /^\d{2}:\d{2}$/.test(endTime) ? nextOccurrence(start, endTime) : null;
+  const end = /^\d{2}:\d{2}$/.test(endTime)
+    ? nextOccurrence(start, endTime, DEFAULT_TIME_ZONE)
+    : null;
   const previewMinutes = end ? Math.round((end.getTime() - start.getTime()) / 60_000) : null;
   const endInFuture = end ? end.getTime() > now + 60_000 : false;
 
@@ -251,12 +268,6 @@ function LongSessionForm({
       </div>
     </>
   );
-}
-
-function nextOccurrence(after: Date, time: string): Date {
-  const { date } = zonedParts(after, DEFAULT_TIME_ZONE);
-  const sameDay = zonedToInstant(date, time, DEFAULT_TIME_ZONE);
-  return sameDay > after ? sameDay : zonedToInstant(addDays(date, 1), time, DEFAULT_TIME_ZONE);
 }
 
 // ---------------------------------------------------------------------------

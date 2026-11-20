@@ -6,7 +6,8 @@ const VERSION = "v2";
 const SHELL_CACHE = `zerometro-shell-${VERSION}`;
 const ASSET_CACHE = `zerometro-assets-${VERSION}`;
 const FONT_CACHE = `zerometro-fonts-${VERSION}`;
-const KNOWN_CACHES = new Set([SHELL_CACHE, ASSET_CACHE, FONT_CACHE]);
+const COVER_CACHE = `zerometro-covers-${VERSION}`;
+const KNOWN_CACHES = new Set([SHELL_CACHE, ASSET_CACHE, FONT_CACHE, COVER_CACHE]);
 
 /** Toda rota da SPA devolve o mesmo index.html: guardado numa chave só. */
 const SHELL_URL = "/";
@@ -19,6 +20,9 @@ const NAVIGATION_TIMEOUT_MS = 4000;
 // Login com Google, OAuth do MCP e a API passam direto, sem o service worker no meio.
 const BYPASS = ["/api/", "/mcp", "/.well-known/", "/sw.js"];
 const FONT_HOSTS = new Set(["fonts.googleapis.com", "fonts.gstatic.com"]);
+/** Capas e imagens do IGDB (imutáveis, com CORS): as que já apareceram ficam para o offline. */
+const COVER_HOST = "images.igdb.com";
+const MAX_COVERS = 400;
 /** Arquivos com hash no nome gerados pelo build (ex.: chunk-ccr6g515.js): podem ser apagados. */
 const HASHED_ASSET = /-[a-z0-9]{8}\.[a-z0-9]+$/;
 
@@ -62,6 +66,8 @@ self.addEventListener("fetch", (event) => {
     }
   } else if (FONT_HOSTS.has(url.hostname)) {
     event.respondWith(staleWhileRevalidate(event, request, FONT_CACHE));
+  } else if (url.hostname === COVER_HOST && request.destination === "image") {
+    event.respondWith(cachedCover(event, request));
   }
 });
 
@@ -147,6 +153,27 @@ async function staleWhileRevalidate(event, request, cacheName) {
     return cached;
   }
   return network;
+}
+
+/**
+ * Capa: do cache se já apareceu; senão busca com CORS (o IGDB permite) para não guardar uma
+ * resposta opaca, que ocupa muito mais cota. Guarda no máximo MAX_COVERS (sai a mais antiga).
+ */
+async function cachedCover(event, request) {
+  const covers = await caches.open(COVER_CACHE);
+  const cached = await covers.match(request.url);
+  if (cached) return cached;
+  const response = await fetch(request.url, { mode: "cors" });
+  if (response.ok) {
+    event.waitUntil(
+      (async () => {
+        await covers.put(request.url, response.clone());
+        const keys = await covers.keys();
+        await Promise.all(keys.slice(0, -MAX_COVERS).map((key) => covers.delete(key)));
+      })(),
+    );
+  }
+  return response;
 }
 
 function isHtml(response) {

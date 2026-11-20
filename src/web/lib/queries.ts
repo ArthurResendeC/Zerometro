@@ -21,11 +21,31 @@ import type {
   UpdateSessionInput,
 } from "@shared/sessions";
 import type { UpdateSettingsInput } from "@shared/settings";
-import type { StartTimerInput, StopTimerInput, StopTimerResult } from "@shared/timer";
+import type {
+  StartTimerInput,
+  StartTimerResult,
+  StopTimerInput,
+  StopTimerResult,
+} from "@shared/timer";
 import type { UpdateLibraryEntryResult } from "@shared/library";
+import { DEFAULT_TIME_ZONE, nextOccurrence, todayIn, zonedParts } from "@shared/dates";
 import { reachedStreakMilestone } from "@/features/audio/sound-events";
 import type { SoundName } from "@/features/audio/sounds";
 import { useSound } from "@/features/audio/use-sound";
+import {
+  currentTimer,
+  currentUserId,
+  discardQueued,
+  enqueue,
+  findGame,
+  gameOf,
+  isConnectionError,
+  isOffline,
+  mustQueue,
+  newClientId,
+  requestOptions,
+  serverNow,
+} from "@/features/offline/actions";
 import { ApiError, api, unwrap } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
 import { formatMinutes } from "@/lib/format";
@@ -246,14 +266,63 @@ function invalidateGameData(queryClient: ReturnType<typeof useQueryClient>) {
   ]);
 }
 
+/** Resultado de uma escrita que pode ter ido para a fila offline em vez do servidor. */
+type Outcome<T> = { queued: false; result: T } | { queued: true; offline: boolean };
+
+const queued = (): { queued: true; offline: boolean } => ({ queued: true, offline: isOffline() });
+
+/** Avisa que ficou guardado no aparelho (online com fila, quem avisa é a sincronização). */
+function toastQueued(outcome: { offline: boolean }, title: string) {
+  if (outcome.offline) {
+    toast.success(title, { description: "Sem conexão: vai para o servidor quando ela voltar." });
+  }
+}
+
+/**
+ * Registrar sessão. Sem conexão (ou com algo do usuário ainda na fila), vai para a fila offline
+ * com um `clientId`; se a requisição falhar por conexão, também. O mesmo `clientId` vai nas duas
+ * tentativas, então o servidor nunca grava duas vezes.
+ */
 export function useLogSession() {
   const queryClient = useQueryClient();
   const { playMostImportant } = useSound();
   return useMutation({
-    mutationFn: (input: LogSessionInput) => unwrap(api.sessions.$post({ json: input })),
-    onSuccess: (result) => {
-      playMostImportant(sessionSavedSounds(result));
-      toastSessionSaved(result);
+    networkMode: "always",
+    mutationFn: async (input: LogSessionInput): Promise<Outcome<LogSessionResult>> => {
+      const userId = currentUserId(queryClient);
+      // O dia vai sempre explícito: sincronizada amanhã, a sessão continua sendo de hoje.
+      const json = { ...input, playedOn: input.playedOn ?? todayIn(), clientId: newClientId() };
+      const queue = (owner: string) => {
+        enqueue(
+          owner,
+          { kind: "log", game: findGame(queryClient, input.gameId), input: json },
+          {
+            id: json.clientId,
+          },
+        );
+        return queued();
+      };
+      if (userId && mustQueue(userId)) return queue(userId);
+      try {
+        const result = await unwrap(api.sessions.$post({ json }, requestOptions()));
+        return { queued: false, result };
+      } catch (error) {
+        if (userId && isConnectionError(error)) return queue(userId);
+        throw error;
+      }
+    },
+    onSuccess: (outcome, input) => {
+      if (outcome.queued) {
+        playMostImportant(["session-stop"]);
+        const game = findGame(queryClient, input.gameId);
+        toastQueued(
+          outcome,
+          `${formatMinutes(input.minutes)} de ${game.name} guardados no aparelho`,
+        );
+        return;
+      }
+      playMostImportant(sessionSavedSounds(outcome.result));
+      toastSessionSaved(outcome.result);
       return invalidateGameData(queryClient);
     },
     onError,
@@ -433,12 +502,71 @@ export const timerQuery = () =>
     refetchInterval: 60_000,
   });
 
+/** Como `TimerActiveError` do servidor, para o "Trocar de jogo" funcionar igual offline. */
+function timerActiveError(gameName: string, startedAt: string) {
+  const since = zonedParts(new Date(startedAt), DEFAULT_TIME_ZONE).time;
+  return new ApiError(409, "timer_active", `Você já está jogando ${gameName} desde ${since}`);
+}
+
+const noTimerError = () => new ApiError(404, "not_found", "Nenhum timer rodando");
+
+type StartOutcome =
+  | Outcome<StartTimerResult>
+  | { queued: true; offline: boolean; alreadyRunning: boolean; gameName: string };
+
 export function useStartTimer() {
   const queryClient = useQueryClient();
   const { playMostImportant } = useSound();
   const mutation = useMutation({
-    mutationFn: (input: StartTimerInput) => unwrap(api.timer.start.$post({ json: input })),
-    onSuccess: (result) => {
+    networkMode: "always",
+    mutationFn: async (input: StartTimerInput): Promise<StartOutcome> => {
+      const userId = currentUserId(queryClient);
+      const clientId = newClientId();
+      const clickedAt = serverNow(queryClient);
+      const queue = (owner: string): StartOutcome => {
+        const current = currentTimer(queryClient);
+        const game = findGame(queryClient, input.gameId);
+        if (current?.gameId === input.gameId) {
+          return { ...queued(), alreadyRunning: true, gameName: game.name };
+        }
+        if (current && !input.replaceActive)
+          throw timerActiveError(current.gameName, current.startedAt);
+        enqueue(
+          owner,
+          {
+            kind: "timer.start",
+            game,
+            input: {
+              gameId: input.gameId,
+              startedAt: clickedAt.toISOString(),
+              clientId,
+              replaceActive: true,
+            },
+          },
+          { id: clientId },
+        );
+        return { ...queued(), alreadyRunning: false, gameName: game.name };
+      };
+      if (userId && mustQueue(userId)) return queue(userId);
+      try {
+        const result = await unwrap(
+          api.timer.start.$post({ json: { ...input, clientId } }, requestOptions()),
+        );
+        return { queued: false, result };
+      } catch (error) {
+        if (userId && isConnectionError(error)) return queue(userId);
+        throw error;
+      }
+    },
+    onSuccess: (outcome) => {
+      if (outcome.queued) {
+        if ("alreadyRunning" in outcome && !outcome.alreadyRunning) {
+          playMostImportant(["session-start"]);
+          toastQueued(outcome, `Valendo! Bom jogo de ${outcome.gameName}`);
+        }
+        return;
+      }
+      const { result } = outcome;
       if (result.stopped) toastStopped(result.stopped);
       if (!result.alreadyRunning) {
         // Trocar de jogo encerra o anterior: se isso bateu um marco da ofensiva, o marco ganha.
@@ -477,12 +605,74 @@ function toastStopped(result: StopTimerResult) {
   else toastSessionSaved(result);
 }
 
+type StopOutcome =
+  | Outcome<StopTimerResult>
+  | { queued: true; offline: boolean; gameName: string; minutes: number };
+
 export function useStopTimer() {
   const queryClient = useQueryClient();
   const { playMostImportant } = useSound();
   return useMutation({
-    mutationFn: (input: StopTimerInput) => unwrap(api.timer.stop.$post({ json: input })),
-    onSuccess: (result) => {
+    networkMode: "always",
+    mutationFn: async (input: StopTimerInput): Promise<StopOutcome> => {
+      const userId = currentUserId(queryClient);
+      const current = currentTimer(queryClient);
+      const clickedAt = serverNow(queryClient);
+      const queue = (owner: string): StopOutcome => {
+        if (!current) throw noTimerError();
+        const start = new Date(current.startedAt);
+        const end = input.endTime
+          ? nextOccurrence(start, input.endTime, DEFAULT_TIME_ZONE)
+          : clickedAt;
+        const minutes = Math.round((end.getTime() - start.getTime()) / 60_000);
+        if (current.pending && minutes < 1 && current.outboxId) {
+          // Nem chegou ao servidor e durou menos de 1 minuto: some da fila (como o descarte de lá).
+          discardQueued(current.outboxId);
+        } else {
+          enqueue(
+            owner,
+            {
+              kind: "timer.stop",
+              game: gameOf(current),
+              startedAt: current.startedAt,
+              input: {
+                target: current.target,
+                endedAt: end.toISOString(),
+                ...(input.note !== undefined && { note: input.note }),
+              },
+            },
+            { dependsOn: current.outboxId },
+          );
+        }
+        return { ...queued(), gameName: current.gameName, minutes };
+      };
+      if (userId && mustQueue(userId)) return queue(userId);
+      try {
+        const target = current && !current.pending ? { target: current.target } : {};
+        const result = await unwrap(
+          api.timer.stop.$post({ json: { ...input, ...target } }, requestOptions()),
+        );
+        return { queued: false, result };
+      } catch (error) {
+        if (userId && isConnectionError(error)) return queue(userId);
+        throw error;
+      }
+    },
+    onSuccess: (outcome) => {
+      if (outcome.queued) {
+        playMostImportant(["session-stop"]);
+        if (!("gameName" in outcome)) return;
+        if (outcome.minutes < 1) {
+          toast.info(`Menos de 1 minuto de ${outcome.gameName}: sessão descartada`);
+        } else {
+          toastQueued(
+            outcome,
+            `${formatMinutes(outcome.minutes)} de ${outcome.gameName} guardados no aparelho`,
+          );
+        }
+        return;
+      }
+      const { result } = outcome;
       // Sessão de menos de 1 minuto é descartada, mas o usuário parou o timer: toca o "parei".
       playMostImportant(result.discarded ? ["session-stop"] : sessionSavedSounds(result));
       toastStopped(result);
@@ -495,10 +685,31 @@ export function useStopTimer() {
 export function useCancelTimer() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async () => (await unwrap(api.timer.$delete({ query: {} }))).cancelled,
-    onSuccess: (cancelled) => {
-      toast.info(`Timer de ${cancelled.gameName} descartado`);
-      return invalidateGameData(queryClient);
+    networkMode: "always",
+    mutationFn: async (): Promise<{ gameName: string; queued: boolean }> => {
+      const userId = currentUserId(queryClient);
+      const current = currentTimer(queryClient);
+      const queue = (owner: string) => {
+        if (!current) throw noTimerError();
+        // Timer que nem chegou ao servidor: basta tirar o início da fila.
+        if (current.pending && current.outboxId) discardQueued(current.outboxId);
+        else
+          enqueue(owner, { kind: "timer.cancel", game: gameOf(current), target: current.target });
+        return { gameName: current.gameName, queued: true };
+      };
+      if (userId && mustQueue(userId)) return queue(userId);
+      try {
+        const query = current && !current.pending ? { id: String(current.id) } : {};
+        const { cancelled } = await unwrap(api.timer.$delete({ query }, requestOptions()));
+        return { gameName: cancelled.gameName, queued: false };
+      } catch (error) {
+        if (userId && isConnectionError(error)) return queue(userId);
+        throw error;
+      }
+    },
+    onSuccess: ({ gameName, queued: wasQueued }) => {
+      toast.info(`Timer de ${gameName} descartado`);
+      if (!wasQueued) return invalidateGameData(queryClient);
     },
     onError,
   });

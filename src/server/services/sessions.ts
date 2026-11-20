@@ -1,5 +1,5 @@
 import { and, desc, eq, gte, isNotNull, lte, ne, type SQL, sql } from "drizzle-orm";
-import { addDays, zonedParts, zonedToInstant } from "../../shared/dates";
+import { nextOccurrence, zonedParts, zonedToInstant } from "../../shared/dates";
 import type { GameStatus, SessionSource } from "../../shared/domain";
 import {
   type ListSessionsQuery,
@@ -328,13 +328,6 @@ export function applySessionToEntry(
     .where(and(eq(libraryEntries.userId, userId), eq(libraryEntries.gameId, entry.gameId)))
     .run();
   return status;
-}
-
-/** Primeira ocorrência do horário local `time` depois de `after` (no máximo 24h depois). */
-export function nextOccurrence(after: Date, time: string, timeZone: string): Date {
-  const { date } = zonedParts(after, timeZone);
-  const sameDay = zonedToInstant(date, time, timeZone);
-  return sameDay > after ? sameDay : zonedToInstant(addDays(date, 1), time, timeZone);
 }
 
 /** Duração em minutos inteiros; valida 1min a 24h. */

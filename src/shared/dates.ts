@@ -102,3 +102,10 @@ export function zonedToInstant(date: string, time: string, timeZone: string): Da
   }
   return new Date(instant);
 }
+
+/** Primeira ocorrência do horário local `time` depois de `after` (no máximo 24h depois). */
+export function nextOccurrence(after: Date, time: string, timeZone: string): Date {
+  const { date } = zonedParts(after, timeZone);
+  const sameDay = zonedToInstant(date, time, timeZone);
+  return sameDay > after ? sameDay : zonedToInstant(addDays(date, 1), time, timeZone);
+}
