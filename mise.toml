@@ -73,6 +73,11 @@ docker run --rm --name zerometro-local -p 3000:8080 -e PORT=8080 \
   zerometro:local
 """
 
+[tasks."backup:restore"]
+description = "Baixa o backup da produção para data/restaurado-*.db (ex.: -- -timestamp 2026-11-20T15:00:00Z)"
+# railway run traz as BACKUP_* do serviço; o Litestream roda no Docker (scripts/backup-restore.sh).
+run = "railway run --service web -- scripts/backup-restore.sh"
+
 [tasks."deploy:plan"]
 description = "Mostra o que mudaria na Railway (.railway/railway.ts), sem aplicar"
 run = "railway config plan"

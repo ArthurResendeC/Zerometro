@@ -136,6 +136,7 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 | Acesso                          | Token da instância + cookie assinado; OAuth 2.1 próprio para o MCP          |
 | IA                              | [Model Context Protocol](https://modelcontextprotocol.io) (Streamable HTTP) |
 | Dados de jogos                  | [IGDB API](https://api-docs.igdb.com)                                       |
+| Backup                          | [Litestream](https://litestream.io) para um bucket S3 (Railway, R2…)        |
 
 Um único processo Bun serve a API, o servidor MCP e o frontend.
 
@@ -203,6 +204,7 @@ Os padrões ficam no `[env]` do `mise.toml`; valores locais e segredos vão no `
 | `TZ`                                    | Fuso usado nas estatísticas (padrão: `America/Sao_Paulo`)                                  |
 | `ZEROMETRO_DOMAIN`                      | Só no deploy: domínio próprio da sua instância na Railway (ver [Deploy](#-deploy-railway)) |
 | `ZEROMETRO_VOLUME_REGION`               | Só no deploy: região do volume do SQLite (padrão: `us-west2`)                              |
+| `ZEROMETRO_BACKUP`                      | Só no deploy: onde fica o backup do banco (ver [Backup](#backup-do-banco))                 |
 
 ---
 
@@ -264,6 +266,8 @@ O que muda de uma instância para outra **não fica no código**: o `railway.ts`
 | ------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `ZEROMETRO_DOMAIN`        | Domínio próprio (ex.: `zerometro.exemplo.com`). Opcional: sem ele, a instância usa o domínio gerado pela Railway |
 | `ZEROMETRO_VOLUME_REGION` | Região do volume (padrão: `us-west2`). Só mude se o seu volume já existe em outra região                         |
+| `ZEROMETRO_BACKUP`        | Backup do banco: `railway` (padrão, cria um bucket da Railway), `externo` (R2 ou outro S3) ou `desligado`        |
+| `ZEROMETRO_BACKUP_REGION` | Região do bucket da Railway: `sjc`, `iad` (padrão), `ams` ou `sin`. Não muda depois de criado                    |
 | `TZ`                      | Fuso da instância (padrão do `mise.toml`: `America/Sao_Paulo`)                                                   |
 
 Testar a imagem localmente (precisa do Docker):
@@ -282,7 +286,7 @@ railway init --name zerometro      # cria o SEU projeto e vincula esta pasta (ou
 echo 'ZEROMETRO_DOMAIN=zerometro.exemplo.com' >> .env
 
 mise run deploy:plan               # confere o que vai ser criado
-mise run deploy:apply              # cria o serviço, o volume e o domínio próprio
+mise run deploy:apply              # cria o serviço, o volume, o bucket do backup e o domínio próprio
 
 # Segredos (uma vez; o railway.ts usa preserve() e nunca guarda valores).
 # O token de produção é o que você vai digitar para entrar: guarde num gerenciador de senhas.
@@ -298,3 +302,31 @@ Com domínio próprio, crie no seu DNS o registro que a Railway mostra em _Setti
 **Ver ou trocar o token:** `railway variable list --service web` mostra o atual. Para trocar (ex.: vazou), rode `railway variable set --service web "$(mise run -q token)"`: o deploy novo desloga todos os aparelhos e desconecta todos os conectores MCP, e você entra de novo com o token novo.
 
 Mudanças de infraestrutura: edite `.railway/railway.ts`, rode `mise run deploy:plan` e depois `mise run deploy:apply`. Rode sempre com o **seu** `.env`: sem `ZEROMETRO_DOMAIN`, o plan apaga a `PUBLIC_URL` da instância.
+
+### Backup do banco
+
+O SQLite é copiado continuamente para um bucket S3 pelo [Litestream](https://litestream.io), que roda no mesmo container do servidor ([`deploy/entrypoint.sh`](deploy/entrypoint.sh), [`deploy/litestream.yml`](deploy/litestream.yml)):
+
+- cada mudança vai para o bucket em cerca de 1 segundo, e um deploy ou restart sincroniza o que falta antes de desligar;
+- há um snapshot completo por dia e 7 dias de histórico, então dá para voltar a qualquer ponto da última semana;
+- se o volume estiver vazio (perdido ou recriado) e houver backup, o banco é restaurado antes de o servidor subir;
+- se o bucket ficar fora do ar, o site continua no ar e o erro aparece no log (`railway logs`).
+
+Por padrão, o `railway.ts` cria um **bucket da Railway** (`zerometro-backups`, região `iad`, longe do volume) e liga as credenciais ao serviço. O custo é de US$ 0,015 por GB-mês, e um banco do Zerômetro tem poucos MB.
+
+**R2 ou outro S3:** ponha `ZEROMETRO_BACKUP=externo` no `.env` (nenhum bucket da Railway é criado) e defina as credenciais no serviço:
+
+```sh
+railway variable set --service web --skip-deploys \
+  BACKUP_BUCKET=zerometro-backups \
+  BACKUP_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com \
+  BACKUP_ACCESS_KEY_ID=... BACKUP_SECRET_ACCESS_KEY=...
+```
+
+No R2, crie um token de API com permissão _Object Read & Write_ só nesse bucket. Outras variáveis opcionais são `BACKUP_REGION` (padrão `auto`), `BACKUP_PATH` (pasta no bucket, padrão `zerometro`) e `BACKUP_FORCE_PATH_STYLE` (padrão `false`; use `true` para MinIO e afins).
+
+**Restaurar:**
+
+- **Volume perdido:** é automático, basta subir com um volume vazio.
+- **Voltar no tempo** (ex.: apagou algo sem querer): `mise run backup:restore -- -timestamp 2026-11-20T15:00:00Z` baixa o estado anterior a esse instante para `data/restaurado-*.db`, sem tocar na instância. Precisa do Docker e do projeto vinculado (`railway link`). Sem `-timestamp`, baixa o estado atual.
+  - Para pôr esse arquivo em produção: pare o serviço, envie o arquivo com `railway volume files upload data/restaurado-....db /zerometro.db` e apague o `zerometro.db-wal`, o `zerometro.db-shm` e a pasta `.zerometro.db-litestream` do volume (`railway volume files delete`). Depois, suba o serviço de novo.
