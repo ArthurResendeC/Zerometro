@@ -68,4 +68,38 @@ describe("/api/timer", () => {
     expect(res.status).toBe(400);
     expect(((await res.json()) as ApiErrorBody).error.code).toBe("invalid_input");
   });
+
+  test("fila offline: start com clientId, stop pelo alvo, cancel com alvo na query", async () => {
+    const { request, clock } = await createTestApp();
+    const added = await request("/api/library", post({ igdbId: 114283, status: "playing" }));
+    const { item } = (await added.json()) as { item: { gameId: number } };
+    const clientId = "3c2b1a09-8f7e-4d6c-9b5a-4e3d2c1b0a9f";
+
+    const start = { gameId: item.gameId, clientId, startedAt: "2026-11-19T17:30:00.000Z" };
+    expect((await request("/api/timer/start", post(start))).status).toBe(201);
+    expect((await request("/api/timer/start", post(start))).status).toBe(200);
+
+    clock.set(new Date("2026-11-19T19:00:00Z"));
+    const stop = { target: { clientId }, endedAt: "2026-11-19T18:15:00.000Z" };
+    const stopped = await request("/api/timer/stop", post(stop));
+    expect(await stopped.json()).toMatchObject({ discarded: false, session: { minutes: 45 } });
+    const again = await request("/api/timer/stop", post(stop));
+    expect(await again.json()).toMatchObject({ alreadySaved: true, session: { minutes: 45 } });
+
+    const cancel = await request(`/api/timer?clientId=${clientId}`, { method: "DELETE" });
+    expect(cancel.status).toBe(404);
+  });
+
+  test("endTime e endedAt juntos, ou alvo inválido → 400", async () => {
+    const { request } = await createTestApp();
+    const both = await request(
+      "/api/timer/stop",
+      post({ endTime: "10:00", endedAt: "2026-11-19T13:00:00.000Z" }),
+    );
+    expect(both.status).toBe(400);
+    const badTarget = await request("/api/timer/stop", post({ target: { clientId: "x" } }));
+    expect(badTarget.status).toBe(400);
+    const badQuery = await request("/api/timer?clientId=x", { method: "DELETE" });
+    expect(badQuery.status).toBe(400);
+  });
 });

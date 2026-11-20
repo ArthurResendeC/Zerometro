@@ -7,6 +7,7 @@ import type {
   StopTimerInput,
   StopTimerResult,
   TimerState,
+  TimerTarget,
 } from "../../shared/timer";
 import { games, playSessions } from "../db/schema";
 import { NotFoundError, TimerActiveError } from "../errors";
@@ -17,10 +18,12 @@ import {
   assertDayCapacity,
   assertNotAfterNow,
   findLibraryEntry,
+  findSessionIdByClientId,
   getSession,
   minutesOnDay,
   minutesOnGame,
   nextOccurrence,
+  savedSessionResult,
   sessionMinutes,
 } from "./sessions";
 import { currentStreak } from "./stats";
@@ -61,21 +64,49 @@ export function getTimerState(ctx: ServiceContext): TimerState {
 /**
  * "Comecei a jogar". Se o mesmo jogo já está rodando, não faz nada; se outro está,
  * só troca com `replaceActive` (senão 409 `timer_active`, para o cliente perguntar).
+ * `startedAt` (fila offline) começa no passado: o dia da sessão é o desse instante, e a troca
+ * de jogo encerra o anterior nele.
  */
 export function startTimer(ctx: ServiceContext, input: StartTimerInput): StartTimerResult {
   const entry = findLibraryEntry(ctx, input.gameId);
   const current = getActiveSession(ctx);
 
+  // Reenvio da fila offline: o start já chegou (e talvez já tenha até parado).
+  const existingId = input.clientId && findSessionIdByClientId(ctx, input.clientId);
+  if (existingId) {
+    return {
+      active: current?.id === existingId ? current : null,
+      alreadyRunning: true,
+      alreadySaved: true,
+      stopped: null,
+      statusChangedTo: null,
+    };
+  }
+
+  const startedAt = input.startedAt ? new Date(input.startedAt) : ctx.now;
+  if (input.startedAt) assertNotAfterNow(startedAt, ctx.now);
+
   if (current?.gameId === input.gameId) {
+    // O timer rodando passa a responder pelo clientId deste start (o stop offline aponta para ele).
+    if (input.clientId) adoptClientId(ctx, current.id, input.clientId);
     return { active: current, alreadyRunning: true, stopped: null, statusChangedTo: null };
   }
   if (current && !input.replaceActive) {
     const since = zonedParts(new Date(current.startedAt), ctx.timeZone).time;
     throw new TimerActiveError(`Você já está jogando ${current.gameName} desde ${since}`);
   }
+  if (current && startedAt.getTime() < Date.parse(current.startedAt)) {
+    const since = zonedParts(new Date(current.startedAt), ctx.timeZone).time;
+    throw new TimerActiveError(
+      `${current.gameName} começou às ${since}, depois deste início: pare ou descarte ele antes`,
+    );
+  }
 
   // Código síncrono (bun:sqlite): nenhuma outra requisição entra entre parar e começar.
-  const stopped = current ? stopTimer(ctx, {}) : null;
+  const stopped = current
+    ? stopTimer(ctx, input.startedAt ? { endedAt: startedAt.toISOString() } : {})
+    : null;
+  const playedOn = zonedParts(startedAt, ctx.timeZone).date;
 
   return ctx.db.transaction((tx) => {
     const scope = { db: tx, userId: ctx.userId };
@@ -84,18 +115,20 @@ export function startTimer(ctx: ServiceContext, input: StartTimerInput): StartTi
       .values({
         userId: ctx.userId,
         gameId: input.gameId,
-        playedOn: ctx.today,
-        startedAt: ctx.now.toISOString(),
+        playedOn,
+        startedAt: startedAt.toISOString(),
         source: "timer",
+        clientId: input.clientId ?? null,
       })
       .returning({ id: playSessions.id })
       .get();
 
-    const statusChangedTo = applySessionToEntry(scope, entry, ctx.today);
+    const statusChangedTo = applySessionToEntry(scope, entry, playedOn);
     logActivity(tx, ctx, "timer.start", {
       sessionId: id,
       gameId: input.gameId,
       name: entry.name,
+      ...(input.startedAt && { startedAt: input.startedAt }),
       ...(statusChangedTo && { statusChangedTo }),
     });
 
@@ -105,14 +138,33 @@ export function startTimer(ctx: ServiceContext, input: StartTimerInput): StartTi
   });
 }
 
+function adoptClientId({ db, userId }: UserScope, id: number, clientId: string) {
+  db.update(playSessions)
+    .set({ clientId })
+    .where(
+      and(eq(playSessions.id, id), eq(playSessions.userId, userId), isNull(playSessions.clientId)),
+    )
+    .run();
+}
+
 /**
  * "Parei". Fecha a sessão no dia em que começou; menos de 1 minuto é descartado
  * (clique sem querer). `endTime` corrige o fim quando o timer ficou ligado sem querer.
  */
 export function stopTimer(ctx: ServiceContext, input: StopTimerInput): StopTimerResult {
+  if (input.target) {
+    const id = resolveTarget(ctx, input.target);
+    // Já parado (em outro aparelho, ou reenvio da fila): devolve o que ficou gravado.
+    if (getActiveSession(ctx)?.id !== id)
+      return { discarded: false, ...savedSessionResult(ctx, id) };
+  }
   const active = requireActive(ctx);
   const start = new Date(active.startedAt);
-  const end = input.endTime ? nextOccurrence(start, input.endTime, ctx.timeZone) : ctx.now;
+  const end = input.endedAt
+    ? new Date(input.endedAt)
+    : input.endTime
+      ? nextOccurrence(start, input.endTime, ctx.timeZone)
+      : ctx.now;
   assertNotAfterNow(end, ctx.now);
 
   if (!input.endTime && end.getTime() - start.getTime() < 60_000) {
@@ -154,14 +206,35 @@ export function stopTimer(ctx: ServiceContext, input: StopTimerInput): StopTimer
   });
 }
 
-/** Descarta o timer rodando sem registrar nada. */
-export function cancelTimer(ctx: ServiceContext): ActiveSession {
+/** Descarta o timer rodando sem registrar nada. Com alvo, só se for ele que está rodando. */
+export function cancelTimer(ctx: ServiceContext, target?: TimerTarget): ActiveSession {
   const active = requireActive(ctx);
+  if (target && resolveTarget(ctx, target) !== active.id) {
+    throw new NotFoundError("Esse timer não está mais rodando");
+  }
   ctx.db.transaction((tx) => {
     tx.delete(playSessions).where(eq(playSessions.id, active.id)).run();
     logActivity(tx, ctx, "timer.cancel", { sessionId: active.id, name: active.gameName });
   });
   return active;
+}
+
+/** Id da sessão apontada (do usuário); 404 se não existe mais (descartada ou apagada). */
+function resolveTarget(scope: UserScope, target: TimerTarget): number {
+  const id =
+    "id" in target
+      ? getSessionRow(scope, target.id)
+      : findSessionIdByClientId(scope, target.clientId);
+  if (!id) throw new NotFoundError("Timer não encontrado: foi descartado ou apagado");
+  return id;
+}
+
+function getSessionRow({ db, userId }: UserScope, id: number) {
+  return db
+    .select({ id: playSessions.id })
+    .from(playSessions)
+    .where(and(eq(playSessions.id, id), eq(playSessions.userId, userId)))
+    .get()?.id;
 }
 
 function requireActive(scope: UserScope): ActiveSession {

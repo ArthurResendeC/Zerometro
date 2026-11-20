@@ -1,4 +1,4 @@
-import { startTimerSchema, stopTimerSchema } from "../../shared/timer";
+import { cancelTimerQuerySchema, startTimerSchema, stopTimerSchema } from "../../shared/timer";
 import type { AppDeps } from "../app";
 import { createRouter, webContext } from "../lib/hono";
 import { validate } from "../lib/validate";
@@ -14,5 +14,9 @@ export function createTimerRoutes(deps: AppDeps) {
     .post("/stop", validate("json", stopTimerSchema), (c) => {
       return c.json(stopTimer(webContext(deps, c), c.req.valid("json")));
     })
-    .delete("/", (c) => c.json({ cancelled: cancelTimer(webContext(deps, c)) }));
+    .delete("/", validate("query", cancelTimerQuerySchema), (c) => {
+      const { id, clientId } = c.req.valid("query");
+      const target = id ? { id } : clientId ? { clientId } : undefined;
+      return c.json({ cancelled: cancelTimer(webContext(deps, c), target) });
+    });
 }

@@ -16,6 +16,7 @@ import { cancelTimer, getActiveSession, startTimer, stopTimer } from "./timer";
 
 // Horários em São Paulo (UTC-3): "2026-11-19T18:00Z" = 15:00 local.
 const at = (local: string) => new Date(`${local}:00-03:00`);
+const iso = (local: string) => at(local).toISOString();
 
 const igdb = createFakeIgdb([
   fakeIgdbGame(),
@@ -139,7 +140,7 @@ describe("um timer por vez", () => {
     clock.set(at("2026-11-19T15:10"));
     const again = startTimer(ctx(), { gameId: undertale });
 
-    expect(again).toMatchObject({ alreadyRunning: true, active: { id: first.active.id } });
+    expect(again).toMatchObject({ alreadyRunning: true, active: { id: first.active!.id } });
   });
 
   test("outro jogo: pede confirmação, e com replaceActive encerra o atual e começa o novo", () => {
@@ -202,5 +203,113 @@ describe("editar sessão de timer", () => {
   test("sessão manual não aceita horários", () => {
     const { session } = logSession(ctx(), { gameId: undertale, minutes: 30 });
     expect(() => updateSession(ctx(), session.id, { startTime: "10:00" })).toThrow(ValidationError);
+  });
+});
+
+describe("fila offline: horários e alvos explícitos", () => {
+  const A = "1f0e2d3c-4b5a-4968-8776-655443322110";
+  const B = "2a1b3c4d-5e6f-4a0b-9c1d-2e3f4a5b6c7d";
+
+  test("start no passado conta no dia em que começou; no futuro é recusado", () => {
+    const result = startTimer(ctx(), { gameId: undertale, startedAt: iso("2026-11-18T23:30") });
+    expect(result.active).toMatchObject({
+      playedOn: "2026-11-18",
+      startedAt: "2026-11-19T02:30:00.000Z",
+    });
+
+    cancelTimer(ctx());
+    expect(() =>
+      startTimer(ctx(), { gameId: undertale, startedAt: iso("2026-11-19T15:05") }),
+    ).toThrow(ValidationError);
+  });
+
+  test("start + stop offline reenviados não duplicam", () => {
+    const replay = () => {
+      startTimer(ctx(), { gameId: undertale, startedAt: iso("2026-11-19T13:00"), clientId: A });
+      return stopTimer(ctx(), { target: { clientId: A }, endedAt: iso("2026-11-19T13:45") });
+    };
+
+    const first = replay();
+    expect(first).toMatchObject({ discarded: false, session: { minutes: 45, source: "timer" } });
+    expect(first.discarded === false && first.alreadySaved).toBeUndefined();
+
+    const again = replay();
+    expect(again).toMatchObject({ discarded: false, alreadySaved: true, session: { minutes: 45 } });
+    expect(listSessions(ctx())).toHaveLength(1);
+    expect(getActiveSession(ctx())).toBeNull();
+  });
+
+  test("reenviar só o start devolve o timer que já está rodando", () => {
+    const first = startTimer(ctx(), { gameId: undertale, clientId: A });
+    const again = startTimer(ctx(), { gameId: undertale, clientId: A });
+    expect(again).toMatchObject({ alreadySaved: true, active: { id: first.active!.id } });
+  });
+
+  test("mesmo jogo já rodando (outro aparelho): adota o clientId para o stop achar", () => {
+    const running = startTimer(ctx(), { gameId: undertale }); // 15:00
+    clock.set(at("2026-11-19T16:00"));
+    startTimer(ctx(), { gameId: undertale, startedAt: iso("2026-11-19T15:20"), clientId: A });
+
+    const stopped = stopTimer(ctx(), { target: { clientId: A }, endedAt: iso("2026-11-19T15:50") });
+    expect(stopped).toMatchObject({ session: { id: running.active!.id, minutes: 50 } });
+  });
+
+  test("trocar de jogo offline encerra o anterior no instante do novo início", () => {
+    startTimer(ctx(), { gameId: undertale }); // 15:00
+    clock.set(at("2026-11-19T17:00"));
+
+    const switched = startTimer(ctx(), {
+      gameId: persona,
+      replaceActive: true,
+      startedAt: iso("2026-11-19T16:30"),
+      clientId: B,
+    });
+    expect(switched.stopped).toMatchObject({ discarded: false, session: { minutes: 90 } });
+    expect(switched.active).toMatchObject({ gameName: "Persona 5 Royal" });
+  });
+
+  test("conflito: o timer de outro aparelho começou depois do start offline", () => {
+    startTimer(ctx(), { gameId: undertale }); // 15:00
+    clock.set(at("2026-11-19T17:00"));
+
+    expect(() =>
+      startTimer(ctx(), {
+        gameId: persona,
+        replaceActive: true,
+        startedAt: iso("2026-11-19T14:00"),
+      }),
+    ).toThrow("Undertale começou às 15:00");
+    expect(getActiveSession(ctx())).toMatchObject({ gameName: "Undertale" });
+  });
+
+  test("stop com endedAt: menos de 1 minuto descarta; no futuro é recusado", () => {
+    startTimer(ctx(), { gameId: undertale }); // 15:00
+    clock.set(at("2026-11-19T16:00"));
+    expect(() => stopTimer(ctx(), { endedAt: iso("2026-11-19T16:30") })).toThrow(ValidationError);
+    expect(stopTimer(ctx(), { endedAt: "2026-11-19T18:00:30.000Z" })).toMatchObject({
+      discarded: true,
+    });
+  });
+
+  test("alvos que não existem mais dão 404; cancelar só o timer apontado", () => {
+    expect(() => stopTimer(ctx(), { target: { clientId: A } })).toThrow(NotFoundError);
+    expect(() => stopTimer(ctx(), { target: { id: 999 } })).toThrow(NotFoundError);
+
+    startTimer(ctx(), { gameId: undertale, clientId: A });
+    expect(() => cancelTimer(ctx(), { clientId: B })).toThrow(NotFoundError);
+    expect(cancelTimer(ctx(), { clientId: A }).gameName).toBe("Undertale");
+    // Reenviar o cancel: o timer não existe mais.
+    expect(() => cancelTimer(ctx(), { clientId: A })).toThrow(NotFoundError);
+  });
+
+  test("cancelar um timer que já foi parado não apaga a sessão gravada", () => {
+    startTimer(ctx(), { gameId: undertale, clientId: A });
+    clock.set(at("2026-11-19T16:00"));
+    stopTimer(ctx(), {});
+    startTimer(ctx(), { gameId: persona });
+
+    expect(() => cancelTimer(ctx(), { clientId: A })).toThrow(NotFoundError);
+    expect(listSessions(ctx())).toHaveLength(1);
+    expect(getActiveSession(ctx())).toMatchObject({ gameName: "Persona 5 Royal" });
   });
 });

@@ -495,7 +495,7 @@ export function useStopTimer() {
 export function useCancelTimer() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async () => (await unwrap(api.timer.$delete())).cancelled,
+    mutationFn: async () => (await unwrap(api.timer.$delete({ query: {} }))).cancelled,
     onSuccess: (cancelled) => {
       toast.info(`Timer de ${cancelled.gameName} descartado`);
       return invalidateGameData(queryClient);
