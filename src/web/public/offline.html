@@ -1,0 +1,115 @@
+<!doctype html>
+<!-- Página que o service worker (sw.js) mostra quando a navegação falha sem rede.
+     Tudo inline: sem fontes externas nem CSS do bundle, que não estariam disponíveis offline. -->
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0f0e17" />
+    <title>Sem conexão · Zerômetro</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --background: #0f0e17;
+        --card: #1c1a29;
+        --foreground: #f4ecdc;
+        --muted-foreground: #a39cb8;
+        --border: #7a7396;
+        --primary: #ff7a1a;
+        --primary-foreground: #1a0d00;
+        --primary-shade: #b34a00;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 16px;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+      }
+      main {
+        max-width: 420px;
+        width: 100%;
+        padding: 32px 24px;
+        background: var(--card);
+        box-shadow:
+          0 0 0 4px var(--border),
+          8px 8px 0 4px #000;
+        text-align: center;
+      }
+      svg {
+        width: 64px;
+        height: 80px;
+        animation: flicker 1.2s steps(2) infinite;
+        transform-origin: bottom;
+      }
+      @keyframes flicker {
+        50% {
+          transform: scaleY(0.92);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        svg {
+          animation: none;
+        }
+      }
+      h1 {
+        margin: 20px 0 8px;
+        font-size: 20px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      p {
+        margin: 0 0 24px;
+        color: var(--muted-foreground);
+        line-height: 1.5;
+      }
+      button {
+        font: inherit;
+        font-weight: 700;
+        text-transform: uppercase;
+        cursor: pointer;
+        border: 0;
+        padding: 12px 20px;
+        background: var(--primary);
+        color: var(--primary-foreground);
+        box-shadow:
+          0 0 0 3px #000,
+          inset -4px -4px 0 var(--primary-shade),
+          6px 6px 0 3px #000;
+      }
+      button:hover {
+        filter: brightness(1.1);
+      }
+      button:active {
+        transform: translate(3px, 3px);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <!-- Mesma chama do PixelFlame (src/web/components/icons.tsx). -->
+      <svg viewBox="0 0 8 10" shape-rendering="crispEdges" aria-hidden="true">
+        <path
+          fill="#ff7a1a"
+          d="M3 0h1v1h-1zM3 1h2v1h-2zM2 2h3v1h-3zM1 3h5v2h-5zM0 5h7v4h-7zM1 9h5v1h-5zM6 2h1v1h-1zM6 3h1v2h-1z"
+        />
+        <path fill="#ffd23f" d="M3 5h2v1h-2zM2 6h3v3h-3z" />
+      </svg>
+      <h1>Sem conexão</h1>
+      <p>
+        O Zerômetro precisa de internet para carregar. Assim que a conexão voltar, a página
+        recarrega sozinha.
+      </p>
+      <button type="button" onclick="location.reload()">Tentar de novo</button>
+    </main>
+    <script>
+      window.addEventListener("online", () => location.reload());
+    </script>
+  </body>
+</html>
