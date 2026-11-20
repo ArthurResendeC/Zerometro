@@ -46,15 +46,18 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
     </td>
     <td width="50%" valign="top">
       <img src="docs/readme/jogo.png" alt="Aba Minhas sessões do Celeste em pós-jogo: selos Pós-jogo e Zerado, tempo jogado contra os tempos do IGDB, barra rumo à história + extras, a conclusão registrada e os objetivos (contadores de lados B e morangos, caixinha do capítulo 9)">
-      <br><sub><b>Minhas sessões</b> · a outra aba da página do jogo: tempo jogado contra os tempos do IGDB, conclusões (aqui em pós-jogo, rumo aos extras) e objetivos</sub>
+      <br><sub><b>Minhas sessões</b> · outra aba da página do jogo: tempo jogado contra os tempos do IGDB, conclusões (aqui em pós-jogo, rumo aos extras) e objetivos</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/readme/registrar-sessao.png" alt="Modal de registrar sessão com jogo, duração, dia e nota">
-      <br><sub><b>Registrar sessão</b> · "joguei 1h30 ontem", com atalhos de duração e de dia</sub>
+      <img src="docs/readme/conquistas.png" alt="Aba Conquistas do Celeste: lista da Steam ligada, 12 de 32 desbloqueadas, filtros, busca e ordem; conquistas desbloqueadas com ícone, raridade e data, secretas trancadas borradas com Mostrar spoiler">
+      <br><sub><b>Conquistas</b> · a lista da Steam ou do RetroAchievements, com raridade; você marca o que já fez, e as secretas ficam borradas até pedir o spoiler</sub>
     </td>
     <td width="50%" valign="top">
+      <img src="docs/readme/registrar-sessao.png" alt="Modal de registrar sessão com jogo, duração, dia e nota">
+      <br><sub><b>Registrar sessão</b> · "joguei 1h30 ontem", com atalhos de duração e de dia</sub>
+      <br><br>
       <img src="docs/readme/adicionar.png" alt="Busca de jogos no IGDB, mostrando quais já estão na biblioteca">
       <br><sub><b>Adicionar jogo</b> · busca no IGDB, já indicando o que está na biblioteca</sub>
     </td>
