@@ -269,11 +269,16 @@ describe("tools", () => {
       "get_period_stats",
       "get_stats",
       "list_library",
+      "list_objectives",
       "list_sessions",
       "search_igdb",
     ]);
-    // Nenhuma tool apaga dados por enquanto.
-    expect(tools.some((tool) => tool.annotations?.destructiveHint)).toBe(false);
+    // Só as que apagam conclusões e objetivos (e elas pedem confirm: true).
+    const destructive = tools.filter((tool) => tool.annotations?.destructiveHint);
+    expect(destructive.map((tool) => tool.name).toSorted()).toEqual([
+      "delete_objective",
+      "remove_completion",
+    ]);
 
     const playing = await callJson(client, "list_library", { status: "playing" });
     expect(playing.data.games.map((g: { name: string }) => g.name)).toEqual(["Persona 5 Royal"]);
@@ -413,6 +418,99 @@ describe("tools", () => {
 
     const stats = await callJson(client, "get_stats");
     expect(stats.data.totalMinutes).toBe(0);
+
+    await client.close();
+  });
+
+  test("conclusões: zerei continuando a jogar (pós-jogo), platinei e apagar com confirmação", async () => {
+    const cookie = (await t.helpers.login({ userId: t.userId })).headers.get("cookie") ?? "";
+    const client = await connect(t, await authorize(t, cookie));
+    await callJson(client, "add_game", { igdbId: 114283, status: "playing" });
+
+    const zerei = await callJson(client, "mark_completed", { game: "persona" });
+    expect(zerei.data).toMatchObject({
+      completion: { type: "main", completedOn: TEST_TODAY },
+      game: { status: "playing", displayState: "postgame", displayStateLabel: "Pós-jogo" },
+      previousStatus: "playing",
+    });
+    expect(zerei.data.hint).toContain("set_status");
+
+    const postgame = await callJson(client, "list_library", { display_state: "postgame" });
+    expect(postgame.data.games.map((g: { name: string }) => g.name)).toEqual(["Persona 5 Royal"]);
+
+    const platinei = await callJson(client, "mark_completed", {
+      game: "persona",
+      type: "full",
+      date: "2026-11-18",
+      move_to_finished: true,
+    });
+    expect(platinei.data.game).toMatchObject({
+      status: "finished",
+      completion: { best: "full", bestLabel: "100%", count: 2 },
+    });
+    expect(
+      (await callJson(client, "mark_completed", { game: "persona", date: "2030-01-01" })).isError,
+    ).toBe(true);
+
+    const details = await callJson(client, "get_game", { game: "persona" });
+    expect(details.data.completions.map((c: { type: string }) => c.type)).toEqual(["main", "full"]);
+    const { id } = details.data.completions[0];
+
+    // Sem confirm: só mostra o que apagaria.
+    const preview = await callJson(client, "remove_completion", { completion_id: id });
+    expect(preview.data).toMatchObject({ confirmationNeeded: true, wouldDelete: { id } });
+    expect((await callJson(client, "get_game", { game: "persona" })).data.completions).toHaveLength(
+      2,
+    );
+
+    const removed = await callJson(client, "remove_completion", {
+      completion_id: id,
+      confirm: true,
+    });
+    expect(removed.data).toMatchObject({ removed: { id }, game: { completion: { count: 1 } } });
+
+    await client.close();
+  });
+
+  test("objetivos: criar contador, incrementar, concluir e sugerir 100%; apagar com confirmação", async () => {
+    const cookie = (await t.helpers.login({ userId: t.userId })).headers.get("cookie") ?? "";
+    const client = await connect(t, await authorize(t, cookie));
+    await callJson(client, "add_game", { igdbId: 114283, status: "playing" });
+
+    const korok = await callJson(client, "add_objective", {
+      game: "persona",
+      title: "Sementes Korok",
+      target: 900,
+    });
+    expect(korok.data).toMatchObject({ objective: { progress: 0, target: 900, done: false } });
+    const id = korok.data.objective.id;
+
+    const mais10 = await callJson(client, "update_objective", { objective_id: id, increment: 10 });
+    expect(mais10.data.objective.progress).toBe(10);
+
+    const ambiguous = await callJson(client, "update_objective", {
+      objective_id: id,
+      increment: 1,
+      done: true,
+    });
+    expect(ambiguous.isError).toBe(true);
+    expect((await callJson(client, "update_objective", { objective_id: id })).isError).toBe(true);
+
+    const done = await callJson(client, "update_objective", { objective_id: id, done: true });
+    expect(done.data).toMatchObject({
+      objective: { progress: 900, done: true },
+      allDoneNow: true,
+      suggestFullCompletion: true,
+    });
+    expect(done.data.hint).toContain("mark_completed");
+
+    const listed = await callJson(client, "list_objectives", { game: "persona" });
+    expect(listed.data).toMatchObject({ summary: { total: 1, unlocked: 1 } });
+
+    const preview = await callJson(client, "delete_objective", { objective_id: id });
+    expect(preview.data.confirmationNeeded).toBe(true);
+    const deleted = await callJson(client, "delete_objective", { objective_id: id, confirm: true });
+    expect(deleted.data).toMatchObject({ deleted: { id }, summary: { total: 0 } });
 
     await client.close();
   });

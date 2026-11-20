@@ -1,14 +1,32 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { isoDateSchema, localTimeSchema } from "../../shared/dates";
-import { gameStatusLabels, gameStatusSchema } from "../../shared/domain";
+import { type CompletionItem, displayStateLabels } from "../../shared/completions";
+import {
+  completionTypeLabels,
+  completionTypeSchema,
+  gameStatusLabels,
+  gameStatusSchema,
+} from "../../shared/domain";
 import { feedKeys, feedTitles } from "../../shared/feeds";
 import { genreLabel } from "../../shared/genres";
 import { type LibraryItem, priorMinutesSchema } from "../../shared/library";
+import {
+  addObjectiveSchema,
+  MAX_OBJECTIVE_TARGET,
+  type ObjectiveItem,
+  type ObjectiveWriteResult,
+} from "../../shared/objectives";
 import { sessionLengthBuckets } from "../../shared/stats";
 import { type LogSessionResult, noteSchema } from "../../shared/sessions";
 import type { AppDeps } from "../app";
 import { AppError, TimerActiveError } from "../errors";
+import {
+  getCompletion,
+  listCompletions,
+  markCompleted,
+  removeCompletion,
+} from "../services/completions";
 import { createContext, type ServiceContext } from "../services/context";
 import {
   addToLibrary,
@@ -16,6 +34,15 @@ import {
   resolveLibraryGame,
   updateLibraryEntry,
 } from "../services/library";
+import {
+  addObjective,
+  deleteObjective,
+  getObjective,
+  incrementObjective,
+  listObjectives,
+  setObjectiveDone,
+  updateObjective,
+} from "../services/objectives";
 import { listSessions, logSession } from "../services/sessions";
 import { getSettings } from "../services/settings";
 import { getHeatmap, getPeriodBreakdown, getRecords, getRhythm, getStats } from "../services/stats";
@@ -33,6 +60,21 @@ const gameRefSchema = z
 const readOnly = { readOnlyHint: true, destructiveHint: false, openWorldHint: false } as const;
 /** Escrita que só acrescenta ou altera (nada é apagado). */
 const write = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
+/** Apaga algo: só executa com `confirm: true`; sem isso, devolve o que seria apagado. */
+const destructive = { readOnlyHint: false, destructiveHint: true, openWorldHint: false } as const;
+
+const confirmSchema = z
+  .boolean()
+  .optional()
+  .describe("true só depois de o usuário confirmar; sem isso, a tool só mostra o que apagaria");
+
+function confirmationNeeded(wouldDelete: unknown) {
+  return {
+    confirmationNeeded: true,
+    wouldDelete,
+    message: "Nada foi apagado. Confirme com o usuário e chame de novo com confirm: true.",
+  };
+}
 
 /** Resposta de tool em JSON (o cliente mostra ao modelo como texto). */
 function json(data: unknown) {
@@ -75,7 +117,20 @@ function gameSummary(item: LibraryItem) {
     releaseYear: item.releaseYear,
     minutesPlayed: item.minutesPlayed,
     priorMinutes: item.priorMinutes,
+    displayState: item.displayState,
+    displayStateLabel:
+      item.displayState === "postgame"
+        ? displayStateLabels.postgame
+        : gameStatusLabels[item.displayState],
+    /** Até onde chegou (null se nunca zerou). Independe do status: pós-jogo = jogando + zerado. */
+    completion: item.completion && {
+      ...item.completion,
+      bestLabel: completionTypeLabels[item.completion.best],
+    },
     progressPercent: item.progress === null ? null : Math.round(item.progress * 100),
+    /** Para onde o progresso aponta: história antes de zerar; depois extras e 100%. */
+    progressTarget: item.progressTarget,
+    objectives: item.objectives,
     rating: item.rating,
     startedAt: item.startedAt,
     finishedAt: item.finishedAt,
@@ -147,15 +202,23 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     {
       title: "Listar biblioteca",
       description:
-        "Lista os jogos da biblioteca do usuário, com status, tempo jogado e progresso estimado. Filtre por status (playing = jogando, finished = zerado, backlog = próximos, wishlist = desejos, paused, dropped) e/ou parte do nome.",
+        'Lista os jogos da biblioteca do usuário, com status, conclusões (zerado, 100%), tempo jogado e progresso estimado. Filtre por status (playing = jogando, finished = zerado e parado, backlog = próximos, wishlist = desejos, paused, dropped), por display_state "postgame" (jogando um jogo já zerado) e/ou parte do nome.',
       inputSchema: z.object({
         status: gameStatusSchema.optional(),
+        display_state: z
+          .literal("postgame")
+          .optional()
+          .describe("Só os jogos em pós-jogo (jogando e já zerados)"),
         query: z.string().trim().max(100).optional().describe("Parte do nome"),
       }),
       annotations: readOnly,
     },
-    ({ status, query }) =>
-      run(() => ({ games: listLibrary(ctx(), { status, q: query }).map(gameSummary) })),
+    ({ status, display_state, query }) =>
+      run(() => ({
+        games: listLibrary(ctx(), { status, displayState: display_state, q: query }).map(
+          gameSummary,
+        ),
+      })),
   );
 
   server.registerTool(
@@ -163,7 +226,7 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     {
       title: "Detalhes de um jogo",
       description:
-        "Detalhes de um jogo da biblioteca: status, tempos para zerar (IGDB), total jogado, progresso, nota, anotações e as últimas sessões. Aceita id ou nome; se o nome for ambíguo, devolve as opções.",
+        "Detalhes de um jogo da biblioteca: status, conclusões (história, extras, 100%, com datas e ids), objetivos (com ids e progresso), tempos para zerar (IGDB), total jogado, progresso, nota, anotações e as últimas sessões. Aceita id ou nome; se o nome for ambíguo, devolve as opções.",
       inputSchema: z.object({ game: gameRefSchema }),
       annotations: readOnly,
     },
@@ -182,6 +245,8 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
             completionist: hours(item.timeToBeat.completeSec),
           },
           sessionsCount: item.sessionsCount,
+          completions: listCompletions(scope, item.gameId).map(completionSummary),
+          objectives: listObjectives(scope, item.gameId).map(objectiveSummary),
           recentSessions: listSessions(scope, { gameId: item.gameId, limit: 10 }).map(
             ({ id, playedOn, minutes, source, note }) => ({ id, playedOn, minutes, source, note }),
           ),
@@ -447,7 +512,7 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     {
       title: "Mudar status",
       description:
-        'Muda o status de um jogo da biblioteca ("zerei X", "larguei Y", "vou jogar Z depois"). playing preenche a data de início se vazia; finished preenche a data de término (hoje, ou finishedAt); sair de finished limpa a data de término. Datas no formato YYYY-MM-DD, nunca no futuro.',
+        'Muda o status de um jogo da biblioteca ("larguei Y", "vou jogar Z depois", "terminei e parei de jogar X"). playing preenche a data de início se vazia; finished preenche a data de término (hoje, ou finishedAt) e, se o jogo não tiver nenhuma conclusão, registra a da história nessa data; sair de finished não apaga conclusões. Para registrar que zerou (inclusive extras/100% ou continuando a jogar), prefira mark_completed. Datas no formato YYYY-MM-DD, nunca no futuro.',
       inputSchema: z.object({
         game: gameRefSchema,
         status: gameStatusSchema,
@@ -469,9 +534,212 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
       }),
   );
 
+  // -------------------------------------------------------------------------
+  // Conclusões e objetivos
+
+  server.registerTool(
+    "mark_completed",
+    {
+      title: "Zerei",
+      description:
+        'Registra que o usuário zerou um jogo: type main = história ("zerei o Persona"), extras = história + extras, full = 100%/platina ("platinei", "fiz 100%"). Replays viram outra conclusão. Não muda o status por padrão: um jogo em "jogando" fica em pós-jogo ("zerei o Ocarina mas vou continuar jogando"). Se o usuário disser que terminou de vez, passe move_to_finished: true; se não ficar claro, registre e pergunte. Data padrão: hoje (YYYY-MM-DD, nunca no futuro).',
+      inputSchema: z.object({
+        game: gameRefSchema,
+        type: completionTypeSchema.default("main"),
+        date: isoDateSchema.optional().describe("Quando zerou (YYYY-MM-DD); padrão hoje"),
+        note: z.string().trim().max(500).optional().describe("Ex.: final verdadeiro, NG+"),
+        move_to_finished: z
+          .boolean()
+          .optional()
+          .describe("Também move o jogo para Zerados (finished)"),
+      }),
+      annotations: write,
+    },
+    ({ game, type, date, note, move_to_finished }) =>
+      run(() => {
+        const scope = ctx();
+        const { gameId } = resolveLibraryGame(scope, game);
+        const { completion, item, previousStatus } = markCompleted(scope, gameId, {
+          type,
+          date,
+          note,
+          moveToFinished: move_to_finished,
+        });
+        return {
+          completion: completionSummary(completion),
+          game: gameSummary(item),
+          previousStatus,
+          ...(item.displayState === "postgame" && {
+            hint: "O jogo continua em Jogando (pós-jogo). Se o usuário parou de jogar, use set_status com finished (não duplica a conclusão).",
+          }),
+        };
+      }),
+  );
+
+  server.registerTool(
+    "remove_completion",
+    {
+      title: "Apagar conclusão",
+      description:
+        "Apaga uma conclusão registrada por engano (o status do jogo não muda). Pegue o id em get_game. Sem confirm: true, só mostra o que seria apagado: confirme com o usuário antes.",
+      inputSchema: z.object({
+        completion_id: z.number().int().positive(),
+        confirm: confirmSchema,
+      }),
+      annotations: destructive,
+    },
+    ({ completion_id, confirm }) =>
+      run(() => {
+        const scope = ctx();
+        if (confirm !== true) return confirmationNeeded(getCompletion(scope, completion_id));
+        const { removed, item } = removeCompletion(scope, completion_id);
+        return { removed: completionSummary(removed), game: gameSummary(item) };
+      }),
+  );
+
+  server.registerTool(
+    "list_objectives",
+    {
+      title: "Objetivos de um jogo",
+      description:
+        "Lista os objetivos de um jogo (checkbox ou contador, ex.: 900 sementes Korok), com ids e progresso. Use antes de update_objective para achar o id.",
+      inputSchema: z.object({ game: gameRefSchema }),
+      annotations: readOnly,
+    },
+    ({ game }) =>
+      run(() => {
+        const scope = ctx();
+        const item = resolveLibraryGame(scope, game);
+        return {
+          gameId: item.gameId,
+          name: item.name,
+          objectives: listObjectives(scope, item.gameId).map(objectiveSummary),
+          summary: item.objectives ?? { total: 0, unlocked: 0 },
+        };
+      }),
+  );
+
+  server.registerTool(
+    "add_objective",
+    {
+      title: "Adicionar objetivo",
+      description:
+        'Cria um objetivo num jogo ("adiciona o objetivo 900 sementes Korok no BotW"): target 1 (padrão) é um checkbox; maior que 1, um contador que começa em 0.',
+      inputSchema: z.object({
+        game: gameRefSchema,
+        title: addObjectiveSchema.shape.title.describe("Ex.: Sementes Korok"),
+        target: z.number().int().min(1).max(MAX_OBJECTIVE_TARGET).optional(),
+        description: z.string().trim().max(500).optional(),
+      }),
+      annotations: write,
+    },
+    ({ game, title, target, description }) =>
+      run(() => {
+        const scope = ctx();
+        const { gameId } = resolveLibraryGame(scope, game);
+        return objectiveWritten(addObjective(scope, gameId, { title, target, description }));
+      }),
+  );
+
+  server.registerTool(
+    "update_objective",
+    {
+      title: "Atualizar objetivo",
+      description:
+        'Atualiza um objetivo (id em list_objectives): increment soma ao progresso ("peguei mais 3 sementes" → increment 3; negativo desfaz), progress define o valor, done marca/desmarca de vez. Use só um dos três. Também renomeia (title) ou muda o alvo (target). O progresso fica entre 0 e o alvo. Se a resposta trouxer suggestFullCompletion, pergunte se quer marcar o jogo como 100% (mark_completed com full).',
+      inputSchema: z
+        .object({
+          objective_id: z.number().int().positive(),
+          increment: z
+            .number()
+            .int()
+            .min(-MAX_OBJECTIVE_TARGET)
+            .max(MAX_OBJECTIVE_TARGET)
+            .optional(),
+          progress: z.number().int().min(0).optional(),
+          done: z.boolean().optional(),
+          title: addObjectiveSchema.shape.title.optional(),
+          target: z.number().int().min(1).max(MAX_OBJECTIVE_TARGET).optional(),
+          description: z.string().trim().max(500).nullable().optional(),
+        })
+        .refine(
+          (v) => [v.increment, v.progress, v.done].filter((x) => x !== undefined).length <= 1,
+          "Use só um entre increment, progress e done",
+        )
+        .refine((v) => Object.keys(v).some((key) => key !== "objective_id"), "Nada para atualizar"),
+      annotations: write,
+    },
+    ({ objective_id: id, increment, progress, done, title, target, description }) =>
+      run(() => {
+        const scope = ctx();
+        let result: ObjectiveWriteResult | null = null;
+        const patch = {
+          ...(title !== undefined && { title }),
+          ...(target !== undefined && { target }),
+          ...(description !== undefined && { description }),
+          ...(progress !== undefined && { progress }),
+        };
+        if (Object.keys(patch).length > 0) result = updateObjective(scope, id, patch);
+        if (increment !== undefined) result = incrementObjective(scope, id, increment);
+        if (done !== undefined) result = setObjectiveDone(scope, id, done);
+        return objectiveWritten(result ?? updateObjective(scope, id, {}));
+      }),
+  );
+
+  server.registerTool(
+    "delete_objective",
+    {
+      title: "Apagar objetivo",
+      description:
+        "Apaga um objetivo (id em list_objectives). Sem confirm: true, só mostra o que seria apagado: confirme com o usuário antes.",
+      inputSchema: z.object({
+        objective_id: z.number().int().positive(),
+        confirm: confirmSchema,
+      }),
+      annotations: destructive,
+    },
+    ({ objective_id, confirm }) =>
+      run(() => {
+        const scope = ctx();
+        if (confirm !== true) {
+          return confirmationNeeded(objectiveSummary(getObjective(scope, objective_id)));
+        }
+        const { deleted, summary } = deleteObjective(scope, objective_id);
+        return { deleted: objectiveSummary(deleted), summary };
+      }),
+  );
+
   return server;
 }
 
 function hours(seconds: number | null): number | null {
   return seconds === null ? null : Math.round((seconds / 3600) * 10) / 10;
+}
+
+function completionSummary({ id, type, completedOn, note }: CompletionItem) {
+  return { id, type, typeLabel: completionTypeLabels[type], completedOn, note };
+}
+
+function objectiveSummary(o: ObjectiveItem) {
+  return {
+    id: o.id,
+    title: o.title,
+    description: o.description,
+    progress: o.progress,
+    target: o.target,
+    done: o.progress >= o.target,
+    source: o.source,
+  };
+}
+
+function objectiveWritten(result: ObjectiveWriteResult) {
+  return {
+    objective: objectiveSummary(result.objective),
+    summary: result.summary,
+    allDoneNow: result.allDoneNow,
+    suggestFullCompletion: result.suggestFullCompletion,
+    ...(result.suggestFullCompletion && {
+      hint: "Todos os objetivos concluídos: pergunte se o usuário quer marcar o jogo como 100% (mark_completed com type full).",
+    }),
+  };
 }
