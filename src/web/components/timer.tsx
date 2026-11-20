@@ -122,7 +122,7 @@ export function TimerBar() {
         </Link>
         {active.pending && (
           <span
-            className="shrink-0 display-xs text-muted-foreground"
+            className="shrink-0 display-xs text-muted-foreground max-sm:hidden"
             title="Começou sem conexão: vai para o servidor quando ela voltar"
           >
             offline

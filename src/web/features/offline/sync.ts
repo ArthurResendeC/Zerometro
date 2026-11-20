@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { create } from "zustand";
 import { reachedStreakMilestone } from "@/features/audio/sound-events";
 import { playMostImportant } from "@/features/audio/use-sound";
 import { api, unwrap } from "@/lib/api";
@@ -18,6 +19,9 @@ const LOCK_NAME = "zerometro-outbox";
 
 let queryClient: QueryClient | null = null;
 let running: Promise<void> | null = null;
+
+/** Enviando agora (para o "Enviando…" da lista de pendentes). */
+export const useSyncing = create(() => false);
 
 export function initOutboxSync(client: QueryClient) {
   queryClient = client;
@@ -39,9 +43,13 @@ export function initOutboxSync(client: QueryClient) {
 
 /** Envia o que estiver pendente; chamadas concorrentes esperam a mesma rodada. */
 export function syncOutbox(): Promise<void> {
-  running ??= withLock(run).finally(() => {
-    running = null;
-  });
+  if (!running) {
+    useSyncing.setState(true, true);
+    running = withLock(run).finally(() => {
+      running = null;
+      useSyncing.setState(false, true);
+    });
+  }
   return running;
 }
 

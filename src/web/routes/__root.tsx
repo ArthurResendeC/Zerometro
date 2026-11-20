@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { UserAvatar } from "@/components/user-avatar";
 import { SoundToggle } from "@/features/audio/sound-toggle";
+import { OfflineBanner } from "@/features/offline/offline-banner";
+import { PendingIndicator } from "@/features/offline/pending-indicator";
 import { InstallAppToast } from "@/features/pwa/install-toast";
 import { isOAuthFlow } from "@/lib/auth-client";
 import { sessionQuery } from "@/lib/queries";
@@ -43,7 +45,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 // A fonte pixel é larga: o menu só cabe por extenso a partir de lg (texto nos links) e xl (texto
 // nos botões). Abaixo disso vira ícone, senão o cabeçalho estoura a janela e cria scroll lateral.
 const navLinkClass =
-  "menu-cursor py-2 pr-2 display-xs max-lg:px-1 max-lg:before:hidden text-muted-foreground hover:bg-accent hover:text-foreground aria-[current=page]:text-foreground";
+  "menu-cursor py-2 pr-2 display-xs max-lg:px-1 max-sm:px-0.5 max-lg:before:hidden text-muted-foreground hover:bg-accent hover:text-foreground aria-[current=page]:text-foreground";
 
 function RootLayout() {
   const openLogSession = useLogSessionDialog((state) => state.openNew);
@@ -65,7 +67,7 @@ function RootLayout() {
         <nav className="mx-auto flex max-w-6xl items-center px-4 py-2 sm:gap-2">
           <Link
             to="/"
-            className="mr-1 font-pixel text-[12px] whitespace-nowrap sm:mr-4 sm:text-[16px]"
+            className="mr-0.5 font-pixel text-[12px] whitespace-nowrap sm:mr-4 sm:text-[16px]"
           >
             Zer<span className="text-primary">ô</span>metro
           </Link>
@@ -98,11 +100,15 @@ function RootLayout() {
             <span className="max-lg:hidden">Estatísticas</span>
           </Link>
           <div className="ml-auto flex items-center">
+            <PendingIndicator
+              userId={session.user.id}
+              className="max-sm:h-8 max-sm:gap-0.5 max-sm:px-0.5 sm:mr-1"
+            />
             <SoundToggle className="max-sm:size-8 sm:mr-2" />
             <Link
               to="/ajustes"
               aria-label="Ajustes e conta"
-              className="mr-2 sm:mr-3 [&[aria-current=page]>span]:shadow-[0_0_0_2px_var(--primary)]"
+              className="mr-1 sm:mr-3 [&[aria-current=page]>span]:shadow-[0_0_0_2px_var(--primary)]"
             >
               <UserAvatar user={session.user} />
             </Link>
@@ -130,6 +136,7 @@ function RootLayout() {
           </div>
         </nav>
         <TimerBar />
+        <OfflineBanner />
       </header>
       <main className="mx-auto max-w-6xl px-4 py-8 sm:py-12">
         <Outlet />

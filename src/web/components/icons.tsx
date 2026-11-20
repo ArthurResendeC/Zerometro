@@ -53,6 +53,10 @@ export const DownloadIcon = pixelIcon(
   r(3, 0, 2, 4) + r(1, 3, 6, 1) + r(2, 4, 4, 1) + r(3, 5, 2, 1) + r(0, 6) + r(7, 6) + r(0, 7, 8, 1),
   "DownloadIcon",
 );
+export const UploadIcon = pixelIcon(
+  r(3, 0, 2, 1) + r(2, 1, 4, 1) + r(1, 2, 6, 1) + r(3, 3, 2, 3) + r(0, 6) + r(7, 6) + r(0, 7, 8, 1),
+  "UploadIcon",
+);
 export const PlusIcon = pixelIcon(r(3, 0, 2, 8) + r(0, 3, 8, 2), "PlusIcon");
 export const SearchIcon = pixelIcon(
   r(1, 0, 4, 1) + r(0, 1, 1, 4) + r(5, 1, 1, 4) + r(1, 5, 4, 1) + r(5, 5) + r(6, 6) + r(7, 7),
