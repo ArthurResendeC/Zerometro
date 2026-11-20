@@ -49,6 +49,10 @@ env = { NODE_ENV = "production" }
 dir = "{{config_root}}/dist"
 run = "bun index.js"
 
+[tasks.icons]
+description = "Gera os ícones PNG do app (PWA e iOS) a partir da chama em pixel art"
+run = "bun scripts/generate-icons.ts"
+
 [tasks."docker:build"]
 description = "Builda a imagem de produção (a mesma que a Railway usa)"
 run = "docker build -t zerometro:local ."
