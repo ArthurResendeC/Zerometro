@@ -92,6 +92,20 @@ export const ArrowRightIcon = pixelIcon(
   r(7, 3, 1, 2) + r(6, 2, 1, 4) + r(5, 1, 1, 6) + r(0, 3, 5, 2),
   "ArrowRightIcon",
 );
+/** Seta saindo da caixa: link que abre outro site. */
+export const ExternalIcon = pixelIcon(
+  r(4, 0, 4, 1) +
+    r(7, 1, 1, 3) +
+    r(6, 1) +
+    r(5, 2) +
+    r(4, 3) +
+    r(3, 4) +
+    r(0, 1, 3, 1) +
+    r(0, 2, 1, 6) +
+    r(1, 7, 6, 1) +
+    r(7, 5, 1, 3),
+  "ExternalIcon",
+);
 export const TimerIcon = pixelIcon(
   r(2, 0, 4, 1) +
     r(1, 1) +

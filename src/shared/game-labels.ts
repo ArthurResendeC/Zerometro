@@ -100,3 +100,39 @@ export const ageRatingOrgLabels: Record<AgeRatingOrg, string> = {
   pegi: "PEGI",
   esrb: "ESRB",
 };
+
+/** Idiomas do IGDB (endpoint /languages, lista fechada), em ordem de exibição. */
+const LANGUAGE_LABELS: Record<string, string> = {
+  "Portuguese (Brazil)": "Português (Brasil)",
+  "Portuguese (Portugal)": "Português (Portugal)",
+  English: "Inglês",
+  "English (UK)": "Inglês (Reino Unido)",
+  "Spanish (Spain)": "Espanhol (Espanha)",
+  "Spanish (Mexico)": "Espanhol (América Latina)",
+  French: "Francês",
+  German: "Alemão",
+  Italian: "Italiano",
+  Japanese: "Japonês",
+  Korean: "Coreano",
+  "Chinese (Simplified)": "Chinês (simplificado)",
+  "Chinese (Traditional)": "Chinês (tradicional)",
+  Russian: "Russo",
+  Polish: "Polonês",
+  Turkish: "Turco",
+  Arabic: "Árabe",
+  Czech: "Tcheco",
+  Danish: "Dinamarquês",
+  Dutch: "Holandês",
+  Finnish: "Finlandês",
+  Hebrew: "Hebraico",
+  Hungarian: "Húngaro",
+  Norwegian: "Norueguês",
+  Swedish: "Sueco",
+  Thai: "Tailandês",
+  Vietnamese: "Vietnamita",
+  Ukrainian: "Ucraniano",
+};
+
+export function languageLabel(igdbName: string): string {
+  return LANGUAGE_LABELS[igdbName] ?? igdbName;
+}

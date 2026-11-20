@@ -18,6 +18,8 @@ import {
 import { gamePageQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { Gallery } from "./gallery";
+import { GameDetails } from "./game-details";
+import { RelatedGames } from "./related-games";
 import { Trailer } from "./trailer";
 
 // Aba "Sobre o jogo": dados do IGDB. Cada seção some quando o IGDB não tem o dado, para o
@@ -48,17 +50,26 @@ export function AboutTab({ igdbId, item }: AboutTabProps) {
   return (
     <div className="space-y-10">
       <GameScoreboard game={game} />
-      <Synopsis summary={game.summary} storyline={game.storyline} />
-      {game.videos.length > 0 && (
-        <Section title="Vídeos">
-          <Trailer videos={game.videos} gameName={game.name} />
-        </Section>
-      )}
-      {game.screenshotIds.length > 0 && (
-        <Section title="Imagens">
-          <Gallery imageIds={game.screenshotIds} gameName={game.name} />
-        </Section>
-      )}
+      {/* No desktop, os detalhes ficam numa coluna ao lado da sinopse e da mídia. */}
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-12">
+        <div className="min-w-0 space-y-10">
+          <Synopsis summary={game.summary} storyline={game.storyline} />
+          {game.videos.length > 0 && (
+            <Section title="Vídeos">
+              <Trailer videos={game.videos} gameName={game.name} />
+            </Section>
+          )}
+          {game.screenshotIds.length > 0 && (
+            <Section title="Imagens">
+              <Gallery imageIds={game.screenshotIds} gameName={game.name} />
+            </Section>
+          )}
+        </div>
+        <aside aria-label="Detalhes do jogo">
+          <GameDetails game={game} />
+        </aside>
+      </div>
+      <RelatedGames game={game} />
     </div>
   );
 }
