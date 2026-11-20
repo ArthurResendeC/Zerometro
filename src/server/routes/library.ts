@@ -1,8 +1,11 @@
 import { z } from "zod";
 import {
   achievementCandidatesQuerySchema,
+  achievementParamSchema,
   achievementSetParamSchema,
   linkAchievementSetSchema,
+  setAchievementSchema,
+  setManyAchievementsSchema,
 } from "../../shared/achievements";
 import { markCompletedSchema } from "../../shared/completions";
 import { addObjectiveSchema, reorderObjectivesSchema } from "../../shared/objectives";
@@ -21,6 +24,8 @@ import {
   linkSet,
   listGameAchievements,
   refreshGameSets,
+  setAchievementUnlocked,
+  setManyUnlocked,
   unlinkSet,
 } from "../services/achievements";
 import { listCompletions, markCompleted } from "../services/completions";
@@ -146,6 +151,32 @@ export function createLibraryRoutes(deps: AppDeps) {
         (c) => {
           const { gameId, setId } = c.req.valid("param");
           return c.json(unlinkSet(webContext(deps, c), deps.achievements, gameId, setId));
+        },
+      )
+      // Marcar várias de uma vez ("marcar todas").
+      .patch(
+        "/:gameId/achievements",
+        validate("param", gameIdParamSchema),
+        validate("json", setManyAchievementsSchema),
+        (c) => {
+          const { gameId } = c.req.valid("param");
+          const { ids, ...input } = c.req.valid("json");
+          return c.json(
+            setManyUnlocked(webContext(deps, c), deps.achievements, gameId, ids, input),
+          );
+        },
+      )
+      .patch(
+        "/:gameId/achievements/:achievementId",
+        validate("param", achievementParamSchema),
+        validate("json", setAchievementSchema),
+        (c) => {
+          const { gameId, achievementId } = c.req.valid("param");
+          const ctx = webContext(deps, c);
+          const input = c.req.valid("json");
+          return c.json(
+            setAchievementUnlocked(ctx, deps.achievements, gameId, achievementId, input),
+          );
         },
       )
       .post("/:gameId/achievements/refresh", validate("param", gameIdParamSchema), async (c) => {

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { CompletionSummary, DisplayState } from "./completions";
+import type { AchievementsSummary } from "./achievements";
 import type { ObjectivesSummary } from "./objectives";
 import { isoDateSchema } from "./dates";
 import { type CompletionType, type GameStatus, gameStatusSchema } from "./domain";
@@ -24,6 +25,8 @@ export interface LibraryItem {
   completion: CompletionSummary | null;
   /** Objetivos feitos/total (null se o jogo não tem objetivos). */
   objectives: ObjectivesSummary | null;
+  /** Conquistas das listas que o jogo segue (null se não segue nenhuma). */
+  achievements: AchievementsSummary | null;
   platformPlayed: string | null;
   startedAt: string | null;
   finishedAt: string | null;
@@ -58,6 +61,8 @@ export interface RemovalSummary {
   minutesPlayed: number;
   completionsCount: number;
   objectivesCount: number;
+  /** Conquistas desbloqueadas nas listas do jogo (somem junto, se nenhum outro jogo seguir a lista). */
+  achievementsUnlocked: number;
 }
 
 export const gameIdParamSchema = z.object({ gameId: z.coerce.number().int().positive() });

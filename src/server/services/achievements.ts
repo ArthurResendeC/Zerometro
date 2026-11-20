@@ -9,10 +9,14 @@ import {
   type AchievementSource,
   achievementSourceLabels,
   achievementSourceUrl,
+  achievementsDone,
+  type AchievementWriteResult,
   type GameAchievements,
   type LinkAchievementSetInput,
   parseSourceGameId,
+  type SetAchievementInput,
 } from "../../shared/achievements";
+import { zonedToInstant } from "../../shared/dates";
 import {
   type AchievementSet,
   achievementSets,
@@ -340,4 +344,92 @@ export async function refreshGameSets(
     ),
   );
   return listGameAchievements(ctx, catalog, gameId);
+}
+
+// ---------------------------------------------------------------------------
+// Desbloquear
+
+/** Marca ou desmarca uma conquista de uma lista que o jogo segue. */
+export function setAchievementUnlocked(
+  ctx: ServiceContext,
+  catalog: AchievementCatalog,
+  gameId: number,
+  achievementId: number,
+  input: SetAchievementInput,
+): AchievementWriteResult {
+  return setManyUnlocked(ctx, catalog, gameId, [achievementId], input);
+}
+
+/**
+ * Marca ou desmarca várias de uma vez ("marcar todas"). Desbloquear de novo só troca a data se
+ * ela for informada. Completar a lista sugere marcar o 100%, sem criar a conclusão sozinho.
+ */
+export function setManyUnlocked(
+  ctx: ServiceContext,
+  catalog: AchievementCatalog,
+  gameId: number,
+  ids: number[],
+  input: SetAchievementInput,
+): AchievementWriteResult {
+  const item = getLibraryItem(ctx, gameId);
+  const before = listGameAchievements(ctx, catalog, gameId);
+  const byId = new Map(before.sets.flatMap((s) => s.achievements).map((a) => [a.id, a]));
+  const unique = [...new Set(ids)];
+  const missing = unique.filter((id) => !byId.has(id));
+  if (missing.length > 0) {
+    throw new NotFoundError(`Conquista ${missing.join(", ")} não está nas listas deste jogo`);
+  }
+  const unlockedAt = unlockInstant(ctx, input.unlockedOn);
+
+  ctx.db.transaction((tx) => {
+    if (input.unlocked) {
+      for (const id of unique) {
+        const current = byId.get(id)!;
+        if (current.unlockedAt && !input.unlockedOn) continue;
+        tx.insert(achievementUnlocks)
+          .values({ userId: ctx.userId, achievementId: id, unlockedAt, origin: "manual" })
+          .onConflictDoUpdate({
+            target: [achievementUnlocks.userId, achievementUnlocks.achievementId],
+            set: { unlockedAt, origin: "manual" },
+          })
+          .run();
+      }
+    } else {
+      tx.delete(achievementUnlocks)
+        .where(
+          and(
+            eq(achievementUnlocks.userId, ctx.userId),
+            inArray(achievementUnlocks.achievementId, unique),
+          ),
+        )
+        .run();
+    }
+    logActivity(tx, ctx, input.unlocked ? "achievement.unlock" : "achievement.lock", {
+      gameId,
+      name: item.name,
+      achievementIds: unique,
+      titles: unique.slice(0, 20).map((id) => byId.get(id)!.title),
+      ...(input.unlockedOn && { unlockedOn: input.unlockedOn }),
+    });
+  });
+
+  const after = listGameAchievements(ctx, catalog, gameId);
+  const changed = new Set(unique);
+  const allDoneNow = achievementsDone(after.summary) && !achievementsDone(before.summary);
+  const best = allDoneNow ? getLibraryItem(ctx, gameId).completion?.best : undefined;
+  return {
+    achievements: after.sets.flatMap((s) => s.achievements).filter((a) => changed.has(a.id)),
+    summary: after.summary!,
+    allDoneNow,
+    suggestFullCompletion: allDoneNow && best !== "full",
+  };
+}
+
+/** Agora, ou meio-dia (no fuso do usuário) do dia informado. Dia no futuro não vale. */
+function unlockInstant(ctx: ServiceContext, unlockedOn: string | undefined): string {
+  if (!unlockedOn || unlockedOn === ctx.today) return ctx.now.toISOString();
+  if (unlockedOn > ctx.today) {
+    throw new ValidationError("A data do desbloqueio não pode ser no futuro");
+  }
+  return zonedToInstant(unlockedOn, "12:00", ctx.timeZone).toISOString();
 }

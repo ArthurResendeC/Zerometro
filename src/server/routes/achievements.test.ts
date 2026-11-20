@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import type { AchievementCandidates, GameAchievements } from "../../shared/achievements";
+import type {
+  AchievementCandidates,
+  AchievementWriteResult,
+  GameAchievements,
+} from "../../shared/achievements";
 import type { LibraryItem } from "../../shared/library";
 import { createDisabledSteamApi } from "../services/steam";
 import { createTestApp } from "../testing";
@@ -29,6 +33,16 @@ describe("/api/library/:gameId/achievements", () => {
 
     const listed = (await (await request(base)).json()) as GameAchievements;
     expect(listed.summary).toMatchObject({ total: 3, unlocked: 0 });
+
+    const ids = sets[0]!.achievements.map((a) => a.id);
+    const one = await request(`${base}/${ids[0]}`, json({ unlocked: true }, "PATCH"));
+    expect(((await one.json()) as AchievementWriteResult).summary.unlocked).toBe(1);
+    const all = await request(base, json({ ids, unlocked: true }, "PATCH"));
+    expect(await all.json()).toMatchObject({ allDoneNow: true, suggestFullCompletion: true });
+    const library = (await (await request(`/api/library/${item.gameId}`)).json()) as {
+      item: LibraryItem;
+    };
+    expect(library.item.achievements).toMatchObject({ total: 3, unlocked: 3 });
 
     expect((await request(`${base}/refresh`, { method: "POST" })).status).toBe(200);
 

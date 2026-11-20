@@ -225,6 +225,7 @@ describe("removeFromLibrary", () => {
       minutesPlayed: 135,
       completionsCount: 1,
       objectivesCount: 1,
+      achievementsUnlocked: 0,
     });
 
     removeFromLibrary(ctx, gameId);

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
-import { activityLog, games } from "../db/schema";
+import { achievementUnlocks, activityLog, games, userAchievementSets } from "../db/schema";
 import { AchievementSourceError, NotFoundError, ValidationError } from "../errors";
 import {
   createFakeIgdb,
@@ -12,6 +12,7 @@ import {
   fakeRaGame,
   fakeRaSet,
   fakeSteamSet,
+  TEST_NOW,
 } from "../testing";
 import type { AchievementCatalog } from "./achievement-catalog";
 import {
@@ -19,10 +20,13 @@ import {
   linkSet,
   listGameAchievements,
   refreshGameSets,
+  setAchievementUnlocked,
+  setManyUnlocked,
   unlinkSet,
 } from "./achievements";
+import { markCompleted } from "./completions";
 import type { ServiceContext } from "./context";
-import { addToLibrary } from "./library";
+import { addToLibrary, getLibraryItem, previewRemoval, removeFromLibrary } from "./library";
 
 const P5R = fakeIgdbGame();
 const METROID = fakeIgdbGame({
@@ -214,5 +218,96 @@ describe("unlinkSet / refreshGameSets", () => {
       platform: "SNES/Super Famicom",
       url: "https://retroachievements.org/game/1446",
     });
+  });
+});
+
+async function linkP5r() {
+  const { sets } = await linkSet(ctx, catalog, p5r, { source: "steam", id: "1687950" });
+  return sets[0]!.achievements.map((a) => a.id);
+}
+
+describe("setAchievementUnlocked / setManyUnlocked", () => {
+  test("desbloqueia agora, desfaz e mostra no LibraryItem", async () => {
+    const [first] = await linkP5r();
+
+    const result = setAchievementUnlocked(ctx, catalog, p5r, first!, { unlocked: true });
+    expect(result.achievements[0]).toMatchObject({
+      unlockedAt: TEST_NOW.toISOString(),
+      origin: "manual",
+    });
+    expect(result.summary).toEqual({ total: 3, unlocked: 1, points: 0, pointsUnlocked: 0 });
+    expect(result.allDoneNow).toBe(false);
+    expect(getLibraryItem(ctx, p5r).achievements).toEqual(result.summary);
+
+    const undone = setAchievementUnlocked(ctx, catalog, p5r, first!, { unlocked: false });
+    expect(undone.achievements[0]?.unlockedAt).toBeNull();
+    expect(getLibraryItem(ctx, p5r).achievements?.unlocked).toBe(0);
+  });
+
+  test("data informada: meio-dia no fuso; futuro não vale; repetir sem data mantém", async () => {
+    const [first] = await linkP5r();
+
+    setAchievementUnlocked(ctx, catalog, p5r, first!, { unlocked: true, unlockedOn: "2026-11-01" });
+    const again = setAchievementUnlocked(ctx, catalog, p5r, first!, { unlocked: true });
+    expect(again.achievements[0]?.unlockedAt).toBe("2026-11-01T15:00:00.000Z");
+
+    expect(() =>
+      setAchievementUnlocked(ctx, catalog, p5r, first!, {
+        unlocked: true,
+        unlockedOn: "2026-12-01",
+      }),
+    ).toThrow(ValidationError);
+  });
+
+  test("completar todas sugere o 100%, só na virada e só sem 100%", async () => {
+    const ids = await linkP5r();
+
+    const partial = setManyUnlocked(ctx, catalog, p5r, ids.slice(0, 2), { unlocked: true });
+    expect(partial.allDoneNow).toBe(false);
+    const done = setAchievementUnlocked(ctx, catalog, p5r, ids[2]!, { unlocked: true });
+    expect(done).toMatchObject({ allDoneNow: true, suggestFullCompletion: true });
+    expect(done.summary.unlocked).toBe(3);
+
+    setAchievementUnlocked(ctx, catalog, p5r, ids[2]!, { unlocked: false });
+    markCompleted(ctx, p5r, { type: "full" });
+    const withFull = setAchievementUnlocked(ctx, catalog, p5r, ids[2]!, { unlocked: true });
+    expect(withFull).toMatchObject({ allDoneNow: true, suggestFullCompletion: false });
+  });
+
+  test("conquista de lista que o jogo não segue → 404", async () => {
+    const ids = await linkP5r();
+    expect(() =>
+      setAchievementUnlocked(ctx, catalog, metroid, ids[0]!, { unlocked: true }),
+    ).toThrow(NotFoundError);
+  });
+
+  test("conquista removida da fonte: some das contas, mas o desbloqueio aparece", async () => {
+    const steam = createFakeSource([fakeSteamSet()]);
+    catalog = createTestCatalog(ctx.db, undefined, { steam });
+    const ids = await linkP5r();
+    setManyUnlocked(ctx, catalog, p5r, [ids[0]!], { unlocked: true });
+    steam.sets[0]!.achievements = steam.sets[0]!.achievements.slice(1);
+
+    const result = await refreshGameSets(ctx, catalog, p5r);
+
+    expect(result.summary).toEqual({ total: 2, unlocked: 0, points: 0, pointsUnlocked: 0 });
+    expect(result.sets[0]?.achievements.find((a) => a.id === ids[0])).toMatchObject({
+      removed: true,
+      unlockedAt: TEST_NOW.toISOString(),
+    });
+  });
+
+  test("remover o jogo leva as listas e os desbloqueios, menos os de lista seguida por outro", async () => {
+    const ids = await linkP5r();
+    setManyUnlocked(ctx, catalog, p5r, ids, { unlocked: true });
+    expect(previewRemoval(ctx, p5r).achievementsUnlocked).toBe(3);
+
+    await linkSet(ctx, catalog, metroid, { source: "steam", id: "1687950" });
+    removeFromLibrary(ctx, p5r);
+    expect(getLibraryItem(ctx, metroid).achievements?.unlocked).toBe(3);
+
+    removeFromLibrary(ctx, metroid);
+    expect(ctx.db.select().from(achievementUnlocks).all()).toHaveLength(0);
+    expect(ctx.db.select().from(userAchievementSets).all()).toHaveLength(0);
   });
 });

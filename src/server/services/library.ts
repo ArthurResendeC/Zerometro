@@ -1,4 +1,4 @@
-import { isNotNull, and, desc, eq, type SQL, sql } from "drizzle-orm";
+import { isNotNull, and, desc, eq, inArray, isNull, ne, type SQL, sql } from "drizzle-orm";
 import { displayStateOf, estimateProgress } from "../../shared/completions";
 import {
   type CompletionType,
@@ -16,7 +16,16 @@ import {
   type UpdateLibraryEntryInput,
   type UpdateLibraryEntryResult,
 } from "../../shared/library";
-import { completions, games, libraryEntries, objectives, playSessions } from "../db/schema";
+import {
+  achievementUnlocks,
+  achievements,
+  completions,
+  games,
+  libraryEntries,
+  objectives,
+  playSessions,
+  userAchievementSets,
+} from "../db/schema";
 import { AmbiguousGameError, ConflictError, NotFoundError, ValidationError } from "../errors";
 import { logActivity } from "./activity";
 import type { DbOrTx } from "../db/client";
@@ -158,6 +167,34 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
     .groupBy(objectives.gameId)
     .as("goals");
 
+  // Conquistas das listas que cada jogo segue (sem as removidas da fonte).
+  const trophies = db
+    .select({
+      gameId: userAchievementSets.gameId,
+      total: sql<number>`count(*)`.as("achievements_total"),
+      unlocked: sql<number>`count(${achievementUnlocks.id})`.as("achievements_unlocked"),
+      points: sql<number>`coalesce(sum(${achievements.points}), 0)`.as("achievements_points"),
+      pointsUnlocked:
+        sql<number>`coalesce(sum(case when ${achievementUnlocks.id} is not null then ${achievements.points} end), 0)`.as(
+          "achievements_points_unlocked",
+        ),
+    })
+    .from(userAchievementSets)
+    .innerJoin(
+      achievements,
+      and(eq(achievements.setId, userAchievementSets.setId), isNull(achievements.removedAt)),
+    )
+    .leftJoin(
+      achievementUnlocks,
+      and(
+        eq(achievementUnlocks.achievementId, achievements.id),
+        eq(achievementUnlocks.userId, userId),
+      ),
+    )
+    .where(eq(userAchievementSets.userId, userId))
+    .groupBy(userAchievementSets.gameId)
+    .as("trophies");
+
   const rows = db
     .select({
       game: games,
@@ -171,12 +208,17 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
       lastCompletedOn: done.last,
       objectivesTotal: goals.total,
       objectivesUnlocked: goals.unlocked,
+      achievementsTotal: trophies.total,
+      achievementsUnlocked: trophies.unlocked,
+      achievementsPoints: trophies.points,
+      achievementsPointsUnlocked: trophies.pointsUnlocked,
     })
     .from(libraryEntries)
     .innerJoin(games, eq(games.id, libraryEntries.gameId))
     .leftJoin(totals, eq(totals.gameId, games.id))
     .leftJoin(done, eq(done.gameId, games.id))
     .leftJoin(goals, eq(goals.gameId, games.id))
+    .leftJoin(trophies, eq(trophies.gameId, games.id))
     .where(and(eq(libraryEntries.userId, userId), ...filters))
     // Jogados recentemente primeiro; depois os mexidos por último.
     .orderBy(
@@ -220,6 +262,14 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
       completion,
       objectives: row.objectivesTotal
         ? { total: row.objectivesTotal, unlocked: row.objectivesUnlocked ?? 0 }
+        : null,
+      achievements: row.achievementsTotal
+        ? {
+            total: row.achievementsTotal,
+            unlocked: row.achievementsUnlocked ?? 0,
+            points: row.achievementsPoints ?? 0,
+            pointsUnlocked: row.achievementsPointsUnlocked ?? 0,
+          }
         : null,
       platformPlayed: entry.platformPlayed,
       startedAt: entry.startedAt,
@@ -334,6 +384,7 @@ export function previewRemoval(scope: UserScope, gameId: number): RemovalSummary
     minutesPlayed: item.minutesPlayed,
     completionsCount: count(completions),
     objectivesCount: count(objectives),
+    achievementsUnlocked: item.achievements?.unlocked ?? 0,
   };
 }
 
@@ -347,12 +398,55 @@ export function removeFromLibrary(ctx: ServiceContext, gameId: number): RemovalS
         .where(and(eq(table.userId, ctx.userId), eq(table.gameId, gameId)))
         .run();
     }
+    removeAchievementData(tx, ctx.userId, gameId);
     tx.delete(libraryEntries)
       .where(and(eq(libraryEntries.userId, ctx.userId), eq(libraryEntries.gameId, gameId)))
       .run();
     logActivity(tx, ctx, "library.remove", { ...summary });
   });
   return summary;
+}
+
+/**
+ * Tira as listas de conquistas do jogo e os desbloqueios delas. Uma lista que outro jogo da
+ * biblioteca também segue fica com os desbloqueios (são da lista, não do jogo).
+ */
+function removeAchievementData(db: DbOrTx, userId: string, gameId: number) {
+  const ofUser = eq(userAchievementSets.userId, userId);
+  const setIds = db
+    .select({ setId: userAchievementSets.setId })
+    .from(userAchievementSets)
+    .where(and(ofUser, eq(userAchievementSets.gameId, gameId)))
+    .all()
+    .map((row) => row.setId);
+  if (setIds.length === 0) return;
+
+  const stillFollowed = new Set(
+    db
+      .select({ setId: userAchievementSets.setId })
+      .from(userAchievementSets)
+      .where(and(ofUser, ne(userAchievementSets.gameId, gameId)))
+      .all()
+      .map((row) => row.setId),
+  );
+  const orphaned = setIds.filter((id) => !stillFollowed.has(id));
+
+  db.delete(userAchievementSets)
+    .where(and(ofUser, eq(userAchievementSets.gameId, gameId)))
+    .run();
+  if (orphaned.length === 0) return;
+  const inOrphanedSets = db
+    .select({ id: achievements.id })
+    .from(achievements)
+    .where(inArray(achievements.setId, orphaned));
+  db.delete(achievementUnlocks)
+    .where(
+      and(
+        eq(achievementUnlocks.userId, userId),
+        inArray(achievementUnlocks.achievementId, inOrphanedSets),
+      ),
+    )
+    .run();
 }
 
 // ---------------------------------------------------------------------------

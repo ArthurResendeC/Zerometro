@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isoDateSchema } from "./dates";
 
 // Contrato das conquistas (Steam e RetroAchievements), compartilhado por API, frontend e MCP.
 
@@ -135,3 +136,35 @@ export const achievementSetParamSchema = z.object({
   gameId: z.coerce.number().int().positive(),
   setId: z.coerce.number().int().positive(),
 });
+
+/** Resposta das escritas: o que mudou, o resumo do jogo e o que a interface deve comemorar. */
+export interface AchievementWriteResult {
+  achievements: AchievementItem[];
+  summary: AchievementsSummary;
+  /** Esta mudança desbloqueou a última conquista do jogo. */
+  allDoneNow: boolean;
+  /** Acabou de completar todas e o jogo ainda não tem conclusão 100%: perguntar se quer marcar. */
+  suggestFullCompletion: boolean;
+}
+
+export const achievementParamSchema = z.object({
+  gameId: z.coerce.number().int().positive(),
+  achievementId: z.coerce.number().int().positive(),
+});
+
+export const setAchievementSchema = z.object({
+  unlocked: z.boolean(),
+  /** Dia em que desbloqueou (padrão: agora). Só vale ao desbloquear. */
+  unlockedOn: isoDateSchema.optional(),
+});
+export type SetAchievementInput = z.infer<typeof setAchievementSchema>;
+
+export const MAX_ACHIEVEMENTS_PER_WRITE = 1000;
+
+export const setManyAchievementsSchema = setAchievementSchema.extend({
+  ids: z.array(z.number().int().positive()).min(1).max(MAX_ACHIEVEMENTS_PER_WRITE),
+});
+export type SetManyAchievementsInput = z.infer<typeof setManyAchievementsSchema>;
+
+export const achievementsDone = (s: AchievementsSummary | null) =>
+  s !== null && s.total > 0 && s.unlocked === s.total;
