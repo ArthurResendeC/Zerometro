@@ -57,23 +57,25 @@ function LoginPage() {
           </h1>
           <p className="text-muted-foreground">Seu backlog de jogos e o tempo que você joga.</p>
         </div>
-        <form onSubmit={submit} className="w-full space-y-3 text-left">
-          <Label htmlFor="token">Token de acesso</Label>
-          <Input
-            id="token"
-            type="password"
-            autoComplete="current-password"
-            value={token}
-            onChange={(event) => setToken(event.target.value)}
-            aria-invalid={login.isError || undefined}
-            aria-describedby={login.isError ? "login-error" : undefined}
-          />
-          {login.isError && (
-            <p id="login-error" role="alert" className="text-sm text-destructive">
-              <span aria-hidden>✕ </span>
-              {failureMessage(login.error)}
-            </p>
-          )}
+        <form onSubmit={submit} className="flex w-full flex-col gap-5 text-left">
+          <div className="space-y-3">
+            <Label htmlFor="token">Token de acesso</Label>
+            <Input
+              id="token"
+              type="password"
+              autoComplete="current-password"
+              value={token}
+              onChange={(event) => setToken(event.target.value)}
+              aria-invalid={login.isError || undefined}
+              aria-describedby={login.isError ? "login-error" : undefined}
+            />
+            {login.isError && (
+              <p id="login-error" role="alert" className="text-sm text-destructive">
+                <span aria-hidden>✕ </span>
+                {failureMessage(login.error)}
+              </p>
+            )}
+          </div>
           <Button
             type="submit"
             size="lg"

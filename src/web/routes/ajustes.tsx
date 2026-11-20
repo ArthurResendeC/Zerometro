@@ -76,8 +76,7 @@ function AccountCard() {
       <div className="min-w-0 flex-1">
         <p className="text-lg leading-6">Este aparelho</p>
         <p className="text-sm text-muted-foreground">
-          O acesso vale 30 dias e se renova sozinho com o uso. Para entrar de novo, use o token de
-          acesso da instância.
+          O acesso vale 30 dias e se renova sozinho com o uso.
         </p>
       </div>
       <Button variant="outline" size="sm" onClick={signOut} disabled={pending}>
