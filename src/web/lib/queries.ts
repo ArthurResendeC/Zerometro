@@ -1,5 +1,13 @@
 import { keepPreviousData, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import type {
+  AchievementCandidatesQuery,
+  AchievementItem,
+  AchievementSetItem,
+  AchievementsSummary,
+  GameAchievements,
+  LinkAchievementSetInput,
+} from "@shared/achievements";
 import type { MarkCompletedInput } from "@shared/completions";
 import type {
   AddObjectiveInput,
@@ -842,3 +850,193 @@ export function useObjectiveChange(gameId: number) {
 
 export const isObjectiveWrite = (result: unknown): result is ObjectiveWriteResult =>
   typeof result === "object" && result !== null && "allDoneNow" in result;
+
+// ---------------------------------------------------------------------------
+// Conquistas (listas da Steam e do RetroAchievements)
+
+export const achievementKeys = {
+  all: ["achievements"] as const,
+  game: (gameId: number) => [...achievementKeys.all, gameId] as const,
+  candidates: (gameId: number, query: AchievementCandidatesQuery) =>
+    [...achievementKeys.all, gameId, "candidates", query] as const,
+};
+
+export const achievementsQuery = (gameId: number) =>
+  queryOptions({
+    queryKey: achievementKeys.game(gameId),
+    queryFn: () =>
+      unwrap(api.library[":gameId"].achievements.$get({ param: { gameId: String(gameId) } })),
+  });
+
+export const achievementCandidatesQuery = (gameId: number, query: AchievementCandidatesQuery) =>
+  queryOptions({
+    queryKey: achievementKeys.candidates(gameId, query),
+    queryFn: () =>
+      unwrap(
+        api.library[":gameId"].achievements.candidates.$get({
+          param: { gameId: String(gameId) },
+          query: {
+            ...(query.q && { q: query.q }),
+            ...(query.consoleId && { consoleId: String(query.consoleId) }),
+          },
+        }),
+      ),
+    // Busca nas fontes (e pode buscar a lista da Steam): não repetir à toa.
+    staleTime: 5 * 60_000,
+    placeholderData: keepPreviousData,
+  });
+
+/** O resumo das conquistas mora no item da biblioteca: atualiza a página e os cards. */
+function setGameAchievements(
+  queryClient: ReturnType<typeof useQueryClient>,
+  gameId: number,
+  data: GameAchievements,
+) {
+  queryClient.setQueryData(achievementKeys.game(gameId), data);
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: libraryKeys.all }),
+    queryClient.invalidateQueries({ queryKey: [...achievementKeys.all, gameId, "candidates"] }),
+  ]);
+}
+
+export function useLinkAchievementSet(gameId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: LinkAchievementSetInput) =>
+      unwrap(
+        api.library[":gameId"].achievements.sets.$post({
+          param: { gameId: String(gameId) },
+          json: input,
+        }),
+      ),
+    onSuccess: (data) => {
+      toast.success("Lista de conquistas ligada");
+      return setGameAchievements(queryClient, gameId, data);
+    },
+    onError,
+  });
+}
+
+export function useUnlinkAchievementSet(gameId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (setId: number) =>
+      unwrap(
+        api.library[":gameId"].achievements.sets[":setId"].$delete({
+          param: { gameId: String(gameId), setId: String(setId) },
+        }),
+      ),
+    onSuccess: (data) => {
+      toast.success("Lista desligada", {
+        description: "Os desbloqueios ficam guardados se você ligar de novo.",
+      });
+      return setGameAchievements(queryClient, gameId, data);
+    },
+    onError,
+  });
+}
+
+export function useRefreshAchievements(gameId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      unwrap(
+        api.library[":gameId"].achievements.refresh.$post({ param: { gameId: String(gameId) } }),
+      ),
+    onSuccess: (data) => {
+      toast.success("Listas atualizadas");
+      return setGameAchievements(queryClient, gameId, data);
+    },
+    onError,
+  });
+}
+
+export interface AchievementChange {
+  ids: number[];
+  unlocked: boolean;
+  unlockedOn?: string;
+}
+
+function sendAchievementChange(gameId: number, { ids, ...input }: AchievementChange) {
+  const [only] = ids;
+  if (ids.length === 1 && only !== undefined) {
+    return unwrap(
+      api.library[":gameId"].achievements[":achievementId"].$patch({
+        param: { gameId: String(gameId), achievementId: String(only) },
+        json: input,
+      }),
+    );
+  }
+  return unwrap(
+    api.library[":gameId"].achievements.$patch({
+      param: { gameId: String(gameId) },
+      json: { ids, ...input },
+    }),
+  );
+}
+
+const sumPoints = (list: AchievementItem[]) => list.reduce((sum, a) => sum + (a.points ?? 0), 0);
+
+function summarizeAchievements(items: AchievementItem[]): AchievementsSummary {
+  const active = items.filter((a) => !a.removed);
+  const unlocked = active.filter((a) => a.unlockedAt);
+  return {
+    total: active.length,
+    unlocked: unlocked.length,
+    points: sumPoints(active),
+    pointsUnlocked: sumPoints(unlocked),
+  };
+}
+
+/** Como as listas ficam logo depois de marcar (antes da resposta). */
+function applyAchievementChange(
+  data: GameAchievements,
+  { ids, unlocked }: AchievementChange,
+  now: string,
+): GameAchievements {
+  const changed = new Set(ids);
+  const sets: AchievementSetItem[] = data.sets.map((set) => {
+    const achievements = set.achievements.map((a) => {
+      if (!changed.has(a.id)) return a;
+      if (!unlocked) return { ...a, unlockedAt: null, origin: null };
+      return a.unlockedAt ? a : { ...a, unlockedAt: now, origin: "manual" as const };
+    });
+    return { ...set, ...summarizeAchievements(achievements), achievements };
+  });
+  const all = sets.flatMap((s) => s.achievements);
+  return { ...data, sets, summary: sets.length > 0 ? summarizeAchievements(all) : null };
+}
+
+/**
+ * Marcar e desmarcar conquistas: atualização otimista, som quando a última é desbloqueada e o
+ * resultado (com `suggestFullCompletion`) para quem chamou decidir o que perguntar.
+ */
+export function useAchievementChange(gameId: number) {
+  const queryClient = useQueryClient();
+  const { playMostImportant } = useSound();
+  const key = achievementKeys.game(gameId);
+  return useMutation({
+    mutationFn: (change: AchievementChange) => sendAchievementChange(gameId, change),
+    onMutate: async (change) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<GameAchievements>(key);
+      if (previous) {
+        const next = applyAchievementChange(previous, change, new Date().toISOString());
+        queryClient.setQueryData(key, next);
+      }
+      return { previous };
+    },
+    onError: (error, _change, context) => {
+      if (context?.previous) queryClient.setQueryData(key, context.previous);
+      onError(error);
+    },
+    onSuccess: (result) => {
+      if (result.allDoneNow) playMostImportant(["streak-milestone"]);
+    },
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: key }),
+        queryClient.invalidateQueries({ queryKey: libraryKeys.all }),
+      ]),
+  });
+}

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { fakeRaGame } from "../../testing";
-import { raConsolesFor } from "./consoles";
+import { raConsolesFor } from "../../../shared/ra-consoles";
 import { matchRaGames, normalizeTitle } from "./match";
 
 describe("normalizeTitle", () => {

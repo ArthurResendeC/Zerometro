@@ -1,16 +1,17 @@
 import type { ComponentType } from "react";
-import { ListIcon, TimerIcon } from "@/components/icons";
+import { ListIcon, TimerIcon, TrophyIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
-export const gameTabs = ["sobre", "sessoes"] as const;
+export const gameTabs = ["sobre", "sessoes", "conquistas"] as const;
 export type GameTab = (typeof gameTabs)[number];
 
 const tabInfo: Record<GameTab, { label: string; short: string; Icon: ComponentType }> = {
   sobre: { label: "Sobre o jogo", short: "Sobre", Icon: ListIcon },
   sessoes: { label: "Minhas sessões", short: "Sessões", Icon: TimerIcon },
+  conquistas: { label: "Conquistas", short: "Conquistas", Icon: TrophyIcon },
 };
 
-/** Alternância das abas da página do jogo: dois botões colados numa moldura só. */
+/** Alternância das abas da página do jogo: botões colados numa moldura só. */
 export function TabToggle({ tab, onChange }: { tab: GameTab; onChange: (tab: GameTab) => void }) {
   return (
     <fieldset className="mt-1 mr-3 mb-3 ml-1 inline-flex bg-background pixel-frame pixel-frame-ink pixel-drop">

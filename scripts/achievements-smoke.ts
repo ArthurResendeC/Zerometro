@@ -4,7 +4,7 @@ import { env } from "../src/server/env";
 import type { FetchedAchievementSet } from "../src/server/services/achievement-sources";
 import { createJsonClient } from "../src/server/services/http-json";
 import { createRetroAchievementsFromEnv } from "../src/server/services/retroachievements";
-import { RA_CONSOLES } from "../src/server/services/retroachievements/consoles";
+import { RA_CONSOLES } from "../src/shared/ra-consoles";
 import { createSteamFromEnv } from "../src/server/services/steam";
 
 const STEAM_APP_ID = 504230; // Celeste

@@ -71,6 +71,19 @@ export const StarIcon = pixelIcon(
   r(3, 0, 2, 2) + r(0, 2, 8, 2) + r(1, 4, 6, 1) + r(2, 5, 4, 1) + r(1, 6, 2, 2) + r(5, 6, 2, 2),
   "StarIcon",
 );
+export const TrophyIcon = pixelIcon(
+  r(1, 0, 6, 1) +
+    r(0, 1, 8, 1) +
+    r(0, 2) +
+    r(2, 2, 4, 1) +
+    r(7, 2) +
+    r(1, 3, 6, 1) +
+    r(2, 4, 4, 1) +
+    r(3, 5, 2, 1) +
+    r(2, 6, 4, 1) +
+    r(1, 7, 6, 1),
+  "TrophyIcon",
+);
 export const PencilIcon = pixelIcon(
   r(6, 0) +
     r(5, 1, 3, 1) +

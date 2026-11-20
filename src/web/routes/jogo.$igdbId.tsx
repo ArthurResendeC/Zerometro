@@ -9,6 +9,7 @@ import { CompletionBadge, completionAddsInfo, StatusBadge } from "@/components/s
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AboutTab } from "@/features/game/about-tab";
+import { AchievementsTab } from "@/features/game/achievements-tab";
 import { GameHero, type HeroGame } from "@/features/game/game-hero";
 import { MySessions } from "@/features/game/my-sessions";
 import { type GameTab, gameTabs, TabToggle } from "@/features/game/tab-toggle";
@@ -16,8 +17,8 @@ import { useNow } from "@/hooks/use-now";
 import { ApiError } from "@/lib/api";
 import { gamePageQuery, libraryByIgdbQuery } from "@/lib/queries";
 
-// Página do jogo, aberta pelo id do IGDB (na biblioteca ou não). Duas abas: "Sobre" (dados do
-// IGDB) e "Minhas sessões" (só para jogos da biblioteca). O cabeçalho é o mesmo nas duas.
+// Página do jogo, aberta pelo id do IGDB (na biblioteca ou não). Abas: "Sobre" (dados do IGDB),
+// "Minhas sessões" e "Conquistas" (essas duas só para jogos da biblioteca). O cabeçalho é o mesmo.
 
 const searchSchema = z.object({
   /** Sem aba: "sessoes" se o jogo estiver na biblioteca, senão "sobre". */
@@ -110,6 +111,8 @@ function GamePage() {
 
       {tab === "sessoes" && item ? (
         <MySessions item={item} />
+      ) : tab === "conquistas" && item ? (
+        <AchievementsTab item={item} />
       ) : (
         <AboutTab igdbId={igdbId} item={item} />
       )}

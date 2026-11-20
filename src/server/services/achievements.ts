@@ -32,7 +32,7 @@ import type { ServiceContext, UserScope } from "./context";
 import { syncGameFromIgdb } from "./games";
 import type { IgdbApi } from "./igdb";
 import { getLibraryItem } from "./library";
-import { findRaConsole, raConsolesFor } from "./retroachievements/consoles";
+import { findRaConsole, raConsolesFor } from "../../shared/ra-consoles";
 import { matchRaGames } from "./retroachievements/match";
 
 // Conquistas de um jogo na biblioteca: quais listas (Steam, RA) ele segue e o que o usuário já
