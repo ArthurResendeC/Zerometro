@@ -28,7 +28,7 @@ export function GameCard({ item, showStatus = false }: GameCardProps) {
     <Link
       to="/jogo/$igdbId"
       params={{ igdbId: item.igdbId }}
-      className="group flex flex-col gap-2.5 focus-visible:outline-none"
+      className="group flex flex-col gap-2.5 focus-visible:outline-none select-none"
     >
       <div className="relative m-1 bg-card px-2.5 pt-3.5 pb-2.5 pixel-frame transition-transform ease-[steps(2)] group-hover:-translate-y-1 group-hover:pixel-drop group-focus-visible:-translate-y-1 group-focus-visible:outline-[3px] group-focus-visible:outline-offset-[7px] group-focus-visible:outline-ring group-focus-visible:outline-solid before:absolute before:inset-x-6 before:top-1 before:h-1.5 before:bg-[repeating-linear-gradient(90deg,var(--border)_0_4px,transparent_4px_8px)]">
         <div className="relative">

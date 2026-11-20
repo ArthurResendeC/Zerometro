@@ -86,7 +86,7 @@ export function GameCarouselCard(props: GameRowCardProps) {
   return (
     // Espaço entre slides na margem direita; a do último (mr-4) espelha o px-4 do container,
     // porque o Embla mede essa margem, não o padding final, como folga do fim.
-    <CarouselItem className={cn(cardClass, "mr-3 basis-auto pl-0 last:mr-4 sm:mr-4")}>
+    <CarouselItem className={cn(cardClass, "mr-3 basis-auto pl-0 last:mr-4 sm:mr-4 select-none")}>
       <GameRowCardBody {...props} />
     </CarouselItem>
   );
