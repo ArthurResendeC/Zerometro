@@ -92,6 +92,15 @@ export const ArrowRightIcon = pixelIcon(
   r(7, 3, 1, 2) + r(6, 2, 1, 4) + r(5, 1, 1, 6) + r(0, 3, 5, 2),
   "ArrowRightIcon",
 );
+export const ArrowUpIcon = pixelIcon(
+  r(3, 0, 2, 1) + r(2, 1, 4, 1) + r(1, 2, 6, 1) + r(3, 3, 2, 5),
+  "ArrowUpIcon",
+);
+export const ArrowDownIcon = pixelIcon(
+  r(3, 7, 2, 1) + r(2, 6, 4, 1) + r(1, 5, 6, 1) + r(3, 0, 2, 5),
+  "ArrowDownIcon",
+);
+export const MinusIcon = pixelIcon(r(0, 3, 8, 2), "MinusIcon");
 /** Seta saindo da caixa: link que abre outro site. */
 export const ExternalIcon = pixelIcon(
   r(4, 0, 4, 1) +

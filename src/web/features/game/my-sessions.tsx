@@ -42,6 +42,7 @@ import { formatDate, formatHoursFromSeconds, formatMinutes, formatPercent } from
 import { useRemoveFromLibrary, useUpdateLibraryEntry } from "@/lib/queries";
 import { useLogSessionDialog } from "@/stores/log-session-dialog";
 import { CompleteDialog, CompletionsSection } from "./completions-section";
+import { ObjectivesSection } from "./objectives-section";
 
 // Aba "Minhas sessões" da página do jogo: tempo jogado, sessões, detalhes da entrada e remover.
 
@@ -50,13 +51,30 @@ export function MySessions({ item }: { item: LibraryItem }) {
   const openLogSession = useLogSessionDialog((state) => state.openNew);
   /** Diálogo "Marcar como zerado": fechado (null) ou aberto com o tipo já escolhido. */
   const [completeWith, setCompleteWith] = useState<CompletionType | null>(null);
+  /** "Todos os objetivos concluídos. Marcar como 100%?" */
+  const [suggestFull, setSuggestFull] = useState(false);
 
   return (
     <div className="space-y-6">
       <PlayedSummary item={item} />
 
       <CompletionsSection item={item} onMarkCompleted={() => setCompleteWith(nextLevel(item))} />
+      <ObjectivesSection item={item} onAllDone={() => setSuggestFull(true)} />
       <CompleteDialog item={item} openWith={completeWith} onClose={() => setCompleteWith(null)} />
+      <AlertDialog open={suggestFull} onOpenChange={setSuggestFull}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Todos os objetivos concluídos!</AlertDialogTitle>
+            <AlertDialogDescription>Marcar {item.name} como 100%?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Agora não</AlertDialogCancel>
+            <AlertDialogAction onClick={() => setCompleteWith("full")}>
+              Marcar 100%
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-2">

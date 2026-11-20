@@ -66,7 +66,9 @@ export function CompletionsSection({
       <div className="flex items-center justify-between gap-2">
         <h2 className="display-md">Conclusões</h2>
         <Button size="sm" onClick={onMarkCompleted}>
-          <CheckIcon /> Marcar como zerado
+          <CheckIcon />
+          <span className="sm:hidden">Zerei</span>
+          <span className="max-sm:hidden">Marcar como zerado</span>
         </Button>
       </div>
       <Card className="gap-2">

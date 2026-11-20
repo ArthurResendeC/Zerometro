@@ -1,6 +1,12 @@
 import { keepPreviousData, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { MarkCompletedInput } from "@shared/completions";
+import type {
+  AddObjectiveInput,
+  ObjectiveItem,
+  ObjectiveWriteResult,
+  UpdateObjectiveInput,
+} from "@shared/objectives";
 import { completionTypeLabels, type GameStatus, gameStatusLabels } from "@shared/domain";
 import type {
   AddToLibraryInput,
@@ -509,3 +515,115 @@ export const sessionQuery = () =>
     queryFn: async () => (await authClient.getSession()).data ?? null,
     staleTime: 5 * 60_000,
   });
+
+// ---------------------------------------------------------------------------
+// Objetivos (checkbox e contador)
+
+export const objectiveKeys = {
+  all: ["objectives"] as const,
+  list: (gameId: number) => [...objectiveKeys.all, gameId] as const,
+};
+
+export const objectivesQuery = (gameId: number) =>
+  queryOptions({
+    queryKey: objectiveKeys.list(gameId),
+    queryFn: async () =>
+      (await unwrap(api.library[":gameId"].objectives.$get({ param: { gameId: String(gameId) } })))
+        .objectives,
+  });
+
+export type ObjectiveChange =
+  | { kind: "add"; input: AddObjectiveInput }
+  | { kind: "update"; id: number; patch: UpdateObjectiveInput }
+  | { kind: "increment"; id: number; by: number }
+  | { kind: "delete"; id: number }
+  | { kind: "reorder"; ids: number[] };
+
+/** Adicionar/editar/incrementar devolvem um `ObjectiveWriteResult` (veja `isObjectiveWrite`). */
+function sendObjectiveChange(gameId: number, change: ObjectiveChange): Promise<unknown> {
+  const param = { id: String("id" in change ? change.id : 0) };
+  switch (change.kind) {
+    case "add":
+      return unwrap(
+        api.library[":gameId"].objectives.$post({
+          param: { gameId: String(gameId) },
+          json: change.input,
+        }),
+      );
+    case "update":
+      return unwrap(api.objectives[":id"].$patch({ param, json: change.patch }));
+    case "increment":
+      return unwrap(api.objectives[":id"].increment.$post({ param, json: { by: change.by } }));
+    case "delete":
+      return unwrap(api.objectives[":id"].$delete({ param }));
+    case "reorder":
+      return unwrap(
+        api.library[":gameId"].objectives.order.$put({
+          param: { gameId: String(gameId) },
+          json: { ids: change.ids },
+        }),
+      );
+  }
+}
+
+const clampProgress = (o: ObjectiveItem, progress: number) =>
+  Math.min(o.target, Math.max(0, progress));
+
+/** Como a lista fica logo depois da mudança (antes da resposta), para a tela não esperar a rede. */
+function applyObjectiveChange(list: ObjectiveItem[], change: ObjectiveChange): ObjectiveItem[] {
+  switch (change.kind) {
+    case "increment":
+      return list.map((o) =>
+        o.id === change.id ? { ...o, progress: clampProgress(o, o.progress + change.by) } : o,
+      );
+    case "update":
+      return list.map((o) => {
+        if (o.id !== change.id) return o;
+        const next = { ...o, ...change.patch, description: o.description };
+        return { ...next, progress: clampProgress(next, next.progress) };
+      });
+    case "delete":
+      return list.filter((o) => o.id !== change.id);
+    case "reorder": {
+      const byId = new Map(list.map((o) => [o.id, o]));
+      return change.ids.flatMap((id) => byId.get(id) ?? []);
+    }
+    case "add":
+      return list;
+  }
+}
+
+/**
+ * Todas as escritas de objetivos por um hook só: atualização otimista, som quando o último é
+ * concluído e o resultado (com `suggestFullCompletion`) para quem chamou decidir o que perguntar.
+ */
+export function useObjectiveChange(gameId: number) {
+  const queryClient = useQueryClient();
+  const { playMostImportant } = useSound();
+  const key = objectiveKeys.list(gameId);
+  return useMutation({
+    mutationFn: (change: ObjectiveChange) => sendObjectiveChange(gameId, change),
+    onMutate: async (change) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<ObjectiveItem[]>(key);
+      if (previous) queryClient.setQueryData(key, applyObjectiveChange(previous, change));
+      return { previous };
+    },
+    onError: (error, _change, context) => {
+      if (context?.previous) queryClient.setQueryData(key, context.previous);
+      onError(error);
+    },
+    onSuccess: (result) => {
+      if (isObjectiveWrite(result) && result.allDoneNow) playMostImportant(["streak-milestone"]);
+    },
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: key }),
+        // O item da biblioteca traz o resumo (feitos/total).
+        queryClient.invalidateQueries({ queryKey: libraryKeys.all }),
+      ]),
+  });
+}
+
+export const isObjectiveWrite = (result: unknown): result is ObjectiveWriteResult =>
+  typeof result === "object" && result !== null && "allDoneNow" in result;
