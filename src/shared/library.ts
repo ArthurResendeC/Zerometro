@@ -1,6 +1,7 @@
 import { z } from "zod";
+import type { CompletionSummary, DisplayState } from "./completions";
 import { isoDateSchema } from "./dates";
-import { type GameStatus, gameStatusSchema } from "./domain";
+import { type CompletionType, type GameStatus, gameStatusSchema } from "./domain";
 import type { TimeToBeat } from "./igdb";
 
 // Contrato da biblioteca, compartilhado por API, frontend e MCP.
@@ -16,6 +17,10 @@ export interface LibraryItem {
   releaseYear: number | null;
   timeToBeat: TimeToBeat | null;
   status: GameStatus;
+  /** O status, ou "postgame" quando está jogando um jogo já zerado. */
+  displayState: DisplayState;
+  /** Conclusões (null se nunca zerou). */
+  completion: CompletionSummary | null;
   platformPlayed: string | null;
   startedAt: string | null;
   finishedAt: string | null;
@@ -29,8 +34,10 @@ export interface LibraryItem {
   priorMinutes: number;
   sessionsCount: number;
   lastPlayedOn: string | null;
-  /** 0..1, estimado pelo tempo da história. null se o IGDB não tiver o tempo. */
+  /** 0..1, estimado pelo tempo do IGDB rumo a `progressTarget`. null sem tempo e sem conclusão. */
   progress: number | null;
+  /** Para onde o progresso aponta: história antes de zerar, depois extras e 100%. */
+  progressTarget: CompletionType;
 }
 
 export type StatusCounts = Record<GameStatus, number>;
@@ -54,6 +61,8 @@ export const gameIdParamSchema = z.object({ gameId: z.coerce.number().int().posi
 
 export const libraryListQuerySchema = z.object({
   status: gameStatusSchema.optional(),
+  /** Só os jogos em pós-jogo (jogando e já zerados). */
+  displayState: z.literal("postgame").optional(),
   q: z.string().trim().max(100).optional(),
 });
 export type LibraryListQuery = z.infer<typeof libraryListQuerySchema>;
@@ -89,9 +98,3 @@ export const updateLibraryEntrySchema = z
   .partial()
   .refine((patch) => Object.keys(patch).length > 0, "Nada para atualizar");
 export type UpdateLibraryEntryInput = z.infer<typeof updateLibraryEntrySchema>;
-
-/** Progresso estimado (0..1) pelo tempo da história; null sem dados do IGDB. */
-export function estimateProgress(minutesPlayed: number, mainSec: number | null): number | null {
-  if (!mainSec) return null;
-  return Math.min(1, (minutesPlayed * 60) / mainSec);
-}

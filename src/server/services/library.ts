@@ -1,8 +1,14 @@
 import { isNotNull, and, desc, eq, type SQL, sql } from "drizzle-orm";
-import { type GameStatus, gameStatuses, gameStatusLabels } from "../../shared/domain";
+import { displayStateOf, estimateProgress } from "../../shared/completions";
+import {
+  type CompletionType,
+  completionTypes,
+  type GameStatus,
+  gameStatuses,
+  gameStatusLabels,
+} from "../../shared/domain";
 import {
   type AddToLibraryInput,
-  estimateProgress,
   type LibraryItem,
   type LibraryListQuery,
   type RemovalSummary,
@@ -13,6 +19,7 @@ import {
 import { completions, games, libraryEntries, objectives, playSessions } from "../db/schema";
 import { AmbiguousGameError, ConflictError, NotFoundError, ValidationError } from "../errors";
 import { logActivity } from "./activity";
+import type { DbOrTx } from "../db/client";
 import type { ServiceContext, UserScope } from "./context";
 import { ensureGame } from "./games";
 import type { IgdbApi } from "./igdb";
@@ -24,7 +31,13 @@ export function listLibrary(scope: UserScope, query: LibraryListQuery = {}): Lib
   const filters: SQL[] = [];
   if (query.status) filters.push(eq(libraryEntries.status, query.status));
   if (query.q) filters.push(sql`${games.name} like ${`%${escapeLike(query.q)}%`} escape '\\'`);
+  if (query.displayState === "postgame") filters.push(isPostgame(scope.userId));
   return selectItems(scope, filters);
+}
+
+/** Jogando um jogo que já tem conclusão. */
+function isPostgame(userId: string): SQL {
+  return sql`${libraryEntries.status} = 'playing' and exists (select 1 from ${completions} where ${completions.userId} = ${userId} and ${completions.gameId} = ${games.id})`;
 }
 
 export function getLibraryItem(scope: UserScope, gameId: number): LibraryItem {
@@ -90,6 +103,18 @@ export function countByStatus({ db, userId }: UserScope): StatusCounts {
   return counts;
 }
 
+/** Quantos jogos estão em pós-jogo (contados também em "Jogando"). */
+export function countPostgame({ db, userId }: UserScope): number {
+  return (
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(libraryEntries)
+      .innerJoin(games, eq(games.id, libraryEntries.gameId))
+      .where(and(eq(libraryEntries.userId, userId), isPostgame(userId)))
+      .get()?.count ?? 0
+  );
+}
+
 function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
   const totals = db
     .select({
@@ -104,6 +129,22 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
     .groupBy(playSessions.gameId)
     .as("totals");
 
+  const done = db
+    .select({
+      gameId: completions.gameId,
+      // Posição do melhor tipo em `completionTypes` (0 história, 1 + extras, 2 100%).
+      bestRank: sql<number>`max(case ${completions.type} ${sql.raw(
+        completionTypes.map((type, rank) => `when '${type}' then ${rank}`).join(" "),
+      )} end)`.as("best_rank"),
+      count: sql<number>`count(*)`.as("completions"),
+      first: sql<string>`min(${completions.completedOn})`.as("first_completed_on"),
+      last: sql<string>`max(${completions.completedOn})`.as("last_completed_on"),
+    })
+    .from(completions)
+    .where(eq(completions.userId, userId))
+    .groupBy(completions.gameId)
+    .as("done");
+
   const rows = db
     .select({
       game: games,
@@ -111,10 +152,15 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
       minutes: sql<number>`coalesce(${totals.minutes}, 0)`,
       sessions: sql<number>`coalesce(${totals.sessions}, 0)`,
       lastPlayedOn: totals.lastPlayedOn,
+      bestRank: done.bestRank,
+      completions: done.count,
+      firstCompletedOn: done.first,
+      lastCompletedOn: done.last,
     })
     .from(libraryEntries)
     .innerJoin(games, eq(games.id, libraryEntries.gameId))
     .leftJoin(totals, eq(totals.gameId, games.id))
+    .leftJoin(done, eq(done.gameId, games.id))
     .where(and(eq(libraryEntries.userId, userId), ...filters))
     // Jogados recentemente primeiro; depois os mexidos por último.
     .orderBy(
@@ -124,9 +170,25 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
     )
     .all();
 
-  return rows.map(({ game, entry, minutes, sessions, lastPlayedOn }) => {
+  return rows.map((row) => {
+    const { game, entry, minutes, sessions, lastPlayedOn } = row;
     const hasTtb =
       game.ttbMainSec !== null || game.ttbExtraSec !== null || game.ttbCompleteSec !== null;
+    const timeToBeat = hasTtb
+      ? { mainSec: game.ttbMainSec, extraSec: game.ttbExtraSec, completeSec: game.ttbCompleteSec }
+      : null;
+    const best: CompletionType | null =
+      row.bestRank === null ? null : (completionTypes[row.bestRank] ?? null);
+    const completion =
+      best && row.firstCompletedOn && row.lastCompletedOn
+        ? {
+            best,
+            count: row.completions ?? 0,
+            firstCompletedOn: row.firstCompletedOn,
+            lastCompletedOn: row.lastCompletedOn,
+          }
+        : null;
+    const estimate = estimateProgress(minutes + entry.priorMinutes, timeToBeat, best);
     return {
       gameId: game.id,
       igdbId: game.igdbId,
@@ -136,10 +198,10 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
       platforms: game.platforms,
       genres: game.genres,
       releaseYear: game.releaseYear,
-      timeToBeat: hasTtb
-        ? { mainSec: game.ttbMainSec, extraSec: game.ttbExtraSec, completeSec: game.ttbCompleteSec }
-        : null,
+      timeToBeat,
       status: entry.status,
+      displayState: displayStateOf(entry.status, completion),
+      completion,
       platformPlayed: entry.platformPlayed,
       startedAt: entry.startedAt,
       finishedAt: entry.finishedAt,
@@ -151,7 +213,8 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
       priorMinutes: entry.priorMinutes,
       sessionsCount: sessions,
       lastPlayedOn: lastPlayedOn ?? null,
-      progress: estimateProgress(minutes + entry.priorMinutes, game.ttbMainSec),
+      progress: estimate.progress,
+      progressTarget: estimate.target,
     };
   });
 }
@@ -189,6 +252,7 @@ export async function addToLibrary(
         ...dates,
       })
       .run();
+    if (input.status === "finished") ensureCompletion(tx, ctx.userId, game.id, ctx.today);
     logActivity(tx, ctx, "library.add", {
       gameId: game.id,
       name: game.name,
@@ -222,6 +286,9 @@ export function updateLibraryEntry(
       .set(changes)
       .where(and(eq(libraryEntries.userId, ctx.userId), eq(libraryEntries.gameId, gameId)))
       .run();
+    if (patch.status === "finished") {
+      ensureCompletion(tx, ctx.userId, gameId, dates.finishedAt ?? current.finishedAt ?? ctx.today);
+    }
     logActivity(tx, ctx, "library.update", {
       gameId,
       name: current.name,
@@ -271,6 +338,19 @@ export function removeFromLibrary(ctx: ServiceContext, gameId: number): RemovalS
 
 // ---------------------------------------------------------------------------
 // Regras de status e datas
+
+/**
+ * Virar "zerado" sem nenhuma conclusão cria a da história na data de término (o fluxo antigo de
+ * "mudar o status para zerado", no site e no `set_status` do MCP). Com conclusão, não duplica.
+ */
+function ensureCompletion(db: DbOrTx, userId: string, gameId: number, completedOn: string) {
+  const existing = db
+    .select({ id: completions.id })
+    .from(completions)
+    .where(and(eq(completions.userId, userId), eq(completions.gameId, gameId)))
+    .get();
+  if (!existing) db.insert(completions).values({ userId, gameId, type: "main", completedOn }).run();
+}
 
 interface EntryDates {
   status: GameStatus;

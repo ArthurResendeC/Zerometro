@@ -5,6 +5,7 @@ import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
 import type { Db } from "./db/client";
 import { AppError, type ApiErrorBody } from "./errors";
+import { createCompletionRoutes } from "./routes/completions";
 import { createFeedRoutes } from "./routes/feeds";
 import { healthRoutes } from "./routes/health";
 import { createIgdbRoutes } from "./routes/igdb";
@@ -74,6 +75,7 @@ export function createApp(deps: AppDeps) {
       .route("/feeds", createFeedRoutes(deps))
       .route("/library", createLibraryRoutes(deps))
       .route("/sessions", createSessionRoutes(deps))
+      .route("/completions", createCompletionRoutes(deps))
       .route("/stats", createStatsRoutes(deps))
       .route("/settings", createSettingsRoutes(deps))
       .route("/timer", createTimerRoutes(deps))

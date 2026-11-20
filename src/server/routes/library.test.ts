@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { CompletionItem } from "../../shared/completions";
 import type { LibraryItem, StatusCounts } from "../../shared/library";
 import { createTestApp } from "../testing";
 
@@ -101,5 +102,35 @@ describe("/api/library", () => {
     const { request } = await createTestApp();
     const res = await request("/api/library", json({ igdbId: 1, status: "backlog" }));
     expect(res.status).toBe(404);
+  });
+
+  test("conclusões: marcar, listar, filtrar pós-jogo e apagar", async () => {
+    const { request, loginAs } = await createTestApp();
+    const created = await request("/api/library", json({ igdbId: 114283, status: "playing" }));
+    const { item } = (await created.json()) as { item: LibraryItem };
+    const base = `/api/library/${item.gameId}/completions`;
+
+    const marked = await request(base, json({ type: "main", date: "2026-11-01" }));
+    expect(marked.status).toBe(201);
+    const body = (await marked.json()) as { completion: CompletionItem; item: LibraryItem };
+    expect(body.item).toMatchObject({ displayState: "postgame", completion: { best: "main" } });
+
+    const listed = await request(base);
+    expect(await listed.json()).toMatchObject({ completions: [{ completedOn: "2026-11-01" }] });
+
+    const postgame = await request("/api/library?displayState=postgame");
+    expect(await postgame.json()).toMatchObject({ items: [{ gameId: item.gameId }], postgame: 1 });
+
+    expect((await request(base, json({ type: "platina" }))).status).toBe(400);
+    expect((await request(base, json({ type: "main", date: "2030-01-01" }))).status).toBe(400);
+
+    const friend = await loginAs("amigo@zerometro.test");
+    const stolen = await friend.request(`/api/completions/${body.completion.id}`, {
+      method: "DELETE",
+    });
+    expect(stolen.status).toBe(404);
+
+    const removed = await request(`/api/completions/${body.completion.id}`, { method: "DELETE" });
+    expect(await removed.json()).toMatchObject({ item: { completion: null } });
   });
 });
