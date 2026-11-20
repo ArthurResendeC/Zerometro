@@ -10,6 +10,7 @@ import { createGamePagesService } from "./services/game-pages";
 import { createIgdbFromEnv } from "./services/igdb";
 import { createRetroAchievementsFromEnv } from "./services/retroachievements";
 import { createSteamFromEnv } from "./services/steam";
+import { createSteamUserFromEnv } from "./services/steam/user";
 import { PUBLIC_DIR, createPublicRoutes } from "./static";
 import index from "../web/index.html";
 
@@ -49,6 +50,7 @@ const deps = {
     steam: createSteamFromEnv(env),
     retroachievements: createRetroAchievementsFromEnv(env),
   }),
+  steamUser: createSteamUserFromEnv(env),
   clock,
 };
 const app = createApp(deps);

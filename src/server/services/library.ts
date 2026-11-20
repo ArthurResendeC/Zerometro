@@ -246,7 +246,15 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
             lastCompletedOn: row.lastCompletedOn,
           }
         : null;
-    const estimate = estimateProgress(minutes + entry.priorMinutes, timeToBeat, best);
+    const steamPlaytime =
+      entry.steamMinutes !== null && entry.steamSyncedAt
+        ? { minutes: entry.steamMinutes, syncedAt: entry.steamSyncedAt }
+        : null;
+    const minutesPlayed =
+      entry.playtimeSource === "steam" && steamPlaytime
+        ? steamPlaytime.minutes
+        : minutes + entry.priorMinutes;
+    const estimate = estimateProgress(minutesPlayed, timeToBeat, best);
     return {
       gameId: game.id,
       igdbId: game.igdbId,
@@ -278,8 +286,11 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
       notes: entry.notes,
       addedAt: entry.createdAt,
       updatedAt: entry.updatedAt,
-      minutesPlayed: minutes + entry.priorMinutes,
+      minutesPlayed,
+      sessionMinutes: minutes,
       priorMinutes: entry.priorMinutes,
+      playtimeSource: entry.playtimeSource,
+      steamPlaytime,
       sessionsCount: sessions,
       lastPlayedOn: lastPlayedOn ?? null,
       progress: estimate.progress,
@@ -339,6 +350,11 @@ export function updateLibraryEntry(
   patch: UpdateLibraryEntryInput,
 ): UpdateLibraryEntryResult {
   const current = getLibraryItem(ctx, gameId);
+  if (patch.playtimeSource === "steam" && !current.steamPlaytime) {
+    throw new ValidationError(
+      `Sincronize "${current.name}" com a Steam antes de usar o tempo jogado de lá`,
+    );
+  }
   const dates = applyStatusRules(current, patch, ctx.today);
 
   const changes = {
@@ -347,6 +363,7 @@ export function updateLibraryEntry(
     ...(patch.notes !== undefined && { notes: patch.notes || null }),
     ...(patch.platformPlayed !== undefined && { platformPlayed: patch.platformPlayed }),
     ...(patch.priorMinutes !== undefined && { priorMinutes: patch.priorMinutes }),
+    ...(patch.playtimeSource !== undefined && { playtimeSource: patch.playtimeSource }),
     ...dates,
   };
 

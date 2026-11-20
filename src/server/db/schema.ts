@@ -13,6 +13,7 @@ import {
   completionTypes,
   gameStatuses,
   objectiveSources,
+  playtimeSources,
   sessionSources,
   ttbSources,
 } from "../../shared/domain";
@@ -69,6 +70,8 @@ export const games = sqliteTable("games", {
   ttbSource: text("ttb_source", { enum: ttbSources }),
   /** App da Steam (de `external_games` do IGDB): liga a lista de conquistas sozinho. */
   steamAppId: integer("steam_app_id"),
+  /** Quando o IGDB foi consultado sobre o app da Steam (null: nunca; vale re-sincronizar). */
+  steamCheckedAt: text("steam_checked_at"),
   syncedAt: text("synced_at"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
@@ -91,6 +94,13 @@ export const libraryEntries = sqliteTable(
     notes: text("notes"),
     /** Tempo jogado antes de registrar no Zerômetro: conta no total do jogo, não nas estatísticas. */
     priorMinutes: integer("prior_minutes").notNull().default(0),
+    /** De onde vem o total jogado: sessões (+ `priorMinutes`) ou o total da Steam. */
+    playtimeSource: text("playtime_source", { enum: playtimeSources })
+      .notNull()
+      .default("sessions"),
+    /** Total na Steam na última sincronização (null: nunca sincronizou ou não está na conta). */
+    steamMinutes: integer("steam_minutes"),
+    steamSyncedAt: text("steam_synced_at"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

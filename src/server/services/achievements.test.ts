@@ -103,13 +103,27 @@ describe("findSetCandidates", () => {
   });
 
   test("jogo antigo no cache sem appid: busca de novo no IGDB", async () => {
-    ctx.db.update(games).set({ steamAppId: null }).where(eq(games.id, p5r)).run();
+    ctx.db
+      .update(games)
+      .set({ steamAppId: null, steamCheckedAt: null })
+      .where(eq(games.id, p5r))
+      .run();
     const fresh = createFakeIgdb([P5R]);
 
     const result = await findSetCandidates(ctx, catalog, fresh, p5r);
 
     expect(fresh.calls.getGame).toEqual([P5R.igdbId]);
     expect(result.candidates[0]?.externalId).toBe("1687950");
+  });
+
+  test("jogo já consultado e sem app na Steam: não pergunta ao IGDB de novo", async () => {
+    ctx.db.update(games).set({ steamAppId: null }).where(eq(games.id, p5r)).run();
+    const fresh = createFakeIgdb([P5R]);
+
+    const result = await findSetCandidates(ctx, catalog, fresh, p5r);
+
+    expect(fresh.calls.getGame).toEqual([]);
+    expect(result.candidates.filter((c) => c.source === "steam")).toEqual([]);
   });
 
   test("fonte que falha vai para errors; fonte sem chave nem é consultada", async () => {

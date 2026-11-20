@@ -44,6 +44,14 @@ export const completionTypeLabels: Record<CompletionType, string> = {
   full: "100%",
 };
 
+/**
+ * De onde vem o tempo jogado de um jogo: das sessões (+ o tempo antes do Zerômetro) ou do total
+ * da Steam, sincronizado. As sessões continuam valendo para ofensiva e estatísticas por dia.
+ */
+export const playtimeSources = ["sessions", "steam"] as const;
+export const playtimeSourceSchema = z.enum(playtimeSources);
+export type PlaytimeSource = z.infer<typeof playtimeSourceSchema>;
+
 /** Objetivos manuais hoje; conquistas da Steam/RetroAchievements no futuro. */
 export const objectiveSources = ["manual", "steam", "retroachievements"] as const;
 export const objectiveSourceSchema = z.enum(objectiveSources);

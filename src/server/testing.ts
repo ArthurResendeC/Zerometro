@@ -15,6 +15,8 @@ import type { IgdbApi } from "./services/igdb";
 import type { AchievementSourceApi, FetchedAchievementSet } from "./services/achievement-sources";
 import { createAchievementCatalog } from "./services/achievement-catalog";
 import type { RaGameListEntry, RetroAchievementsApi } from "./services/retroachievements";
+import type { SteamOwnedGame, SteamUnlock, SteamUserApi } from "./services/steam/user";
+import { NotFoundError, SteamProfilePrivateError } from "./errors";
 
 export function fakeIgdbGame(overrides: Partial<IgdbGameDetails> = {}): IgdbGameDetails {
   return {
@@ -216,6 +218,56 @@ export function createFakeRa(
   };
 }
 
+/** SteamID do perfil falso. */
+export const FAKE_STEAM_ID = "76561197960435530";
+
+/**
+ * Conta Steam falsa: o perfil "robinwalker", os jogos `owned` (appid → minutos) e os desbloqueios
+ * de cada app. `private: true` simula o perfil que esconde os jogos.
+ */
+export function createFakeSteamUser(
+  options: {
+    owned?: Record<number, number>;
+    unlocked?: Record<number, SteamUnlock[]>;
+    private?: boolean;
+    enabled?: boolean;
+  } = {},
+): SteamUserApi & { calls: string[] } {
+  const calls: string[] = [];
+  const owned = options.owned ?? {};
+  const games = (): SteamOwnedGame[] =>
+    Object.entries(owned).map(([appId, minutes]) => ({
+      appId: Number(appId),
+      minutes,
+      lastPlayedAt: null,
+    }));
+  return {
+    enabled: options.enabled ?? true,
+    calls,
+    async resolveProfile(ref) {
+      calls.push(`resolve:${"steamId" in ref ? ref.steamId : ref.vanity}`);
+      const known = "steamId" in ref ? ref.steamId === FAKE_STEAM_ID : ref.vanity === "robinwalker";
+      if (!known) throw new NotFoundError("Perfil da Steam não encontrado");
+      return {
+        steamId: FAKE_STEAM_ID,
+        name: "Robin",
+        avatarUrl: "https://avatars.steamstatic.com/robin_full.jpg",
+        profileUrl: "https://steamcommunity.com/id/robinwalker/",
+      };
+    },
+    async getUnlocked(_steamId, appId) {
+      calls.push(`unlocked:${appId}`);
+      if (options.private) throw new SteamProfilePrivateError();
+      return options.unlocked?.[appId] ?? null;
+    },
+    async getOwnedGames(_steamId, appIds = []) {
+      calls.push(`owned:${appIds.join(",")}`);
+      if (options.private) throw new SteamProfilePrivateError();
+      return appIds.length > 0 ? games().filter((g) => appIds.includes(g.appId)) : games();
+    },
+  };
+}
+
 export function createTestCatalog(
   db: Db,
   clock: Pick<Clock, "now"> = createTestClock(),
@@ -286,6 +338,7 @@ export async function createTestApp(
     clock?: ReturnType<typeof createTestClock>;
     steam?: AchievementSourceApi;
     retroachievements?: RetroAchievementsApi;
+    steamUser?: SteamUserApi;
   } = {},
 ) {
   const db = overrides.db ?? createTestDb();
@@ -300,7 +353,8 @@ export async function createTestApp(
   const feeds = createFeedsService({ db, igdb, clock });
   const gamePages = createGamePagesService({ db, igdb, clock });
   const achievements = createTestCatalog(db, clock, overrides);
-  const deps = { db, auth, igdb, feeds, gamePages, achievements, clock };
+  const steamUser = overrides.steamUser ?? createFakeSteamUser();
+  const deps = { db, auth, igdb, feeds, gamePages, achievements, steamUser, clock };
   const app = createApp({ ...deps, logRequests: false });
   const root = createRootRoutes(deps);
   /** Mesmo roteamento do Bun.serve (index.ts), sem a SPA. */
@@ -337,6 +391,7 @@ export async function createTestApp(
     feeds,
     gamePages,
     achievements,
+    steamUser,
     clock,
     auth,
     cookie,

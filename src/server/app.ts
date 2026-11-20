@@ -16,12 +16,14 @@ import { createObjectiveRoutes } from "./routes/objectives";
 import { createSessionRoutes } from "./routes/sessions";
 import { createSettingsRoutes } from "./routes/settings";
 import { createStatsRoutes } from "./routes/stats";
+import { createSteamRoutes } from "./routes/steam";
 import { createTimerRoutes } from "./routes/timer";
 import type { AchievementCatalog } from "./services/achievement-catalog";
 import type { Clock } from "./services/context";
 import type { FeedsService } from "./services/feeds";
 import type { GamePagesService } from "./services/game-pages";
 import type { IgdbApi } from "./services/igdb";
+import type { SteamUserApi } from "./services/steam/user";
 
 export interface AppDeps {
   db: Db;
@@ -34,6 +36,8 @@ export interface AppDeps {
   gamePages: GamePagesService;
   /** Listas de conquistas da Steam e do RetroAchievements (cache compartilhado). */
   achievements: AchievementCatalog;
+  /** Conta Steam de quem usa o app (perfil, desbloqueios e horas) para sincronizar. */
+  steamUser: SteamUserApi;
   /** Relógio e fuso do usuário; injetável para testes. */
   clock: Clock;
   /** Log de requisições (desligado nos testes). */
@@ -76,6 +80,7 @@ export function createApp(deps: AppDeps) {
       .route("/objectives", createObjectiveRoutes(deps))
       .route("/stats", createStatsRoutes(deps))
       .route("/settings", createSettingsRoutes(deps))
+      .route("/steam", createSteamRoutes(deps))
       .route("/timer", createTimerRoutes(deps))
   );
 }

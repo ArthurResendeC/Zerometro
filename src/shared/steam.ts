@@ -47,3 +47,27 @@ export const linkSteamProfileSchema = z.object({
     }),
 });
 export type LinkSteamProfileInput = z.infer<typeof linkSteamProfileSchema>;
+
+/** Resultado de sincronizar um jogo com a conta Steam. */
+export interface SteamGameSync {
+  gameId: number;
+  name: string;
+  /** App usado (null: o jogo não está na Steam pelo IGDB e não segue uma lista da Steam). */
+  appId: number | null;
+  /** O jogo está na conta Steam (as horas só vêm nesse caso). */
+  owned: boolean;
+  steamMinutes: number | null;
+  /** Desbloqueios novos; os que já estavam marcados (à mão ou não) ficam como estavam. */
+  newUnlocks: number;
+  /** A lista da Steam foi ligada agora (o jogo ainda não seguia nenhuma lista). */
+  linkedSet: boolean;
+  /** Falha só neste jogo (a sincronização dos outros continua). */
+  error: string | null;
+}
+
+export interface SteamLibrarySync {
+  syncedAt: string;
+  /** Só os jogos que estão na Steam (os outros são pulados). */
+  games: SteamGameSync[];
+  newUnlocks: number;
+}

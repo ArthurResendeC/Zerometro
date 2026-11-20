@@ -448,7 +448,9 @@ export function getRecords(
   for (const game of finished) {
     const firstOn = firstInPeriod.get(game.gameId);
     if (!firstOn || !game.storyMinutes) continue;
-    const minutes = minutesUntil(scope, game.gameId, firstOn) + game.priorMinutes;
+    // No modo Steam não dá para saber quanto levou até zerar: vale o total de lá.
+    const minutes =
+      game.steamMinutes ?? minutesUntil(scope, game.gameId, firstOn) + game.priorMinutes;
     if (minutes === 0) continue;
     story += game.storyMinutes;
     played += minutes;
@@ -468,7 +470,7 @@ export function getRecords(
     bestDay,
     bestWeek,
     finishedByMonth: months.map((month) => ({ month, count: byMonth.get(month)?.size ?? 0 })),
-    finished: finished.map(({ priorMinutes: _prior, ...game }) => game),
+    finished: finished.map(({ priorMinutes: _prior, steamMinutes: _steam, ...game }) => game),
     finishedSummary: summary,
     paceRatio: story > 0 ? Math.round((played / story) * 100) / 100 : null,
   };
@@ -493,7 +495,10 @@ function finishedInPeriod(scope: UserScope, from: string, to: string) {
 
   /** Maior nível já alcançado em cada jogo, conforme as conclusões vão passando. */
   const reached = new Map<number, number>();
-  const byGame = new Map<number, FinishedGame & { priorMinutes: number }>();
+  const byGame = new Map<
+    number,
+    FinishedGame & { priorMinutes: number; steamMinutes: number | null }
+  >();
   /** Jogos distintos zerados em cada mês (história + 100% no mesmo mês contam uma vez). */
   const byMonth = new Map<string, Set<number>>();
   /** Primeira conclusão de todas, quando ela cai no período. */
@@ -531,6 +536,8 @@ function finishedInPeriod(scope: UserScope, from: string, to: string) {
         replays: isReplay ? 1 : 0,
         minutesPlayed: item.minutesPlayed,
         priorMinutes: item.priorMinutes,
+        steamMinutes:
+          item.playtimeSource === "steam" && item.steamPlaytime ? item.steamPlaytime.minutes : null,
         storyMinutes: item.timeToBeat?.mainSec ? Math.round(item.timeToBeat.mainSec / 60) : null,
         rating: item.rating,
       });

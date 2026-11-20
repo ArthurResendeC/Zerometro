@@ -56,7 +56,7 @@ export function listGameAchievements(
   return { gameId, sources: catalog.enabled, sets, summary: sumUp(sets) };
 }
 
-function linkedSets({ db, userId }: UserScope, gameId: number): AchievementSet[] {
+export function linkedSets({ db, userId }: UserScope, gameId: number): AchievementSet[] {
   return db
     .select({ set: achievementSets })
     .from(userAchievementSets)
@@ -237,18 +237,22 @@ export async function findSetCandidates(
 }
 
 /** O appid do cache; jogos gravados antes das conquistas são buscados de novo no IGDB. */
-async function steamAppIdOf(
-  ctx: ServiceContext,
+/**
+ * O app da Steam do jogo, pelo IGDB. Jogos guardados antes do IGDB trazer o app são
+ * re-sincronizados uma vez; depois disso, null quer dizer "não está na Steam".
+ */
+export async function steamAppIdOf(
+  { db }: Pick<ServiceContext, "db">,
   igdb: IgdbApi,
   gameId: number,
 ): Promise<number | null> {
-  const game = ctx.db.select().from(games).where(eq(games.id, gameId)).get();
+  const game = db.select().from(games).where(eq(games.id, gameId)).get();
   if (!game) throw new NotFoundError(`Jogo ${gameId} não encontrado`);
-  if (game.steamAppId !== null) return game.steamAppId;
-  return (await syncGameFromIgdb(ctx.db, igdb, game.igdbId)).steamAppId;
+  if (game.steamAppId !== null || game.steamCheckedAt !== null) return game.steamAppId;
+  return (await syncGameFromIgdb(db, igdb, game.igdbId)).steamAppId;
 }
 
-async function ensureSetOrNull(
+export async function ensureSetOrNull(
   catalog: AchievementCatalog,
   source: AchievementSource,
   externalId: string,

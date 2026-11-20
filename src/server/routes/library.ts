@@ -30,6 +30,7 @@ import {
 } from "../services/achievements";
 import { listCompletions, markCompleted } from "../services/completions";
 import { addObjective, listObjectives, reorderObjectives } from "../services/objectives";
+import { syncSteamGame } from "../services/steam-sync";
 import {
   addToLibrary,
   countByStatus,
@@ -182,6 +183,25 @@ export function createLibraryRoutes(deps: AppDeps) {
       .post("/:gameId/achievements/refresh", validate("param", gameIdParamSchema), async (c) => {
         const { gameId } = c.req.valid("param");
         return c.json(await refreshGameSets(webContext(deps, c), deps.achievements, gameId));
+      })
+      // Conquistas e horas deste jogo na conta Steam; devolve o item e as conquistas atualizados.
+      .post("/:gameId/steam/sync", validate("param", gameIdParamSchema), async (c) => {
+        const { gameId } = c.req.valid("param");
+        const ctx = webContext(deps, c);
+        const sync = await syncSteamGame(
+          ctx,
+          {
+            catalog: deps.achievements,
+            igdb: deps.igdb,
+            steamUser: deps.steamUser,
+          },
+          gameId,
+        );
+        return c.json({
+          sync,
+          item: getLibraryItem(ctx, gameId),
+          achievements: listGameAchievements(ctx, deps.achievements, gameId),
+        });
       })
       .delete("/:gameId", validate("param", gameIdParamSchema), (c) => {
         return c.json({

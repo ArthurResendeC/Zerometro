@@ -64,6 +64,13 @@
       "when": 1795210758259,
       "tag": "0008_conquistas",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1795213926975,
+      "tag": "0009_steam_sincronizar",
+      "breakpoints": true
     }
   ]
 }

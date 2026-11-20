@@ -96,3 +96,10 @@ export class SteamProfilePrivateError extends AppError {
     );
   }
 }
+
+/** Sincronizar sem perfil da Steam ligado. */
+export class SteamNotLinkedError extends AppError {
+  constructor() {
+    super(409, "steam_not_linked", "Conecte seu perfil da Steam nos Ajustes para sincronizar");
+  }
+}

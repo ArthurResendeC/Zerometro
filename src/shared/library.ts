@@ -3,7 +3,13 @@ import type { CompletionSummary, DisplayState } from "./completions";
 import type { AchievementsSummary } from "./achievements";
 import type { ObjectivesSummary } from "./objectives";
 import { isoDateSchema } from "./dates";
-import { type CompletionType, type GameStatus, gameStatusSchema } from "./domain";
+import {
+  type CompletionType,
+  type GameStatus,
+  gameStatusSchema,
+  type PlaytimeSource,
+  playtimeSourceSchema,
+} from "./domain";
 import type { TimeToBeat } from "./igdb";
 
 // Contrato da biblioteca, compartilhado por API, frontend e MCP.
@@ -34,10 +40,19 @@ export interface LibraryItem {
   notes: string | null;
   addedAt: string;
   updatedAt: string;
-  /** Total jogado: sessões + `priorMinutes`. É o que vale para o progresso. */
+  /**
+   * Total jogado, o que vale para o progresso: sessões + `priorMinutes`, ou o total da Steam
+   * quando `playtimeSource` é "steam" (e já sincronizou).
+   */
   minutesPlayed: number;
+  /** Só o das sessões registradas no Zerômetro. */
+  sessionMinutes: number;
   /** Tempo jogado antes de registrar no Zerômetro (sem data, fora das estatísticas). */
   priorMinutes: number;
+  /** De onde vem `minutesPlayed`: sessões (controle manual) ou Steam. */
+  playtimeSource: PlaytimeSource;
+  /** Tempo na Steam na última sincronização (null se nunca sincronizou ou não está na conta). */
+  steamPlaytime: { minutes: number; syncedAt: string } | null;
   sessionsCount: number;
   lastPlayedOn: string | null;
   /** 0..1, estimado pelo tempo do IGDB rumo a `progressTarget`. null sem tempo e sem conclusão. */
@@ -102,6 +117,7 @@ export const updateLibraryEntrySchema = z
     startedAt: isoDateSchema.nullable(),
     finishedAt: isoDateSchema.nullable(),
     priorMinutes: priorMinutesSchema,
+    playtimeSource: playtimeSourceSchema,
   })
   .partial()
   .refine((patch) => Object.keys(patch).length > 0, "Nada para atualizar");
