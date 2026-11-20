@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { UserAvatar } from "@/components/user-avatar";
 import { SoundToggle } from "@/features/audio/sound-toggle";
+import { InstallAppToast } from "@/features/pwa/install-toast";
 import { isOAuthFlow } from "@/lib/auth-client";
 import { sessionQuery } from "@/lib/queries";
 import { useLogSessionDialog } from "@/stores/log-session-dialog";
@@ -132,6 +133,7 @@ function RootLayout() {
       </main>
       <LogSessionDialog />
       <Toaster position="bottom-right" />
+      <InstallAppToast />
     </div>
   );
 }

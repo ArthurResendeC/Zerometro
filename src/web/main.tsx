@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
+import { listenForInstallPrompt } from "@/features/pwa/install-prompt";
 import { registerServiceWorker } from "@/features/pwa/service-worker";
 import { ApiError } from "@/lib/api";
 import { authKeys } from "@/lib/queries";
@@ -49,4 +50,5 @@ createRoot(document.getElementById("root")!).render(
   </StrictMode>,
 );
 
+listenForInstallPrompt();
 registerServiceWorker();
