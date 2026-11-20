@@ -142,6 +142,8 @@ function gameSummary(item: LibraryItem) {
     /** sessions = controle manual; steam = o total vem da Steam (sync_steam). */
     playtimeSource: item.playtimeSource,
     steamPlaytime: item.steamPlaytime,
+    /** false: não está na Steam (sync_steam e o tempo da Steam não valem); null: não conferido. */
+    onSteam: item.onSteam,
     displayState: item.displayState,
     displayStateLabel:
       item.displayState === "postgame"

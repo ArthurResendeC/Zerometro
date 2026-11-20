@@ -15,7 +15,8 @@ const shortDay = (iso: string) =>
 
 /**
  * De onde vem o tempo jogado do jogo: as sessões daqui (com o tempo antes do Zerômetro) ou o
- * total da Steam. Só aparece com a Steam conectada (ou se o jogo já tem tempo de lá).
+ * total da Steam. Só aparece com a Steam conectada (ou se o jogo já tem tempo de lá). Jogo que
+ * não está na Steam (pelo IGDB): sem a opção "Steam" e com o botão de sincronizar desligado.
  */
 export function PlaytimeSourceControl({ item }: { item: LibraryItem }) {
   const { data } = useQuery(steamProfileQuery());
@@ -25,6 +26,10 @@ export function PlaytimeSourceControl({ item }: { item: LibraryItem }) {
 
   const busy = sync.isPending || update.isPending;
   const steam = item.steamPlaytime;
+  // null (ainda não conferido no IGDB) conta como talvez: a sincronização confere.
+  const notOnSteam = item.onSteam === false;
+  const sources: PlaytimeSource[] =
+    notOnSteam && item.playtimeSource !== "steam" ? ["sessions"] : ["sessions", "steam"];
 
   async function choose(source: PlaytimeSource) {
     if (source === item.playtimeSource) return;
@@ -46,7 +51,7 @@ export function PlaytimeSourceControl({ item }: { item: LibraryItem }) {
         <span className="display-xs text-muted-foreground">Tempo jogado vem de</span>
         <fieldset className="inline-flex bg-background pixel-frame-thin" disabled={busy}>
           <legend className="sr-only">Tempo jogado vem de</legend>
-          {(["sessions", "steam"] as const).map((source) => (
+          {sources.map((source) => (
             <button
               key={source}
               type="button"
@@ -64,7 +69,13 @@ export function PlaytimeSourceControl({ item }: { item: LibraryItem }) {
           ))}
         </fieldset>
         {data.profile && (
-          <Button size="sm" variant="ghost" onClick={() => sync.mutate()} disabled={busy}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => sync.mutate()}
+            disabled={busy || notOnSteam}
+            title={notOnSteam ? "Esse jogo não está na Steam" : undefined}
+          >
             <DownloadIcon /> {sync.isPending ? "Sincronizando…" : "Sincronizar com a Steam"}
           </Button>
         )}
@@ -86,6 +97,10 @@ function explain(item: LibraryItem): string {
     item.priorMinutes > 0
       ? "Pelas sessões daqui, somadas ao tempo de antes do Zerômetro."
       : "Pelas sessões registradas aqui.";
-  if (!steam) return `${manual} Sincronize para ver o tempo na Steam.`;
+  if (!steam) {
+    return item.onSteam === false
+      ? `${manual} Esse jogo não está na Steam (pelo IGDB).`
+      : `${manual} Sincronize para ver o tempo na Steam.`;
+  }
   return `${manual} Na Steam: ${formatMinutes(steam.minutes)} (sincronizado em ${shortDay(steam.syncedAt)}).`;
 }

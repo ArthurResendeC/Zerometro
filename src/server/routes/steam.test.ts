@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { eq } from "drizzle-orm";
 import type { GameAchievements } from "../../shared/achievements";
 import type { LibraryItem } from "../../shared/library";
 import type {
@@ -8,6 +9,7 @@ import type {
   SteamLibrarySync,
   SteamProfile,
 } from "../../shared/steam";
+import { games } from "../db/schema";
 import { createSteamUserFromEnv } from "../services/steam/user";
 import {
   createFakeIgdb,
@@ -333,5 +335,41 @@ describe("sincronização automática (ao abrir o app)", () => {
     await linkProfile(request);
     expect((await auto()).status).toBe("synced");
     expect(fake.calls).toContain("owned:");
+  });
+});
+
+describe("onSteam: o jogo está na Steam?", () => {
+  const metroid = fakeIgdbGame({ igdbId: 1103, name: "Super Metroid", steamAppId: null });
+
+  async function setupOnSteam() {
+    const app = await createTestApp({ igdb: createFakeIgdb([fakeIgdbGame(), metroid]) });
+    const p5r = await addP5r(app.request);
+    const created = await app.request("/api/library", json({ igdbId: 1103, status: "backlog" }));
+    const snes = ((await created.json()) as { item: LibraryItem }).item;
+    const onSteam = async (gameId: number) =>
+      ((await (await app.request(`/api/library/${gameId}`)).json()) as { item: LibraryItem }).item
+        .onSteam;
+    return { ...app, p5r, snes, onSteam };
+  }
+
+  test("pelo IGDB: com o app da Steam sim, sem ele não", async () => {
+    const { p5r, snes, onSteam } = await setupOnSteam();
+    expect(await onSteam(p5r.gameId)).toBe(true);
+    expect(await onSteam(snes.gameId)).toBe(false);
+  });
+
+  test("IGDB ainda não consultado sobre a Steam → null", async () => {
+    const { db, snes, onSteam } = await setupOnSteam();
+    db.update(games).set({ steamCheckedAt: null }).where(eq(games.id, snes.gameId)).run();
+    expect(await onSteam(snes.gameId)).toBeNull();
+  });
+
+  test("seguir uma lista da Steam colada à mão conta, mesmo sem o app no IGDB", async () => {
+    const { request, snes, onSteam } = await setupOnSteam();
+    await request(
+      `/api/library/${snes.gameId}/achievements/sets`,
+      json({ source: "steam", id: String(P5R) }),
+    );
+    expect(await onSteam(snes.gameId)).toBe(true);
   });
 });

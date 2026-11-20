@@ -17,6 +17,7 @@ import {
   type UpdateLibraryEntryResult,
 } from "../../shared/library";
 import {
+  achievementSets,
   achievementUnlocks,
   achievements,
   completions,
@@ -195,10 +196,20 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
     .groupBy(userAchievementSets.gameId)
     .as("trophies");
 
+  // Jogos que seguem uma lista da Steam (ligada pelo IGDB ou colando a URL da loja).
+  const steamLinks = db
+    .select({ gameId: userAchievementSets.gameId })
+    .from(userAchievementSets)
+    .innerJoin(achievementSets, eq(achievementSets.id, userAchievementSets.setId))
+    .where(and(eq(userAchievementSets.userId, userId), eq(achievementSets.source, "steam")))
+    .groupBy(userAchievementSets.gameId)
+    .as("steam_links");
+
   const rows = db
     .select({
       game: games,
       entry: libraryEntries,
+      followsSteamSet: sql<boolean>`${steamLinks.gameId} is not null`.mapWith(Boolean),
       minutes: sql<number>`coalesce(${totals.minutes}, 0)`,
       sessions: sql<number>`coalesce(${totals.sessions}, 0)`,
       lastPlayedOn: totals.lastPlayedOn,
@@ -219,6 +230,7 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
     .leftJoin(done, eq(done.gameId, games.id))
     .leftJoin(goals, eq(goals.gameId, games.id))
     .leftJoin(trophies, eq(trophies.gameId, games.id))
+    .leftJoin(steamLinks, eq(steamLinks.gameId, games.id))
     .where(and(eq(libraryEntries.userId, userId), ...filters))
     // Jogados recentemente primeiro; depois os mexidos por último.
     .orderBy(
@@ -255,6 +267,12 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
         ? steamPlaytime.minutes
         : minutes + entry.priorMinutes;
     const estimate = estimateProgress(minutesPlayed, timeToBeat, best);
+    const onSteam =
+      game.steamAppId !== null || row.followsSteamSet || steamPlaytime !== null
+        ? true
+        : game.steamCheckedAt === null
+          ? null
+          : false;
     return {
       gameId: game.id,
       igdbId: game.igdbId,
@@ -291,6 +309,7 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
       priorMinutes: entry.priorMinutes,
       playtimeSource: entry.playtimeSource,
       steamPlaytime,
+      onSteam,
       sessionsCount: sessions,
       lastPlayedOn: lastPlayedOn ?? null,
       progress: estimate.progress,

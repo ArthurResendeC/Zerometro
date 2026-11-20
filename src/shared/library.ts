@@ -53,6 +53,11 @@ export interface LibraryItem {
   playtimeSource: PlaytimeSource;
   /** Tempo na Steam na última sincronização (null se nunca sincronizou ou não está na conta). */
   steamPlaytime: { minutes: number; syncedAt: string } | null;
+  /**
+   * O jogo está na Steam: o IGDB tem o app (`external_games`), o jogo segue uma lista da Steam ou
+   * já tem tempo de lá. null: o IGDB ainda não foi consultado (a próxima sincronização confere).
+   */
+  onSteam: boolean | null;
   sessionsCount: number;
   lastPlayedOn: string | null;
   /** 0..1, estimado pelo tempo do IGDB rumo a `progressTarget`. null sem tempo e sem conclusão. */

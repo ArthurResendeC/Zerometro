@@ -110,6 +110,8 @@ export function AchievementsTab({ item }: { item: LibraryItem }) {
   const canSyncSteam =
     Boolean(steamProfile?.profile) &&
     (data.sets.length === 0 || data.sets.some((s) => s.source === "steam"));
+  // Pelo IGDB o jogo não está na Steam (null = ainda não conferido: deixa tentar).
+  const notOnSteam = item.onSteam === false;
   if (!anySource && data.sets.length === 0) return <NotConfigured />;
 
   return (
@@ -163,12 +165,18 @@ export function AchievementsTab({ item }: { item: LibraryItem }) {
             </p>
             {canSyncSteam && (
               <div className="flex flex-wrap items-center gap-3">
-                <Button disabled={steamSync.isPending} onClick={() => steamSync.mutate()}>
+                <Button
+                  disabled={steamSync.isPending || notOnSteam}
+                  onClick={() => steamSync.mutate()}
+                  aria-describedby="steam-sync-help"
+                >
                   <DownloadIcon />{" "}
                   {steamSync.isPending ? "Sincronizando…" : "Sincronizar com a Steam"}
                 </Button>
-                <p className="text-sm text-muted-foreground">
-                  Liga a lista da Steam e traz o que você já desbloqueou na sua conta.
+                <p id="steam-sync-help" className="text-sm text-muted-foreground">
+                  {notOnSteam
+                    ? "Esse jogo não está na Steam (pelo IGDB)."
+                    : "Liga a lista da Steam e traz o que você já desbloqueou na sua conta."}
                 </p>
               </div>
             )}
