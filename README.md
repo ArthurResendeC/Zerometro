@@ -12,7 +12,7 @@
 
 Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa de quanto falta para zerar cada jogo. Também dá para consultar tudo por IA através de um servidor **MCP** ("comecei a jogar", "joguei 2h ontem", "zerei").
 
-> 🧪 **Projeto de exemplo, feito para cada um hospedar o seu.** O Zerômetro é um projeto pessoal publicado como referência. A minha instância é privada: só entram os e-mails convidados (`ALLOWED_EMAILS`), então ela não serve como serviço público. Para usar, faça um fork e suba a sua (veja [Rodando localmente](#-rodando-localmente) e [Deploy](#-deploy-railway)).
+> 🧪 **Self-hosted: cada pessoa hospeda o seu.** Uma instância do Zerômetro é de uma pessoa só e fica protegida por um token de acesso (`ZEROMETRO_TOKEN`, no `.env`). Não existe um serviço público: suba a sua (veja [Rodando localmente](#-rodando-localmente) e [Deploy](#-deploy-railway)). Todas as instâncias buildam deste repositório, então cada push na `main` chega a todo mundo.
 
 > 🚧 **Em desenvolvimento.** A seção abaixo separa o que já funciona do que ainda falta.
 
@@ -65,8 +65,8 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
       <br><sub><b>No celular</b> · o mesmo app, pensado para registrar do sofá</sub>
     </td>
     <td width="50%" valign="top">
-      <img src="docs/readme/entrar.png" alt="Tela de login com Google">
-      <br><sub><b>Login</b> · Google, só para convidados</sub>
+      <img src="docs/readme/entrar.png" alt="Tela de login com o token de acesso">
+      <br><sub><b>Login</b> · token de acesso da instância, vale 30 dias por aparelho</sub>
       <br><br>
       <img src="docs/readme/ajustes.png" alt="Ajustes: mínimo diário da ofensiva, aviso de sessão longa e efeitos sonoros" width="60%">
       <br><sub><b>Ajustes</b> · mínimo da ofensiva, aviso de sessão longa e sons 8 bits</sub>
@@ -82,7 +82,7 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 
 ### Já funciona
 
-- **Login com Google** (Better Auth) restrito a uma lista de convidados; cada pessoa só vê os próprios dados
+- **Acesso por token:** cada instância é de uma pessoa; entra quem tem o `ZEROMETRO_TOKEN`, e o login vale 30 dias por aparelho (renovado com o uso)
 - **Biblioteca por status:** jogando, zerados, próximos, lista de desejos, pausados e abandonados
 - **Dados do IGDB:** busca de jogos com capa, plataformas, gêneros, ano e tempo para zerar
 - **Registro de sessões:** manual ("joguei 2h ontem") ou pelo **timer** ("Comecei a jogar" / "Parei"), que roda no servidor e não se perde ao fechar a aba
@@ -97,7 +97,7 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 - **Instalável como app** (PWA) no computador (Chrome, Edge, Safari) e no celular, com janela própria, atalhos no ícone e um aviso com o passo a passo de cada navegador
 - **Funciona sem internet:** o app abre offline com os dados já vistos neste aparelho (só leitura), e registrar sessão, "Comecei", "Parei" e trocar de jogo vão para uma fila no aparelho com o horário real. Quando a conexão volta, a fila é enviada em ordem e sem duplicar (mesmo com várias abas); o cabeçalho mostra o que está pendente e, se o servidor recusar algo (ex.: o timer já tinha começado em outro aparelho), o motivo, com a opção de descartar
 - **Efeitos sonoros 8 bits** (desligados por padrão): ao começar e parar sessões, zerar jogos e bater marcos da ofensiva, com volume nos ajustes
-- **Servidor MCP** em `/mcp` com login OAuth (conector do claude.ai, Claude Code), com tools de leitura e de escrita (timer, sessões, adicionar jogo, status, conclusões e objetivos)
+- **Servidor MCP** em `/mcp` com OAuth próprio, aprovado com o token (conector do claude.ai, Claude Code), com tools de leitura e de escrita (timer, sessões, adicionar jogo, status, conclusões e objetivos)
 - **Deploy na Railway** como código (`.railway/railway.ts`) + imagem Docker
 
 ### Ainda falta
@@ -133,6 +133,7 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 | UI                              | [shadcn/ui](https://ui.shadcn.com) + Tailwind CSS                           |
 | Estado de UI                    | Zustand                                                                     |
 | Validação                       | Zod (compartilhado entre API, frontend e MCP)                               |
+| Acesso                          | Token da instância + cookie assinado; OAuth 2.1 próprio para o MCP          |
 | IA                              | [Model Context Protocol](https://modelcontextprotocol.io) (Streamable HTTP) |
 | Dados de jogos                  | [IGDB API](https://api-docs.igdb.com)                                       |
 
@@ -143,6 +144,7 @@ src/
   server/
     routes/    # REST (/api/*) consumido pelo frontend
     mcp/       # servidor MCP (/mcp) e as tools
+    oauth/     # servidor OAuth do MCP (registro, autorização com o token, tokens)
     services/  # regras de negócio, usadas por REST e MCP
     db/        # schema e migrations
   web/         # SPA React
@@ -157,16 +159,16 @@ src/
 
 - [mise](https://mise.jdx.dev): instala as versões certas do Bun, Node, oxlint e oxfmt e centraliza variáveis de ambiente e tarefas no `mise.toml`
 - Credenciais do IGDB: crie um app no [Twitch Developer Console](https://dev.twitch.tv/console/apps) para obter `client_id` e `client_secret`
-- Um cliente OAuth do Google, para o login: no [Google Cloud Console](https://console.cloud.google.com) → Google Auth Platform → Clients, crie um "Web application" com a origem `http://localhost:3000` e o redirect `http://localhost:3000/api/auth/callback/google`
 
 ### Passos
 
 ```bash
-git clone https://github.com/<seu-usuario>/zerometro.git   # o seu fork
+git clone https://github.com/ArthurResendeC/Zerometro.git zerometro
 cd zerometro
 mise trust && mise install   # Bun e Node nas versões do mise.toml
 mise run install             # dependências
-cp .env.example .env         # preencha as variáveis (inclusive o seu e-mail em ALLOWED_EMAILS)
+cp .env.example .env         # preencha as credenciais do IGDB
+mise run token >> .env       # gera o seu ZEROMETRO_TOKEN (é com ele que você entra)
 mise run db:migrate
 mise run dev                 # http://localhost:3000
 ```
@@ -176,6 +178,7 @@ Outras tarefas (`mise tasks` lista todas):
 | Tarefa                               | O que faz                                      |
 | ------------------------------------ | ---------------------------------------------- |
 | `mise run check`                     | formatação + lint + typecheck + testes         |
+| `mise run token`                     | gera um token de acesso novo                   |
 | `mise run fmt` / `mise run lint:fix` | formata (oxfmt) e corrige lint (oxlint)        |
 | `mise run build` / `mise run start`  | build de produção em `dist/` e execução        |
 | `mise run db:generate`               | gera migration a partir do schema              |
@@ -190,32 +193,42 @@ Outras tarefas (`mise tasks` lista todas):
 
 Os padrões ficam no `[env]` do `mise.toml`; valores locais e segredos vão no `.env` (carregado pelo mise, não versionado).
 
-| Variável                                    | Descrição                                                                                  |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET`     | Credenciais do app na Twitch                                                               |
-| `BETTER_AUTH_SECRET`                        | Assina os cookies de sessão (`openssl rand -base64 32`); obrigatório em produção           |
-| `BETTER_AUTH_URL`                           | URL pública do site (padrão: domínio da Railway ou `http://localhost:$PORT`)               |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Cliente OAuth do Google para o login                                                       |
-| `ALLOWED_EMAILS`                            | E-mails convidados, separados por vírgula; o primeiro é o dono. Vazio = ninguém entra      |
-| `DATABASE_PATH`                             | Caminho do arquivo SQLite (padrão: `data/zerometro.db` na raiz do projeto)                 |
-| `PORT`                                      | Porta do servidor (padrão: `3000`)                                                         |
-| `TZ`                                        | Fuso usado nas estatísticas (padrão: `America/Sao_Paulo`)                                  |
-| `ZEROMETRO_DOMAIN`                          | Só no deploy: domínio próprio da sua instância na Railway (ver [Deploy](#-deploy-railway)) |
-| `ZEROMETRO_VOLUME_REGION`                   | Só no deploy: região do volume do SQLite (padrão: `us-west2`)                              |
+| Variável                                | Descrição                                                                                  |
+| --------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET` | Credenciais do app na Twitch                                                               |
+| `ZEROMETRO_TOKEN`                       | Token de acesso da instância (pelo menos 32 caracteres; `mise run token`). Obrigatório     |
+| `PUBLIC_URL`                            | URL pública do site (padrão: domínio da Railway ou `http://localhost:$PORT`)               |
+| `DATABASE_PATH`                         | Caminho do arquivo SQLite (padrão: `data/zerometro.db` na raiz do projeto)                 |
+| `PORT`                                  | Porta do servidor (padrão: `3000`)                                                         |
+| `TZ`                                    | Fuso usado nas estatísticas (padrão: `America/Sao_Paulo`)                                  |
+| `ZEROMETRO_DOMAIN`                      | Só no deploy: domínio próprio da sua instância na Railway (ver [Deploy](#-deploy-railway)) |
+| `ZEROMETRO_VOLUME_REGION`               | Só no deploy: região do volume do SQLite (padrão: `us-west2`)                              |
 
 ---
 
 ## 🤖 Usando com IA (MCP)
 
-O Zerômetro expõe um servidor MCP em `/mcp` (Streamable HTTP). O login é OAuth 2.1 com registro dinâmico de clientes: o conector se registra sozinho, você entra com o Google (só convidados) e autoriza na tela `/autorizar`. As tools rodam com os dados de quem autorizou.
+O Zerômetro expõe um servidor MCP em `/mcp` (Streamable HTTP), com dois jeitos de autenticar:
 
-**Conectar no claude.ai:** Configurações → Conectores → Adicionar conector personalizado → URL `https://<seu-domínio>/mcp`. O site precisa estar acessível pela internet (o claude.ai conecta a partir dos servidores da Anthropic).
+- **OAuth 2.1** (para o claude.ai, que só conecta assim): o conector se registra sozinho, abre a página `/authorize` da sua instância e você aprova digitando o `ZEROMETRO_TOKEN`. O conector recebe tokens próprios (1h, renovados sozinhos por até 30 dias de inatividade); o seu token nunca sai do seu navegador.
+- **O próprio token como Bearer**, para clientes configurados à mão.
 
-**Claude Code:**
+**Conectar no claude.ai:** Configurações → Conectores → Adicionar conector personalizado → URL `https://<seu-domínio>/mcp` → Conectar → digite o token. O site precisa estar acessível pela internet (o claude.ai conecta a partir dos servidores da Anthropic).
+
+**Claude Code** (OAuth, abre o navegador para aprovar):
 
 ```bash
 claude mcp add --transport http zerometro https://<seu-domínio>/mcp
 ```
+
+Ou com o token direto, sem passar pelo navegador:
+
+```bash
+claude mcp add --transport http zerometro https://<seu-domínio>/mcp \
+  --header "Authorization: Bearer $ZEROMETRO_TOKEN"
+```
+
+Por segurança, o OAuth só devolve a pessoa para o claude.ai e para endereços locais (`localhost`, usado pelo Claude Code e pelo MCP Inspector). Trocar o `ZEROMETRO_TOKEN` desconecta todos os conectores.
 
 **Tools disponíveis (leitura):** `search_igdb`, `get_feeds` (as listas da tela inicial: bem avaliados, em alta e próximos), `list_library` (com filtro de pós-jogo), `get_game` (com conclusões e objetivos), `list_objectives`, `get_stats`, `get_period_stats` (um ano ou os últimos 12 meses: gêneros, horários, recordes e zerados), `list_sessions`, `get_active_session`. O jogo pode ser passado pelo id ou pelo nome (sem diferenciar acentos); se o nome for ambíguo, a tool devolve as opções.
 
@@ -230,6 +243,7 @@ Para inspecionar localmente: `mise run mcp:inspect` e aponte para `http://localh
 ## 🙏 Créditos
 
 - Dados de jogos e tempos para zerar fornecidos pelo [IGDB](https://www.igdb.com)
+- O servidor OAuth do MCP (`src/server/oauth/`) foi adaptado do [my-scratchpad](https://github.com/Levieber/my-scratchpad) (MIT)
 - Projeto pessoal, sem afiliação com IGDB, Twitch ou qualquer publisher
 
 ---
@@ -270,16 +284,17 @@ echo 'ZEROMETRO_DOMAIN=zerometro.exemplo.com' >> .env
 mise run deploy:plan               # confere o que vai ser criado
 mise run deploy:apply              # cria o serviço, o volume e o domínio próprio
 
-# Segredos (uma vez; o railway.ts usa preserve() e nunca guarda valores)
-railway variable set --service web BETTER_AUTH_SECRET="$(openssl rand -base64 32)" --skip-deploys
-railway variable set --service web GOOGLE_CLIENT_ID=... GOOGLE_CLIENT_SECRET=... --skip-deploys
+# Segredos (uma vez; o railway.ts usa preserve() e nunca guarda valores).
+# O token de produção é o que você vai digitar para entrar: guarde num gerenciador de senhas.
+railway variable set --service web "$(mise run -q token)" --skip-deploys
 railway variable set --service web IGDB_CLIENT_ID=... IGDB_CLIENT_SECRET=... --skip-deploys
-railway variable set --service web ALLOWED_EMAILS=voce@gmail.com --skip-deploys
 
 # Sem domínio próprio: gera https://<nome>.up.railway.app
 railway domain --service web
 ```
 
-Com domínio próprio, crie no seu DNS o registro que a Railway mostra em _Settings → Networking_ do serviço. No Google Cloud Console, acrescente a origem `https://<domínio>` e o redirect `https://<domínio>/api/auth/callback/google`. Depois é só `railway redeploy --service web` (e cada push na `main` faz um deploy novo).
+Com domínio próprio, crie no seu DNS o registro que a Railway mostra em _Settings → Networking_ do serviço. O deploy que o `apply` dispara falha até os segredos existirem (sem `ZEROMETRO_TOKEN` o servidor nem sobe, e não mexe no banco); depois deles, `railway redeploy --service web`. Daí em diante, cada push na `main` faz um deploy novo.
 
-Mudanças de infraestrutura: edite `.railway/railway.ts`, rode `mise run deploy:plan` e depois `mise run deploy:apply`. Rode sempre com o **seu** `.env`: sem `ZEROMETRO_DOMAIN`, o plan apaga a `BETTER_AUTH_URL` da instância.
+**Ver ou trocar o token:** `railway variable list --service web` mostra o atual. Para trocar (ex.: vazou), rode `railway variable set --service web "$(mise run -q token)"`: o deploy novo desloga todos os aparelhos e desconecta todos os conectores MCP, e você entra de novo com o token novo.
+
+Mudanças de infraestrutura: edite `.railway/railway.ts`, rode `mise run deploy:plan` e depois `mise run deploy:apply`. Rode sempre com o **seu** `.env`: sem `ZEROMETRO_DOMAIN`, o plan apaga a `PUBLIC_URL` da instância.
