@@ -111,7 +111,7 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 - [ ] Previsão do backlog ("no seu ritmo, você termina a fila em março")
 - [ ] Recomendações a partir dos jogos que você zerou e gostou
 - [ ] Histórico de atividade na interface (o que foi mudado pelo site e pela IA)
-- [ ] Backup do SQLite (Litestream para um bucket S3/R2)
+- [x] ~Backup do SQLite (Litestream para um bucket S3/R2)~
 - [x] ~PWA (instalar no computador e no celular)~
 - [x] ~Registrar sessões offline e sincronizar quando a conexão voltar~
 - [ ] Retrospectiva do ano
