@@ -93,6 +93,15 @@ interface RawGame {
   total_rating_count?: number;
 }
 
+/** Jogo com os ids em lojas e serviços (só no `getGame`, que alimenta a tabela `games`). */
+interface RawGameWithExternals extends RawGame {
+  external_games?: { uid?: string; external_game_source?: number }[];
+}
+
+/** `external_game_sources` do IGDB: 1 = Steam. */
+const EXTERNAL_SOURCE_STEAM = 1;
+const EXTERNAL_FIELDS = "external_games.uid, external_games.external_game_source";
+
 interface RawFeedGame extends RawGame {
   aggregated_rating?: number;
   aggregated_rating_count?: number;
@@ -318,14 +327,18 @@ export function createIgdbApi(client: IgdbClient): IgdbApi {
     },
 
     async getGame(igdbId) {
-      const [raw] = await client.query<RawGame[]>(
+      const [raw] = await client.query<RawGameWithExternals[]>(
         "games",
-        `fields ${GAME_FIELDS}; where id = ${toInt(igdbId)}; limit 1;`,
+        `fields ${GAME_FIELDS}, ${EXTERNAL_FIELDS}; where id = ${toInt(igdbId)}; limit 1;`,
       );
       if (!raw) return null;
 
       const ttb = await fetchTimeToBeat(raw);
-      return { ...toSummary(raw), timeToBeat: ttb ? toTimeToBeat(ttb) : null };
+      return {
+        ...toSummary(raw),
+        timeToBeat: ttb ? toTimeToBeat(ttb) : null,
+        steamAppId: steamAppIdOf(raw),
+      };
     },
 
     async getGamePage(igdbId) {
@@ -411,6 +424,16 @@ function toSummary(raw: RawGame): IgdbGameSummary {
       : null,
     gameType: raw.game_type === undefined ? null : (GAME_TYPE_LABELS[raw.game_type] ?? null),
   };
+}
+
+/** O primeiro appid da Steam em `external_games` (o uid vem como texto). */
+function steamAppIdOf(raw: RawGameWithExternals): number | null {
+  for (const ext of raw.external_games ?? []) {
+    if (ext.external_game_source !== EXTERNAL_SOURCE_STEAM || !ext.uid) continue;
+    const id = Number(ext.uid);
+    if (Number.isSafeInteger(id) && id > 0) return id;
+  }
+  return null;
 }
 
 function toFeedGame(raw: RawFeedGame): FeedGame {

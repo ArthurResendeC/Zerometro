@@ -4,7 +4,18 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { eq } from "drizzle-orm";
 import { createDb, createTestDb, type Db, MIGRATIONS_FOLDER, runMigrations } from "./client";
-import { completions, games, libraryEntries, objectives, playSessions, user } from "./schema";
+import {
+  achievementSets,
+  achievementUnlocks,
+  achievements,
+  completions,
+  games,
+  libraryEntries,
+  objectives,
+  playSessions,
+  user,
+  userAchievementSets,
+} from "./schema";
 
 const U = "user-1";
 
@@ -168,6 +179,76 @@ describe("objetivos", () => {
     ).toThrow();
     db.insert(objectives).values({ userId: U, gameId: game.id, title: "C" }).run();
     db.insert(objectives).values({ userId: U, gameId: game.id, title: "D" }).run();
+  });
+});
+
+function insertSet() {
+  const set = db
+    .insert(achievementSets)
+    .values({ source: "steam", externalId: "504230", fetchedAt: "2026-11-20T00:00:00.000Z" })
+    .returning()
+    .get();
+  const achievement = db
+    .insert(achievements)
+    .values({ setId: set.id, externalId: "ACH_1", title: "Morango" })
+    .returning()
+    .get();
+  return { set, achievement };
+}
+
+describe("conquistas", () => {
+  test("a lista é única por fonte e id externo; a conquista, por lista e id externo", () => {
+    const { set } = insertSet();
+    expect(() =>
+      db
+        .insert(achievementSets)
+        .values({ source: "steam", externalId: "504230", fetchedAt: "x" })
+        .run(),
+    ).toThrow();
+    db.insert(achievementSets)
+      .values({ source: "retroachievements", externalId: "504230", fetchedAt: "x" })
+      .run();
+    expect(() =>
+      db.insert(achievements).values({ setId: set.id, externalId: "ACH_1", title: "B" }).run(),
+    ).toThrow();
+  });
+
+  test("desbloqueio é um por usuário e conquista; cada usuário tem os seus", () => {
+    const { achievement } = insertSet();
+    const unlock = { achievementId: achievement.id, unlockedAt: "2026-11-20T00:00:00.000Z" };
+    db.insert(achievementUnlocks)
+      .values({ ...unlock, userId: U })
+      .run();
+    expect(() =>
+      db
+        .insert(achievementUnlocks)
+        .values({ ...unlock, userId: U })
+        .run(),
+    ).toThrow();
+    db.insert(user).values({ id: "user-2", name: "Amigo", email: "amigo@zerometro.test" }).run();
+    db.insert(achievementUnlocks)
+      .values({ ...unlock, userId: "user-2" })
+      .run();
+
+    db.delete(user).where(eq(user.id, "user-2")).run();
+    expect(db.select({ userId: achievementUnlocks.userId }).from(achievementUnlocks).all()).toEqual(
+      [{ userId: U }],
+    );
+  });
+
+  test("apagar a lista leva conquistas, desbloqueios e quem a segue", () => {
+    const game = insertGame();
+    const { set, achievement } = insertSet();
+    db.insert(userAchievementSets).values({ userId: U, gameId: game.id, setId: set.id }).run();
+    db.insert(achievementUnlocks)
+      .values({ userId: U, achievementId: achievement.id, unlockedAt: "x" })
+      .run();
+
+    db.delete(achievementSets).where(eq(achievementSets.id, set.id)).run();
+
+    expect(db.select().from(achievements).all()).toHaveLength(0);
+    expect(db.select().from(achievementUnlocks).all()).toHaveLength(0);
+    expect(db.select().from(userAchievementSets).all()).toHaveLength(0);
   });
 });
 

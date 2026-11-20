@@ -25,6 +25,8 @@ export interface IgdbGameSummary {
 
 export interface IgdbGameDetails extends IgdbGameSummary {
   timeToBeat: TimeToBeat | null;
+  /** App na Steam (de `external_games`), para ligar a lista de conquistas sozinho. */
+  steamAppId: number | null;
 }
 
 export const igdbSearchQuerySchema = z.object({

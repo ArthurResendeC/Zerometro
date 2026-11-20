@@ -24,12 +24,13 @@ export function fakeIgdbGame(overrides: Partial<IgdbGameDetails> = {}): IgdbGame
     releaseYear: 2019,
     gameType: "Versão expandida",
     timeToBeat: { mainSec: 315_000, extraSec: 424_580, completeSec: 799_200 },
+    steamAppId: 1687950,
     ...overrides,
   };
 }
 
 export function fakeFeedGame(overrides: Partial<FeedGame> = {}): FeedGame {
-  const { timeToBeat: _ttb, ...summary } = fakeIgdbGame();
+  const { timeToBeat: _ttb, steamAppId: _steam, ...summary } = fakeIgdbGame();
   return {
     ...summary,
     criticRating: 92,
@@ -46,7 +47,7 @@ export function fakeGamePage(
   game: IgdbGameDetails = fakeIgdbGame(),
   overrides: Partial<IgdbGamePage> = {},
 ): IgdbGamePage {
-  const { timeToBeat, ...summary } = game;
+  const { timeToBeat, steamAppId: _steam, ...summary } = game;
   return {
     ...fakeFeedGame(summary),
     summary: null,
@@ -91,7 +92,7 @@ export function createFakeIgdb(
         .filter((g) => g.name.toLowerCase().includes(needle))
         .slice(0, limit)
         .map((game) => {
-          const { timeToBeat: _ttb, ...summary } = game;
+          const { timeToBeat: _ttb, steamAppId: _steam, ...summary } = game;
           return summary;
         });
     },

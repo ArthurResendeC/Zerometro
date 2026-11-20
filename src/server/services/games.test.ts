@@ -22,6 +22,7 @@ describe("syncGameFromIgdb", () => {
       ttbExtraSec: 424_580,
       ttbCompleteSec: 799_200,
       ttbSource: "igdb",
+      steamAppId: 1687950,
     });
     expect(game.syncedAt).not.toBeNull();
   });

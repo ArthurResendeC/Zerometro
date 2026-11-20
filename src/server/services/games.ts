@@ -47,6 +47,7 @@ function toGameRow(details: IgdbGameDetails): NewGame {
     ttbExtraSec: ttb?.extraSec ?? null,
     ttbCompleteSec: ttb?.completeSec ?? null,
     ttbSource: ttb ? "igdb" : null,
+    steamAppId: details.steamAppId,
     syncedAt: new Date().toISOString(),
   };
 }

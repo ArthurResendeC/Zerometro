@@ -57,6 +57,13 @@
       "when": 1795200819274,
       "tag": "0007_sem_better_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1795210758259,
+      "tag": "0008_conquistas",
+      "breakpoints": true
     }
   ]
 }

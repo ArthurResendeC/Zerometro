@@ -32,3 +32,7 @@ export function achievementSourceUrl(source: AchievementSource, externalId: stri
     ? `https://store.steampowered.com/app/${externalId}/`
     : `https://retroachievements.org/game/${externalId}`;
 }
+
+/** Desbloqueio marcado à mão (fase 1) ou vindo do perfil na fonte (fase 2). */
+export const achievementUnlockOrigins = ["manual", "sync"] as const;
+export type AchievementUnlockOrigin = (typeof achievementUnlockOrigins)[number];

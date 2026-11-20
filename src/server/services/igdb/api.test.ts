@@ -107,6 +107,31 @@ describe("getGame", () => {
     const vazio = fakeClient({});
     expect(await createIgdbApi(vazio.client).getGame(999)).toBeNull();
   });
+
+  test("pede external_games e pega o appid da Steam", async () => {
+    const { client, queries } = fakeClient({
+      games: [
+        {
+          id: 26226,
+          name: "Celeste",
+          external_games: [
+            { uid: "abc", external_game_source: 5 },
+            { uid: "504230", external_game_source: 1 },
+          ],
+        },
+      ],
+    });
+
+    const game = await createIgdbApi(client).getGame(26226);
+
+    expect(queries[0]!.body).toContain("external_games.uid, external_games.external_game_source");
+    expect(game?.steamAppId).toBe(504230);
+  });
+
+  test("sem Steam em external_games → steamAppId null", async () => {
+    const { client } = fakeClient({ games: [{ id: 1, name: "Super Metroid" }] });
+    expect((await createIgdbApi(client).getGame(1))?.steamAppId).toBeNull();
+  });
 });
 
 describe("getFeed", () => {

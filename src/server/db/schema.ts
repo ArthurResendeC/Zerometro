@@ -16,6 +16,7 @@ import {
   sessionSources,
   ttbSources,
 } from "../../shared/domain";
+import { achievementSources, achievementUnlockOrigins } from "../../shared/achievements";
 
 // Datas/horas como texto ISO 8601 em UTC; datas de calendário (played_on) como YYYY-MM-DD no fuso do usuário.
 const nowIso = sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`;
@@ -66,6 +67,8 @@ export const games = sqliteTable("games", {
   ttbExtraSec: integer("ttb_extra_sec"),
   ttbCompleteSec: integer("ttb_complete_sec"),
   ttbSource: text("ttb_source", { enum: ttbSources }),
+  /** App da Steam (de `external_games` do IGDB): liga a lista de conquistas sozinho. */
+  steamAppId: integer("steam_app_id"),
   syncedAt: text("synced_at"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
@@ -206,6 +209,95 @@ export const objectives = sqliteTable(
   ],
 );
 
+/**
+ * Lista de conquistas de um jogo numa fonte (Steam ou RetroAchievements), compartilhada entre
+ * usuários como o cache `games`. Qual jogo segue qual lista fica em `user_achievement_sets`
+ * (a mesma lista pode servir a mais de um jogo, ex.: a versão da Steam de um remaster).
+ */
+export const achievementSets = sqliteTable(
+  "achievement_sets",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    source: text("source", { enum: achievementSources }).notNull(),
+    /** appid na Steam; id do jogo no RA. */
+    externalId: text("external_id").notNull(),
+    /** Nome do jogo na fonte (null se a fonte não deu um confiável). */
+    title: text("title"),
+    /** Console no RA. */
+    platform: text("platform"),
+    /** Quando a lista foi buscada na fonte (ISO UTC); vence depois de 30 dias. */
+    fetchedAt: text("fetched_at").notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("achievement_sets_source_external_idx").on(t.source, t.externalId)],
+);
+
+/** Uma conquista de uma lista (só leitura: vem da fonte). */
+export const achievements = sqliteTable(
+  "achievements",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    setId: integer("set_id")
+      .notNull()
+      .references(() => achievementSets.id, { onDelete: "cascade" }),
+    /** apiname na Steam; id da conquista no RA. */
+    externalId: text("external_id").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    iconUrl: text("icon_url"),
+    iconLockedUrl: text("icon_locked_url"),
+    /** % global de quem desbloqueou. */
+    rarity: real("rarity"),
+    /** Pontos (só RA). */
+    points: integer("points"),
+    hidden: integer("hidden", { mode: "boolean" }).notNull().default(false),
+    sortOrder: integer("sort_order").notNull().default(0),
+    /** Sumiu da fonte numa atualização: fica guardada (com os desbloqueios), fora das contas. */
+    removedAt: text("removed_at"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("achievements_set_external_idx").on(t.setId, t.externalId),
+    index("achievements_set_order_idx").on(t.setId, t.sortOrder),
+  ],
+);
+
+/** Quais listas o usuário segue em cada jogo (pode ser mais de uma, ex.: Steam + RA). */
+export const userAchievementSets = sqliteTable(
+  "user_achievement_sets",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: userId(),
+    gameId: integer("game_id")
+      .notNull()
+      .references(() => games.id, { onDelete: "cascade" }),
+    setId: integer("set_id")
+      .notNull()
+      .references(() => achievementSets.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("user_achievement_sets_idx").on(t.userId, t.gameId, t.setId)],
+);
+
+/** Conquistas que o usuário desbloqueou. */
+export const achievementUnlocks = sqliteTable(
+  "achievement_unlocks",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: userId(),
+    achievementId: integer("achievement_id")
+      .notNull()
+      .references(() => achievements.id, { onDelete: "cascade" }),
+    /** Quando desbloqueou (ISO UTC): agora, a data informada ou a da fonte (sync). */
+    unlockedAt: text("unlocked_at").notNull(),
+    origin: text("origin", { enum: achievementUnlockOrigins }).notNull().default("manual"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("achievement_unlocks_user_achievement_idx").on(t.userId, t.achievementId)],
+);
+
 /** Auditoria: o que mudou e por onde (web, MCP ou job). */
 export const activityLog = sqliteTable(
   "activity_log",
@@ -235,4 +327,6 @@ export type PlaySession = typeof playSessions.$inferSelect;
 export type NewPlaySession = typeof playSessions.$inferInsert;
 export type Completion = typeof completions.$inferSelect;
 export type Objective = typeof objectives.$inferSelect;
+export type AchievementSet = typeof achievementSets.$inferSelect;
+export type Achievement = typeof achievements.$inferSelect;
 export type ActivityLogEntry = typeof activityLog.$inferSelect;
