@@ -143,6 +143,10 @@ run = "bun scripts/achievements-smoke.ts"
 description = "Congela no demo as páginas de jogo do IGDB real (scripts/demo-game-pages.json); rodar antes do demo:seed quando quiser dados novos"
 run = "bun scripts/capture-demo-games.ts"
 
+[tasks."demo:capture-achievements"]
+description = "Congela no demo as listas de conquistas reais da Steam (scripts/demo-achievements.json); precisa de STEAM_WEB_API_KEY"
+run = "bun scripts/capture-demo-achievements.ts"
+
 [tasks."demo:seed"]
 description = "Recria o banco de demonstração (data/demo.db) com dados de exemplo para prints"
 env = { DATABASE_PATH = "{{config_root}}/data/demo.db" }

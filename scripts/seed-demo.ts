@@ -8,16 +8,22 @@ import { rmSync } from "node:fs";
 import { basename } from "node:path";
 import { OWNER_ID } from "../src/server/auth";
 import { createDb, runMigrations } from "../src/server/db/client";
+import { eq } from "drizzle-orm";
 import {
   type NewGame,
   type NewLibraryEntry,
   type NewPlaySession,
+  achievementUnlocks,
+  achievements,
   completions,
   games,
   libraryEntries,
   objectives,
   playSessions,
+  userAchievementSets,
 } from "../src/server/db/schema";
+import type { FetchedAchievementSet } from "../src/server/services/achievement-sources";
+import { saveSet } from "../src/server/services/achievement-catalog";
 import {
   addDays,
   DEFAULT_TIME_ZONE,
@@ -35,6 +41,8 @@ import { GAMES, type GameKey, type GameRow } from "./demo-library";
 import demoFeeds from "./demo-feeds.json";
 // Páginas de jogo (aba "Sobre") dos jogos do demo e das listas: `mise run demo:capture`.
 import demoGamePages from "./demo-game-pages.json";
+// Listas de conquistas reais (Steam): `mise run demo:capture-achievements`.
+import demoAchievements from "./demo-achievements.json";
 
 const path = process.env.DATABASE_PATH ?? "";
 if (!basename(path).includes("demo")) {
@@ -330,6 +338,30 @@ db.transaction((tx) => {
     })
     .run();
 });
+// Conquistas: a lista real do Celeste (Steam), ligada ao jogo, com as mais comuns (pelo menos
+// 25% dos jogadores) desbloqueadas nos últimos dois meses, como quem está no pós-jogo.
+for (const { game, set } of demoAchievements as { game: GameKey; set: FetchedAchievementSet }[]) {
+  const saved = saveSet(db, set, now);
+  const gameId = db
+    .select({ id: games.id })
+    .from(games)
+    .where(eq(games.igdbId, GAMES[game][0]))
+    .get()!.id;
+  db.insert(userAchievementSets).values({ userId: OWNER_ID, gameId, setId: saved.id }).run();
+  const common = db
+    .select({ id: achievements.id, rarity: achievements.rarity })
+    .from(achievements)
+    .where(eq(achievements.setId, saved.id))
+    .all()
+    .filter((a) => (a.rarity ?? 0) >= 25);
+  for (const a of common) {
+    const unlockedAt = new Date(now.getTime() - between(1, 60) * 24 * 60 * 60_000);
+    db.insert(achievementUnlocks)
+      .values({ userId: OWNER_ID, achievementId: a.id, unlockedAt: unlockedAt.toISOString() })
+      .run();
+  }
+}
+
 // Valem 24h; depois disso, com credenciais do IGDB, o servidor troca pelas listas de hoje.
 for (const key of feedKeys) {
   saveFeedSnapshot(db, key, (demoFeeds as Record<FeedKey, FeedGame[]>)[key], now);
@@ -344,4 +376,4 @@ console.log(
   `Banco de demonstração em ${path}: ${Object.keys(GAMES).length} jogos, ` +
     `${sessions.length} sessões (~${totalHours}h), ofensiva de ${STREAK_DAYS} dias e timer rodando.`,
 );
-console.log("Entre com o primeiro e-mail de ALLOWED_EMAILS para ficar com os dados.");
+console.log("Entre com o ZEROMETRO_TOKEN do .env para ver os dados.");

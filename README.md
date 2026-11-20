@@ -192,6 +192,7 @@ Outras tarefas (`mise tasks` lista todas):
 | `mise run achievements:smoke`        | testa as listas de conquistas na Steam e no RA |
 | `mise run demo`                      | sobe com dados de exemplo em `data/demo.db`    |
 | `mise run demo:capture`              | congela as páginas de jogo do demo (IGDB real) |
+| `mise run demo:capture-achievements` | congela as conquistas do demo (Steam real)     |
 | `mise run icons`                     | gera os ícones PNG do app (PWA e iOS)          |
 
 ### Variáveis de ambiente
