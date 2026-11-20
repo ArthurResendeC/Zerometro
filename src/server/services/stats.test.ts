@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { createFakeIgdb, createTestContext, fakeIgdbGame, TEST_TODAY } from "../testing";
 import type { ServiceContext } from "./context";
+import { markCompleted } from "./completions";
 import { addToLibrary, updateLibraryEntry } from "./library";
 import { logSession } from "./sessions";
 import { playSessions } from "../db/schema";
@@ -314,6 +315,8 @@ describe("recordes e zerados", () => {
       ["Persona 5 Royal", 6210, 5250],
       ["Undertale", 135, null],
     ]);
+    expect(r.finished[0]).toMatchObject({ completedOn: "2026-11-15", type: "main", replays: 0 });
+    expect(r.finishedSummary).toEqual({ games: 2, replays: 0, full: 0 });
     expect(r.paceRatio).toBe(1.18); // 6210 / 5250
     expect(r.finishedByMonth).toHaveLength(13); // nov/2025 a nov/2026
     expect(r.finishedByMonth.at(-1)).toEqual({ month: "2026-11", count: 1 });
@@ -329,5 +332,41 @@ describe("recordes e zerados", () => {
     expect(old.finishedByMonth.map((m) => m.month)).toEqual(
       Array.from({ length: 12 }, (_, i) => `2025-${String(i + 1).padStart(2, "0")}`),
     );
+  });
+
+  test("conta conclusões: replays, 100%, pós-jogo e anos diferentes", () => {
+    // Persona: história em 2025, replay e 100% em 2026, e hoje voltou a jogar (pós-jogo).
+    markCompleted(ctx, persona, { type: "main", date: "2025-12-20" });
+    markCompleted(ctx, persona, { type: "main", date: "2026-03-01" });
+    markCompleted(ctx, persona, { type: "full", date: "2026-08-10" });
+    // Undertale: primeira vez em 2026, e de novo no 100%... e um replay da história depois.
+    markCompleted(ctx, undertale, { type: "full", date: "2026-02-01" });
+    markCompleted(ctx, undertale, { type: "main", date: "2026-02-15" });
+
+    const r = getRecords(ctx, { today: TEST_TODAY, year: 2026 });
+
+    expect(
+      r.finished.map((g) => [g.name, g.completedOn, g.type, g.completions, g.replays]),
+    ).toEqual([
+      ["Persona 5 Royal", "2026-08-10", "full", 2, 1],
+      ["Undertale", "2026-02-15", "full", 2, 1],
+    ]);
+    expect(r.finishedSummary).toEqual({ games: 2, replays: 2, full: 2 });
+    expect(r.finishedByMonth.find((m) => m.month === "2026-02")?.count).toBe(2);
+
+    const last = getRecords(ctx, { today: TEST_TODAY, year: 2025 });
+    expect(last.finishedSummary).toEqual({ games: 1, replays: 0, full: 0 });
+  });
+
+  test("ritmo usa o tempo jogado até a primeira conclusão, sem o pós-jogo", () => {
+    updateLibraryEntry(ctx, persona, { priorMinutes: 3400 });
+    play("2026-11-01", 600);
+    markCompleted(ctx, persona, { type: "main", date: "2026-11-05" });
+    play("2026-11-10", 600); // pós-jogo: não entra no ritmo
+
+    const r = getRecords(ctx, { today: TEST_TODAY });
+
+    expect(r.finished[0]?.minutesPlayed).toBe(4600);
+    expect(r.paceRatio).toBe(0.76); // 4000 / 5250
   });
 });

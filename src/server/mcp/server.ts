@@ -265,6 +265,8 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
           longestSession: records.longestSession,
           bestDay: records.bestDay,
           bestWeek: records.bestWeek,
+          /** Jogos com conclusão no período (replays e 100% contados à parte). */
+          finishedSummary: records.finishedSummary,
           finished: records.finished,
           finishedByMonth: records.finishedByMonth.filter((m) => m.count > 0),
           paceRatio: records.paceRatio,

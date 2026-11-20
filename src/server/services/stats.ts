@@ -1,4 +1,5 @@
-import { and, desc, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
+import { completionRank } from "../../shared/completions";
 import { addDays, diffInDays, startOfWeek, zonedParts } from "../../shared/dates";
 import { sessionLengthBuckets } from "../../shared/stats";
 import type {
@@ -16,7 +17,7 @@ import type {
   WeekStats,
 } from "../../shared/stats";
 import type { UserScope } from "./context";
-import { games, playSessions } from "../db/schema";
+import { completions, games, playSessions } from "../db/schema";
 import { listLibrary } from "./library";
 import { getSettings } from "./settings";
 
@@ -439,23 +440,19 @@ export function getRecords(
     if (!bestWeek || minutes >= bestWeek.minutes) bestWeek = { weekStart, minutes };
   }
 
-  const finished: FinishedGame[] = listLibrary(scope, { status: "finished" })
-    .filter((item) => item.finishedAt && item.finishedAt >= from && item.finishedAt <= to)
-    .map((item) => ({
-      gameId: item.gameId,
-      igdbId: item.igdbId,
-      name: item.name,
-      coverImageId: item.coverImageId,
-      finishedAt: item.finishedAt!,
-      minutesPlayed: item.minutesPlayed,
-      storyMinutes: item.timeToBeat?.mainSec ? Math.round(item.timeToBeat.mainSec / 60) : null,
-      rating: item.rating,
-    }))
-    .toSorted((a, b) => b.finishedAt.localeCompare(a.finishedAt) || a.name.localeCompare(b.name));
+  const { finished, summary, byMonth, firstInPeriod } = finishedInPeriod(scope, from, to);
 
-  const comparable = finished.filter((g) => g.storyMinutes && g.minutesPlayed > 0);
-  const story = comparable.reduce((sum, g) => sum + g.storyMinutes!, 0);
-  const played = comparable.reduce((sum, g) => sum + g.minutesPlayed, 0);
+  // Ritmo: só quem zerou pela primeira vez no período, com o tempo jogado até aquele dia.
+  let story = 0;
+  let played = 0;
+  for (const game of finished) {
+    const firstOn = firstInPeriod.get(game.gameId);
+    if (!firstOn || !game.storyMinutes) continue;
+    const minutes = minutesUntil(scope, game.gameId, firstOn) + game.priorMinutes;
+    if (minutes === 0) continue;
+    story += game.storyMinutes;
+    played += minutes;
+  }
 
   const lastMonth = (to > today ? today : to).slice(0, 7);
   const months: string[] = [];
@@ -470,13 +467,106 @@ export function getRecords(
     longestSession: longestSession(scope, from, to),
     bestDay,
     bestWeek,
-    finishedByMonth: months.map((month) => ({
-      month,
-      count: finished.filter((g) => g.finishedAt.startsWith(month)).length,
-    })),
-    finished,
+    finishedByMonth: months.map((month) => ({ month, count: byMonth.get(month) ?? 0 })),
+    finished: finished.map(({ priorMinutes: _prior, ...game }) => game),
+    finishedSummary: summary,
     paceRatio: story > 0 ? Math.round((played / story) * 100) / 100 : null,
   };
+}
+
+/**
+ * Jogos com conclusão no período, a partir de todas as conclusões do usuário (as anteriores ao
+ * período dizem o que é replay e o que é a primeira vez).
+ */
+function finishedInPeriod(scope: UserScope, from: string, to: string) {
+  const items = new Map(listLibrary(scope).map((item) => [item.gameId, item]));
+  const rows = scope.db
+    .select({
+      gameId: completions.gameId,
+      type: completions.type,
+      completedOn: completions.completedOn,
+    })
+    .from(completions)
+    .where(and(eq(completions.userId, scope.userId), lte(completions.completedOn, to)))
+    .orderBy(asc(completions.completedOn), asc(completions.id))
+    .all();
+
+  /** Maior nível já alcançado em cada jogo, conforme as conclusões vão passando. */
+  const reached = new Map<number, number>();
+  const byGame = new Map<number, FinishedGame & { priorMinutes: number }>();
+  const byMonth = new Map<string, number>();
+  /** Primeira conclusão de todas, quando ela cai no período. */
+  const firstInPeriod = new Map<number, string>();
+  let replays = 0;
+
+  for (const row of rows) {
+    const rank = completionRank(row.type);
+    const before = reached.get(row.gameId);
+    reached.set(row.gameId, Math.max(before ?? -1, rank));
+    const item = items.get(row.gameId);
+    if (row.completedOn < from || !item) continue;
+
+    const isReplay = before !== undefined && rank <= before;
+    if (isReplay) replays++;
+    if (before === undefined) firstInPeriod.set(row.gameId, row.completedOn);
+    const month = row.completedOn.slice(0, 7);
+    byMonth.set(month, (byMonth.get(month) ?? 0) + 1);
+
+    const game = byGame.get(row.gameId);
+    if (game) {
+      game.completedOn = row.completedOn;
+      if (rank > completionRank(game.type)) game.type = row.type;
+      game.completions++;
+      if (isReplay) game.replays++;
+    } else {
+      byGame.set(row.gameId, {
+        gameId: item.gameId,
+        igdbId: item.igdbId,
+        name: item.name,
+        coverImageId: item.coverImageId,
+        completedOn: row.completedOn,
+        type: row.type,
+        completions: 1,
+        replays: isReplay ? 1 : 0,
+        minutesPlayed: item.minutesPlayed,
+        priorMinutes: item.priorMinutes,
+        storyMinutes: item.timeToBeat?.mainSec ? Math.round(item.timeToBeat.mainSec / 60) : null,
+        rating: item.rating,
+      });
+    }
+  }
+
+  const finished = [...byGame.values()].toSorted(
+    (a, b) => b.completedOn.localeCompare(a.completedOn) || a.name.localeCompare(b.name),
+  );
+  return {
+    finished,
+    byMonth,
+    firstInPeriod,
+    summary: {
+      games: finished.length,
+      replays,
+      full: finished.filter((g) => g.type === "full").length,
+    },
+  };
+}
+
+/** Minutos de sessões do jogo até o dia informado (inclusive). */
+function minutesUntil({ db, userId }: UserScope, gameId: number, date: string): number {
+  return (
+    db
+      .select({ minutes: sql<number>`coalesce(sum(${playSessions.minutes}), 0)` })
+      .from(playSessions)
+      .where(
+        and(
+          eq(playSessions.userId, userId),
+          eq(playSessions.gameId, gameId),
+          lte(playSessions.playedOn, date),
+          isNotNull(playSessions.minutes),
+        ),
+      )
+      .get()?.minutes ?? 0
+  );
 }
 
 function nextMonth(month: string): string {

@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import type { FinishedGame, Records } from "@shared/stats";
+import { completionTypeLabels } from "@shared/domain";
 import { GameCover } from "@/components/game-cover";
 import { Card } from "@/components/ui/card";
 import { formatDate, formatMinutes } from "@/lib/format";
@@ -86,7 +87,7 @@ export function RecordsSection({ records }: { records: Records }) {
             <p className="mt-1 text-xs text-muted-foreground">
               {records.finished.length === 0
                 ? "Nenhum jogo zerado nesse período."
-                : `${records.finished.length} ${records.finished.length === 1 ? "jogo zerado" : "jogos zerados"} no período.`}
+                : `${finishedSummaryText(records.finishedSummary)} no período.`}
             </p>
           </div>
           <ColumnChart
@@ -133,6 +134,17 @@ function StatTile({ label, value, hint }: { label: string; value: ReactNode; hin
   );
 }
 
+/** "3 jogos zerados · 1 replay · 1 no 100%" (só as partes que existem). */
+function finishedSummaryText({ games, replays, full }: Records["finishedSummary"]) {
+  return [
+    `${games} ${games === 1 ? "jogo zerado" : "jogos zerados"}`,
+    replays > 0 && `${replays} ${replays === 1 ? "replay" : "replays"}`,
+    full > 0 && `${full} no 100%`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 function FinishedRow({ game }: { game: FinishedGame }) {
   const ratio = game.storyMinutes ? game.minutesPlayed / game.storyMinutes : null;
   return (
@@ -151,7 +163,9 @@ function FinishedRow({ game }: { game: FinishedGame }) {
         <div className="min-w-0 flex-1">
           <p className="truncate">{game.name}</p>
           <p className="text-xs text-muted-foreground">
-            {formatDate(game.finishedAt)}
+            {formatDate(game.completedOn)}
+            {game.type !== "main" && ` · ${completionTypeLabels[game.type]}`}
+            {game.replays > 0 && " · replay"}
             {game.rating !== null && ` · nota ${game.rating}`}
           </p>
         </div>

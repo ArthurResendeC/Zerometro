@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { CompletionType } from "./domain";
 
 // Contrato das estatísticas (dashboard e tool `get_stats` do MCP).
 
@@ -163,7 +164,17 @@ export interface FinishedGame {
   igdbId: number;
   name: string;
   coverImageId: string | null;
-  finishedAt: string;
+  /** Conclusão mais recente no período (YYYY-MM-DD). */
+  completedOn: string;
+  /** A maior conclusão no período. */
+  type: CompletionType;
+  /** Conclusões no período. */
+  completions: number;
+  /**
+   * Quantas delas foram replays: zerar de novo num nível igual ou abaixo de um já alcançado
+   * (história depois de história é replay; 100% depois da história não).
+   */
+  replays: number;
   /** Total jogado (sessões + tempo anterior ao Zerômetro). */
   minutesPlayed: number;
   /** Tempo da história no IGDB, em minutos (null se o IGDB não tiver). */
@@ -184,13 +195,19 @@ export interface Records {
   } | null;
   bestDay: { date: string; minutes: number } | null;
   bestWeek: { weekStart: string; minutes: number } | null;
-  /** Zerados por mês (YYYY-MM), do primeiro ao último mês do período (até hoje). */
+  /** Conclusões por mês (YYYY-MM), do primeiro ao último mês do período (até hoje). */
   finishedByMonth: { month: string; count: number }[];
-  /** Zerados no período, do mais recente ao mais antigo. */
-  finished: FinishedGame[];
   /**
-   * Seu ritmo comparado ao IGDB: tempo jogado ÷ tempo da história, somando os zerados do
-   * período que têm esse tempo (1,3 = você leva 30% a mais). null sem nenhum.
+   * Jogos com alguma conclusão no período (mesmo que hoje estejam sendo jogados de novo), do
+   * mais recente ao mais antigo.
+   */
+  finished: FinishedGame[];
+  /** "x zerados · y replays · z 100%". */
+  finishedSummary: { games: number; replays: number; full: number };
+  /**
+   * Seu ritmo comparado ao IGDB: tempo jogado até zerar pela primeira vez ÷ tempo da história,
+   * somando os jogos zerados pela primeira vez no período que têm esse tempo (1,3 = você leva
+   * 30% a mais). null sem nenhum.
    */
   paceRatio: number | null;
 }
