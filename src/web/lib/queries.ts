@@ -1,6 +1,7 @@
 import { keepPreviousData, queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { type GameStatus, gameStatusLabels } from "@shared/domain";
+import type { MarkCompletedInput } from "@shared/completions";
+import { completionTypeLabels, type GameStatus, gameStatusLabels } from "@shared/domain";
 import type {
   AddToLibraryInput,
   LibraryItem,
@@ -284,6 +285,74 @@ export function useDeleteSession() {
 // Estatísticas e ajustes
 
 export const statsKeys = { all: ["stats"] as const };
+
+// ---------------------------------------------------------------------------
+// Conclusões (zerei a história, + extras, 100%)
+
+export const completionKeys = {
+  all: ["completions"] as const,
+  list: (gameId: number) => [...completionKeys.all, gameId] as const,
+};
+
+export const completionsQuery = (gameId: number) =>
+  queryOptions({
+    queryKey: completionKeys.list(gameId),
+    queryFn: async () =>
+      (await unwrap(api.library[":gameId"].completions.$get({ param: { gameId: String(gameId) } })))
+        .completions,
+  });
+
+/** Conclusões mudam o item (selo, pós-jogo, progresso), a lista e os zerados das estatísticas. */
+function invalidateCompletions(queryClient: ReturnType<typeof useQueryClient>, gameId: number) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: libraryKeys.all }),
+    queryClient.invalidateQueries({ queryKey: completionKeys.list(gameId) }),
+    queryClient.invalidateQueries({ queryKey: statsKeys.all }),
+  ]);
+}
+
+export function useMarkCompleted(gameId: number) {
+  const queryClient = useQueryClient();
+  const { playMostImportant } = useSound();
+  return useMutation({
+    mutationFn: (input: MarkCompletedInput) =>
+      unwrap(
+        api.library[":gameId"].completions.$post({
+          param: { gameId: String(gameId) },
+          json: input,
+        }),
+      ),
+    onSuccess: ({ completion, item, previousStatus }) => {
+      playMostImportant(["game-finished"]);
+      const where =
+        item.status !== previousStatus
+          ? `movido para ${gameStatusLabels[item.status]}`
+          : item.displayState === "postgame"
+            ? "segue em Jogando (pós-jogo)"
+            : null;
+      toast.success(`${item.name}: ${completionTypeLabels[completion.type]} registrada`, {
+        description: where ?? undefined,
+      });
+      setLibraryItem(queryClient, item);
+      return invalidateCompletions(queryClient, gameId);
+    },
+    onError,
+  });
+}
+
+export function useRemoveCompletion(gameId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) =>
+      unwrap(api.completions[":id"].$delete({ param: { id: String(id) } })),
+    onSuccess: ({ item }) => {
+      toast.success("Conclusão apagada");
+      setLibraryItem(queryClient, item);
+      return invalidateCompletions(queryClient, gameId);
+    },
+    onError,
+  });
+}
 export const settingsKeys = { all: ["settings"] as const };
 
 export const statsQuery = () =>

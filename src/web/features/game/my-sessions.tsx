@@ -3,6 +3,7 @@ import { useState } from "react";
 import { todayIn } from "@shared/dates";
 import { progressTargetLabels } from "@shared/completions";
 import {
+  type CompletionType,
   completionTypeLabels,
   type GameStatus,
   gameStatuses,
@@ -40,16 +41,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatDate, formatHoursFromSeconds, formatMinutes, formatPercent } from "@/lib/format";
 import { useRemoveFromLibrary, useUpdateLibraryEntry } from "@/lib/queries";
 import { useLogSessionDialog } from "@/stores/log-session-dialog";
+import { CompleteDialog, CompletionsSection } from "./completions-section";
 
 // Aba "Minhas sessões" da página do jogo: tempo jogado, sessões, detalhes da entrada e remover.
 
 /** Só para jogos da biblioteca. Ao remover, a página continua aberta, já sem esta aba. */
 export function MySessions({ item }: { item: LibraryItem }) {
   const openLogSession = useLogSessionDialog((state) => state.openNew);
+  /** Diálogo "Marcar como zerado": fechado (null) ou aberto com o tipo já escolhido. */
+  const [completeWith, setCompleteWith] = useState<CompletionType | null>(null);
 
   return (
     <div className="space-y-6">
       <PlayedSummary item={item} />
+
+      <CompletionsSection item={item} onMarkCompleted={() => setCompleteWith(nextLevel(item))} />
+      <CompleteDialog item={item} openWith={completeWith} onClose={() => setCompleteWith(null)} />
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-2">
@@ -129,7 +136,6 @@ interface EntryFormValues {
   rating: string;
   platformPlayed: string;
   startedAt: string;
-  finishedAt: string;
   notes: string;
   priorMinutes: number;
 }
@@ -140,7 +146,6 @@ function toFormValues(item: LibraryItem): EntryFormValues {
     rating: item.rating?.toString() ?? "",
     platformPlayed: item.platformPlayed ?? "",
     startedAt: item.startedAt ?? "",
-    finishedAt: item.finishedAt ?? "",
     notes: item.notes ?? "",
     priorMinutes: item.priorMinutes,
   };
@@ -156,8 +161,6 @@ function toPatch(values: EntryFormValues, initial: EntryFormValues): UpdateLibra
   if (values.platformPlayed !== initial.platformPlayed)
     patch.platformPlayed = orNull(values.platformPlayed);
   if (values.startedAt !== initial.startedAt) patch.startedAt = orNull(values.startedAt);
-  if (values.status === "finished" && values.finishedAt !== initial.finishedAt)
-    patch.finishedAt = orNull(values.finishedAt);
   if (values.notes !== initial.notes) patch.notes = orNull(values.notes);
   if (values.priorMinutes !== initial.priorMinutes) patch.priorMinutes = values.priorMinutes;
   return patch;
@@ -269,31 +272,6 @@ function EntryForm({ item }: { item: LibraryItem }) {
             </div>
           )}
         </form.Field>
-
-        <form.Subscribe selector={(s) => s.values.status}>
-          {(status) =>
-            status === "finished" && (
-              <form.Field
-                name="finishedAt"
-                validators={{ onSubmit: dateField({ max: today, optional: true }) }}
-              >
-                {(field) => (
-                  <div className="space-y-2">
-                    <Label htmlFor={field.name}>Zerou em</Label>
-                    <DateInput
-                      id={field.name}
-                      max={today}
-                      value={field.state.value}
-                      onChange={field.handleChange}
-                      aria-invalid={field.state.meta.errors.length > 0}
-                    />
-                    <FieldErrors errors={field.state.meta.errors} />
-                  </div>
-                )}
-              </form.Field>
-            )
-          }
-        </form.Subscribe>
       </div>
 
       <form.Field name="priorMinutes" validators={{ onSubmit: priorMinutesSchema }}>
@@ -374,9 +352,7 @@ function RemoveButton({ item }: { item: LibraryItem }) {
         <AlertDialogHeader>
           <AlertDialogTitle>Remover {item.name}?</AlertDialogTitle>
           <AlertDialogDescription>
-            {item.sessionsCount > 0
-              ? `As ${item.sessionsCount} sessões registradas (${formatMinutes(item.minutesPlayed)}) também serão apagadas. `
-              : ""}
+            {removalText(item)}
             Não dá para desfazer.
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -399,4 +375,25 @@ function progressText(item: LibraryItem, progress: number): string {
       : `${completionTypeLabels[completion.best]} concluída (o IGDB não tem tempo do próximo nível)`;
   }
   return `${formatPercent(progress)} ${progressTargetLabels[progressTarget]} (estimativa pelo tempo do IGDB)`;
+}
+
+/** "Também apaga 8 sessões (13h 55min), 2 conclusões e 3 objetivos." */
+function removalText(item: LibraryItem): string {
+  const parts = [
+    item.sessionsCount > 0 &&
+      `${plural(item.sessionsCount, "sessão", "sessões")} (${formatMinutes(item.minutesPlayed)})`,
+    item.completion && plural(item.completion.count, "conclusão", "conclusões"),
+    item.objectives && plural(item.objectives.total, "objetivo", "objetivos"),
+  ].filter(Boolean);
+  if (parts.length === 0) return "";
+  const list = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} e ${parts.at(-1)}`;
+  return `Também apaga ${list}. `;
+}
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** O diálogo abre no próximo nível: história, depois + extras, depois 100%. */
+function nextLevel(item: LibraryItem): CompletionType {
+  const best = item.completion?.best;
+  return best === "main" ? "extras" : best ? "full" : "main";
 }
