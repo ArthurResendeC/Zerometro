@@ -206,3 +206,281 @@ describe("getFeed", () => {
     expect(queries).toHaveLength(1);
   });
 });
+
+/** Jogo citado dentro de outro (parecidos, série…), com capa. */
+const ref = (id: number, name: string, extra: Record<string, unknown> = {}) => ({
+  id,
+  name,
+  cover: { image_id: `co${id}` },
+  ...extra,
+});
+const day = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 1000;
+const year = (y: number) => Date.parse(`${y}-06-01T00:00:00Z`) / 1000;
+
+describe("getGamePage", () => {
+  test("busca tudo numa query e mapeia os campos da página", async () => {
+    const { client, queries } = fakeClient({
+      games: [
+        {
+          id: 119133,
+          name: "Elden Ring",
+          slug: "elden-ring",
+          summary: "  Elden Ring is an action RPG.  ",
+          storyline: "",
+          aggregated_rating: 96.9,
+          aggregated_rating_count: 10,
+          rating: 93.4,
+          rating_count: 2351,
+          game_status: 0,
+          involved_companies: [
+            { company: { name: "Bandai Namco" }, developer: false, publisher: true },
+            { company: { name: "FromSoftware" }, developer: true, publisher: true },
+          ],
+          themes: [{ name: "Fantasy" }, { name: "Open world" }],
+          game_modes: [{ name: "Single player" }],
+          player_perspectives: [{ name: "Third person" }],
+          game_engines: [{ name: "Dantelion" }],
+          videos: [
+            { video_id: "a", name: "Gameplay" },
+            { video_id: "b", name: "Trailer" },
+            { video_id: "c", name: "Launch Trailer" },
+            { video_id: "d" },
+          ],
+          websites: [
+            { url: "https://reddit.com/r/Eldenring", type: 14 },
+            { url: "https://store.steampowered.com/app/1245620", type: 13 },
+            { url: "https://store.steampowered.com/outra", type: 13 },
+            { url: "https://desconhecido", type: 99 },
+            { url: "https://eldenring.com", type: 1 },
+          ],
+          language_supports: [
+            { language: { name: "Portuguese (Brazil)" }, language_support_type: 3 },
+            { language: { name: "English" }, language_support_type: 1 },
+            { language: { name: "Portuguese (Brazil)" }, language_support_type: 2 },
+          ],
+          age_ratings: [
+            { organization: 1, rating_category: { rating: "M" } },
+            { organization: 6, rating_category: { rating: "16" } },
+          ],
+          artworks: [
+            { image_id: "retrato", width: 600, height: 800 },
+            { image_id: "largo", width: 1920, height: 620 },
+            { image_id: "mais-largo", width: 5981, height: 920 },
+          ],
+          screenshots: Array.from({ length: 15 }, (_, i) => ({ image_id: `sc${i}` })),
+          expansions: [ref(240009, "Shadow of the Erdtree")],
+          dlcs: [ref(415376, "Tarnished Pack")],
+          similar_games: [ref(2155, "Dark Souls"), ref(2155, "Dark Souls"), { id: 9 }],
+        },
+      ],
+      game_time_to_beats: [{ game_id: 119133, hastily: 156960, count: 28 }],
+    });
+
+    const page = await createIgdbApi(client).getGamePage(119133);
+
+    expect(queries).toHaveLength(2);
+    expect(queries[0]!.body).toContain("where id = 119133; limit 1;");
+    expect(queries[0]!.body).toContain("collections.games.cover.image_id");
+    expect(queries[1]!.body).toContain("count; where game_id = (119133);");
+    expect(page).toMatchObject({
+      igdbId: 119133,
+      summary: "Elden Ring is an action RPG.",
+      storyline: null,
+      criticRating: 97,
+      criticRatingCount: 10,
+      userRating: 93,
+      userRatingCount: 2351,
+      status: null,
+      developers: ["FromSoftware"],
+      publishers: ["Bandai Namco", "FromSoftware"],
+      themes: ["Fantasy", "Open world"],
+      gameModes: ["Single player"],
+      perspectives: ["Third person"],
+      engines: ["Dantelion"],
+      heroImageId: "mais-largo",
+      ageRating: { org: "classind", rating: "16" },
+      timeToBeat: { mainSec: 156960, extraSec: null, completeSec: null },
+      timeToBeatCount: 28,
+      parentGame: null,
+    });
+    expect(page!.screenshotIds).toHaveLength(12);
+    expect(page!.videos.map((v) => v.youtubeId)).toEqual(["c", "b", "a", "d"]);
+    expect(page!.videos[3]!.name).toBe("Vídeo");
+    // Um por tipo, na ordem das lojas primeiro; tipo desconhecido sai.
+    expect(page!.links).toEqual([
+      { kind: "steam", url: "https://store.steampowered.com/app/1245620" },
+      { kind: "official", url: "https://eldenring.com" },
+      { kind: "reddit", url: "https://reddit.com/r/Eldenring" },
+    ]);
+    expect(page!.languages).toEqual([
+      { name: "English", audio: true, subtitles: false, interface: false },
+      { name: "Portuguese (Brazil)", audio: false, subtitles: true, interface: true },
+    ]);
+    expect(page!.related.expansions.map((g) => g.name)).toEqual(["Shadow of the Erdtree"]);
+    expect(page!.related.dlcs[0]).toEqual({
+      igdbId: 415376,
+      name: "Tarnished Pack",
+      slug: null,
+      coverImageId: "co415376",
+      releaseYear: null,
+    });
+    // Sem repetidos e sem os que vieram sem nome.
+    expect(page!.related.similar.map((g) => g.igdbId)).toEqual([2155]);
+  });
+
+  test("banner: sem artwork largo usa a 1ª screenshot; sem imagens, null", async () => {
+    const comScreenshot = fakeClient({
+      games: [
+        {
+          id: 1,
+          name: "Retratos",
+          artworks: [{ image_id: "quadrado", width: 800, height: 800 }],
+          screenshots: [{ image_id: "sc1" }, { image_id: "sc2" }],
+        },
+      ],
+    });
+    expect((await createIgdbApi(comScreenshot.client).getGamePage(1))?.heroImageId).toBe("sc1");
+
+    const semImagens = fakeClient({ games: [{ id: 2, name: "Nada" }] });
+    expect((await createIgdbApi(semImagens.client).getGamePage(2))?.heroImageId).toBeNull();
+  });
+
+  test("lançamentos: uma data por plataforma (Brasil > mundial), agrupadas e em ordem", async () => {
+    const { client } = fakeClient({
+      games: [
+        {
+          id: 1,
+          name: "Multi",
+          release_dates: [
+            {
+              date: day("2022-02-25"),
+              platform: { name: "PlayStation 5", abbreviation: "PS5" },
+              release_region: 8,
+            },
+            {
+              date: day("2022-02-25"),
+              platform: { name: "PC (Microsoft Windows)", abbreviation: "PC" },
+              release_region: 8,
+            },
+            // Japão saiu antes, mas a data mundial é a preferida.
+            {
+              date: day("2022-02-20"),
+              platform: { name: "PC (Microsoft Windows)", abbreviation: "PC" },
+              release_region: 5,
+            },
+            // No Brasil saiu depois: vale a do Brasil.
+            {
+              date: day("2022-03-01"),
+              platform: { name: "Xbox Series X|S", abbreviation: "Series X|S" },
+              release_region: 8,
+            },
+            {
+              date: day("2022-02-01"),
+              platform: { name: "Xbox Series X|S", abbreviation: "Series X|S" },
+              release_region: 10,
+            },
+            // Acesso antecipado de quem comprou a edição especial: o lançamento completo vale.
+            {
+              date: day("2022-02-18"),
+              platform: { name: "PlayStation 5", abbreviation: "PS5" },
+              release_region: 10,
+              status: 34,
+            },
+            // Só o ano, sem abreviação.
+            { date: day("2026-12-31"), date_format: 2, platform: { name: "Nintendo Switch 2" } },
+            // A definir: fica de fora.
+            {
+              date: day("2027-12-31"),
+              date_format: 7,
+              platform: { name: "Mac", abbreviation: "Mac" },
+            },
+            { platform: { name: "Linux", abbreviation: "Linux" } },
+          ],
+        },
+      ],
+    });
+
+    const page = await createIgdbApi(client).getGamePage(1);
+
+    expect(page!.releases).toEqual([
+      { date: "2022-02-01", precision: "day", platforms: ["Series X|S"] },
+      { date: "2022-02-25", precision: "day", platforms: ["PS5", "PC"] },
+      { date: "2026-12-31", precision: "year", platforms: ["Nintendo Switch 2"] },
+    ]);
+  });
+
+  test("série: jogos principais da coleção e da franquia, sem repetir nem o próprio jogo", async () => {
+    const { client } = fakeClient({
+      games: [
+        {
+          id: 10,
+          name: "Jogo 2",
+          parent_game: ref(1, "Original"),
+          collections: [
+            {
+              games: [
+                ref(10, "Jogo 2", { game_type: 0, first_release_date: year(2015) }),
+                ref(12, "Jogo 3", { game_type: 0, first_release_date: year(2020) }),
+                ref(11, "Jogo 1", { game_type: 0, first_release_date: year(2010) }),
+                ref(13, "DLC", { game_type: 1, first_release_date: year(2016) }),
+                ref(14, "Edição GOTY", { game_type: 0, version_parent: 10 }),
+                ref(15, "Remake do 1", { game_type: 8, first_release_date: year(2023) }),
+              ],
+            },
+          ],
+          franchises: [
+            { games: [ref(11, "Jogo 1", { game_type: 0, first_release_date: year(2010) })] },
+            { games: [ref(16, "Sem tipo")] },
+          ],
+        },
+      ],
+    });
+
+    const page = await createIgdbApi(client).getGamePage(10);
+
+    expect(page!.related.series.map((g) => g.name)).toEqual(["Jogo 1", "Jogo 3", "Remake do 1"]);
+    expect(page!.related.series[0]!.releaseYear).toBe(2010);
+    expect(page!.parentGame).toMatchObject({ igdbId: 1, name: "Original" });
+  });
+
+  test("jogo obscuro: listas vazias e nulos; status do IGDB vira selo", async () => {
+    const { client } = fakeClient({
+      games: [{ id: 372563, name: "Demake", game_status: 6 }],
+    });
+
+    const page = await createIgdbApi(client).getGamePage(372563);
+
+    expect(page).toMatchObject({
+      summary: null,
+      storyline: null,
+      criticRating: null,
+      userRating: null,
+      userRatingCount: 0,
+      status: "cancelled",
+      developers: [],
+      releases: [],
+      heroImageId: null,
+      screenshotIds: [],
+      videos: [],
+      links: [],
+      languages: [],
+      ageRating: null,
+      timeToBeat: null,
+      timeToBeatCount: 0,
+      parentGame: null,
+      related: { expansions: [], dlcs: [], remakes: [], series: [], similar: [] },
+    });
+  });
+
+  test("edição herda o tempo do jogo base; jogo inexistente → null", async () => {
+    const edicao = fakeClient({
+      games: [{ id: 2, name: "Edição", version_parent: 1 }],
+      game_time_to_beats: [{ game_id: 1, hastily: 3600, count: 5 }],
+    });
+    const page = await createIgdbApi(edicao.client).getGamePage(2);
+    expect(page).toMatchObject({ timeToBeat: { mainSec: 3600 }, timeToBeatCount: 5 });
+
+    const vazio = fakeClient({});
+    expect(await createIgdbApi(vazio.client).getGamePage(999)).toBeNull();
+  });
+});

@@ -2,6 +2,7 @@
 import { spyOn } from "bun:test";
 import { DEFAULT_TIME_ZONE } from "../shared/dates";
 import type { FeedGame, FeedKey } from "../shared/feeds";
+import type { IgdbGamePage } from "../shared/game-page";
 import type { IgdbGameDetails } from "../shared/igdb";
 import { testUtils, type TestHelpers } from "better-auth/plugins";
 import { createApp } from "./app";
@@ -41,14 +42,48 @@ export function fakeFeedGame(overrides: Partial<FeedGame> = {}): FeedGame {
   };
 }
 
+/** Página do jogo com só o básico preenchido (como um jogo obscuro no IGDB). */
+export function fakeGamePage(
+  game: IgdbGameDetails = fakeIgdbGame(),
+  overrides: Partial<IgdbGamePage> = {},
+): IgdbGamePage {
+  const { timeToBeat, ...summary } = game;
+  return {
+    ...fakeFeedGame(summary),
+    summary: null,
+    storyline: null,
+    userRating: null,
+    userRatingCount: 0,
+    status: null,
+    developers: [],
+    publishers: [],
+    themes: [],
+    gameModes: [],
+    perspectives: [],
+    engines: [],
+    releases: [],
+    heroImageId: null,
+    screenshotIds: [],
+    videos: [],
+    links: [],
+    languages: [],
+    ageRating: null,
+    timeToBeat,
+    timeToBeatCount: timeToBeat ? 10 : 0,
+    parentGame: null,
+    related: { expansions: [], dlcs: [], remakes: [], series: [], similar: [] },
+    ...overrides,
+  };
+}
+
 /** IGDB em memória: busca por substring no nome; listas da home fixas. */
 export function createFakeIgdb(
   catalog: IgdbGameDetails[] = [fakeIgdbGame()],
   feeds: Partial<Record<FeedKey, FeedGame[]>> = {},
 ): IgdbApi & {
-  calls: { getGame: number[]; getFeed: FeedKey[] };
+  calls: { getGame: number[]; getGamePage: number[]; getFeed: FeedKey[] };
 } {
-  const calls = { getGame: [] as number[], getFeed: [] as FeedKey[] };
+  const calls = { getGame: [] as number[], getGamePage: [] as number[], getFeed: [] as FeedKey[] };
   return {
     calls,
     async searchGames(term, limit = 10) {
@@ -64,6 +99,11 @@ export function createFakeIgdb(
     async getGame(igdbId) {
       calls.getGame.push(igdbId);
       return catalog.find((g) => g.igdbId === igdbId) ?? null;
+    },
+    async getGamePage(igdbId) {
+      calls.getGamePage.push(igdbId);
+      const game = catalog.find((g) => g.igdbId === igdbId);
+      return game ? fakeGamePage(game) : null;
     },
     async getFeed(key) {
       calls.getFeed.push(key);
