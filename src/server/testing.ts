@@ -12,6 +12,7 @@ import { user } from "./db/schema";
 import { createTestDb, type Db } from "./db/client";
 import type { Clock, ServiceContext } from "./services/context";
 import { createFeedsService } from "./services/feeds";
+import { createGamePagesService } from "./services/game-pages";
 import type { IgdbApi } from "./services/igdb";
 
 export function fakeIgdbGame(overrides: Partial<IgdbGameDetails> = {}): IgdbGameDetails {
@@ -179,7 +180,15 @@ export async function createTestApp(
     plugins: [testUtils()],
   });
   const feeds = createFeedsService({ db, igdb, clock });
-  const deps = { db, auth: createAuthGateway(auth, allowedEmails), igdb, feeds, clock };
+  const gamePages = createGamePagesService({ db, igdb, clock });
+  const deps = {
+    db,
+    auth: createAuthGateway(auth, allowedEmails),
+    igdb,
+    feeds,
+    gamePages,
+    clock,
+  };
   const app = createApp({ ...deps, logRequests: false });
   const root = createRootRoutes(deps);
   /** Mesmo roteamento do Bun.serve (index.ts), sem a SPA. */
@@ -211,6 +220,7 @@ export async function createTestApp(
     db,
     igdb,
     feeds,
+    gamePages,
     clock,
     auth,
     helpers,

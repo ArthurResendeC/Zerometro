@@ -5,6 +5,7 @@ import { db } from "./db";
 import { runMigrations } from "./db/client";
 import { createRootRoutes } from "./mcp/routes";
 import { createFeedsService } from "./services/feeds";
+import { createGamePagesService } from "./services/game-pages";
 import { createIgdbFromEnv } from "./services/igdb";
 import index from "../web/index.html";
 
@@ -50,6 +51,7 @@ const deps = {
   auth: createAuthGateway(auth, allowedEmails),
   igdb,
   feeds: createFeedsService({ db, igdb, clock }),
+  gamePages: createGamePagesService({ db, igdb, clock }),
   clock,
 };
 const app = createApp(deps);

@@ -15,6 +15,7 @@ import { createStatsRoutes } from "./routes/stats";
 import { createTimerRoutes } from "./routes/timer";
 import type { Clock } from "./services/context";
 import type { FeedsService } from "./services/feeds";
+import type { GamePagesService } from "./services/game-pages";
 import type { IgdbApi } from "./services/igdb";
 
 export interface AppDeps {
@@ -24,6 +25,8 @@ export interface AppDeps {
   igdb: IgdbApi;
   /** Listas do IGDB da tela inicial (cache compartilhado entre requisições). */
   feeds: FeedsService;
+  /** Dados do IGDB da página de cada jogo (cache compartilhado entre requisições). */
+  gamePages: GamePagesService;
   /** Relógio e fuso do usuário; injetável para testes. */
   clock: Clock;
   /** Log de requisições (desligado nos testes). */
