@@ -190,16 +190,18 @@ Outras tarefas (`mise tasks` lista todas):
 
 Os padrões ficam no `[env]` do `mise.toml`; valores locais e segredos vão no `.env` (carregado pelo mise, não versionado).
 
-| Variável                                    | Descrição                                                                             |
-| ------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET`     | Credenciais do app na Twitch                                                          |
-| `BETTER_AUTH_SECRET`                        | Assina os cookies de sessão (`openssl rand -base64 32`); obrigatório em produção      |
-| `BETTER_AUTH_URL`                           | URL pública do site (padrão: domínio da Railway ou `http://localhost:$PORT`)          |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Cliente OAuth do Google para o login                                                  |
-| `ALLOWED_EMAILS`                            | E-mails convidados, separados por vírgula; o primeiro é o dono. Vazio = ninguém entra |
-| `DATABASE_PATH`                             | Caminho do arquivo SQLite (padrão: `data/zerometro.db` na raiz do projeto)            |
-| `PORT`                                      | Porta do servidor (padrão: `3000`)                                                    |
-| `TZ`                                        | Fuso usado nas estatísticas (padrão: `America/Sao_Paulo`)                             |
+| Variável                                    | Descrição                                                                                  |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET`     | Credenciais do app na Twitch                                                               |
+| `BETTER_AUTH_SECRET`                        | Assina os cookies de sessão (`openssl rand -base64 32`); obrigatório em produção           |
+| `BETTER_AUTH_URL`                           | URL pública do site (padrão: domínio da Railway ou `http://localhost:$PORT`)               |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Cliente OAuth do Google para o login                                                       |
+| `ALLOWED_EMAILS`                            | E-mails convidados, separados por vírgula; o primeiro é o dono. Vazio = ninguém entra      |
+| `DATABASE_PATH`                             | Caminho do arquivo SQLite (padrão: `data/zerometro.db` na raiz do projeto)                 |
+| `PORT`                                      | Porta do servidor (padrão: `3000`)                                                         |
+| `TZ`                                        | Fuso usado nas estatísticas (padrão: `America/Sao_Paulo`)                                  |
+| `ZEROMETRO_DOMAIN`                          | Só no deploy: domínio próprio da sua instância na Railway (ver [Deploy](#-deploy-railway)) |
+| `ZEROMETRO_VOLUME_REGION`                   | Só no deploy: região do volume do SQLite (padrão: `us-west2`)                              |
 
 ---
 
@@ -240,7 +242,15 @@ Para inspecionar localmente: `mise run mcp:inspect` e aponte para `http://localh
 
 ## 🚀 Deploy (Railway)
 
-Estes passos sobem **a sua** instância, no seu projeto da Railway e com os seus segredos. A infraestrutura está em [`.railway/railway.ts`](.railway/railway.ts) ([IaC da Railway](https://docs.railway.com/infrastructure-as-code)): um serviço `web` buildado pelo [`Dockerfile`](Dockerfile) a partir da `main` no GitHub, com um volume em `/data` para o SQLite (uma réplica só). As migrations rodam no boot do servidor, porque o volume não fica montado no build nem no pre-deploy.
+Cada pessoa sobe **a sua** instância, no próprio projeto da Railway e com os próprios segredos, mas todas buildam do mesmo repositório: um push na `main` daqui chega a todo mundo. A infraestrutura está em [`.railway/railway.ts`](.railway/railway.ts) ([IaC da Railway](https://docs.railway.com/infrastructure-as-code)): um serviço `web` buildado pelo [`Dockerfile`](Dockerfile) a partir da `main` no GitHub, com um volume em `/data` para o SQLite (uma réplica só). As migrations rodam no boot do servidor, porque o volume não fica montado no build nem no pre-deploy.
+
+O que muda de uma instância para outra **não fica no código**: o `railway.ts` lê do ambiente de quem roda o plan/apply (o mise carrega o seu `.env`):
+
+| Variável                  | Para quê                                                                                                         |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `ZEROMETRO_DOMAIN`        | Domínio próprio (ex.: `zerometro.exemplo.com`). Opcional: sem ele, a instância usa o domínio gerado pela Railway |
+| `ZEROMETRO_VOLUME_REGION` | Região do volume (padrão: `us-west2`). Só mude se o seu volume já existe em outra região                         |
+| `TZ`                      | Fuso da instância (padrão do `mise.toml`: `America/Sao_Paulo`)                                                   |
 
 Testar a imagem localmente (precisa do Docker):
 
@@ -248,22 +258,28 @@ Testar a imagem localmente (precisa do Docker):
 mise run docker:run   # builda e sobe em http://localhost:3000 com os segredos do .env
 ```
 
-Primeiro deploy:
+Primeiro deploy (precisa de acesso de colaborador ao repositório e do [app da Railway no GitHub](https://docs.railway.com/guides/github-autodeploys) com acesso a ele):
 
 ```sh
-railway init --name zerometro      # cria o projeto e vincula esta pasta (ou: railway link)
+railway login
+railway init --name zerometro      # cria o SEU projeto e vincula esta pasta (ou: railway link)
+
+# (opcional) domínio próprio: no .env
+echo 'ZEROMETRO_DOMAIN=zerometro.exemplo.com' >> .env
+
 mise run deploy:plan               # confere o que vai ser criado
-mise run deploy:apply              # cria o serviço e o volume
+mise run deploy:apply              # cria o serviço, o volume e o domínio próprio
 
 # Segredos (uma vez; o railway.ts usa preserve() e nunca guarda valores)
 railway variable set --service web BETTER_AUTH_SECRET="$(openssl rand -base64 32)" --skip-deploys
 railway variable set --service web GOOGLE_CLIENT_ID=... GOOGLE_CLIENT_SECRET=... --skip-deploys
 railway variable set --service web IGDB_CLIENT_ID=... IGDB_CLIENT_SECRET=... --skip-deploys
-railway variable set --service web ALLOWED_EMAILS=voce@gmail.com,amigo@gmail.com --skip-deploys
+railway variable set --service web ALLOWED_EMAILS=voce@gmail.com --skip-deploys
 
-railway domain --service web       # gera https://<nome>.up.railway.app
+# Sem domínio próprio: gera https://<nome>.up.railway.app
+railway domain --service web
 ```
 
-No Google Cloud Console, acrescente a origem `https://<domínio>` e o redirect `https://<domínio>/api/auth/callback/google`. Depois é só `git push` (ou `railway redeploy --service web`). A URL pública vem de `RAILWAY_PUBLIC_DOMAIN`; com domínio próprio, defina `BETTER_AUTH_URL`.
+Com domínio próprio, crie no seu DNS o registro que a Railway mostra em _Settings → Networking_ do serviço. No Google Cloud Console, acrescente a origem `https://<domínio>` e o redirect `https://<domínio>/api/auth/callback/google`. Depois é só `railway redeploy --service web` (e cada push na `main` faz um deploy novo).
 
-Mudanças de infraestrutura: edite `.railway/railway.ts`, rode `mise run deploy:plan` e depois `mise run deploy:apply`.
+Mudanças de infraestrutura: edite `.railway/railway.ts`, rode `mise run deploy:plan` e depois `mise run deploy:apply`. Rode sempre com o **seu** `.env`: sem `ZEROMETRO_DOMAIN`, o plan apaga a `BETTER_AUTH_URL` da instância.
