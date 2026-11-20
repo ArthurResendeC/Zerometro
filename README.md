@@ -97,7 +97,7 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 - **Conclusões e pós-jogo:** "zerei" é separado do status. Registre a história, a história + extras ou o 100% (com data, inclusive replays); um jogo zerado que você continua jogando fica em "Jogando" com o selo de zerado e o rótulo **Pós-jogo** (com filtro na biblioteca), e a barra de progresso passa a mirar o próximo nível
 - **Objetivos por jogo:** caixinhas ou contadores ("900 sementes Korok") com barra geral; concluir o último sugere marcar o jogo como 100%
 - **Conquistas da Steam e do RetroAchievements** (opcional, com a chave de cada um): a lista oficial do jogo, com ícone, descrição, raridade ("8% dos jogadores") e pontos do RA, e você marca o que já conseguiu. A da Steam é achada sozinha pelo IGDB; a do RA, pelo nome nos consoles do jogo (você confirma) ou colando o link. Secretas ficam borradas até pedir o spoiler; filtros, busca e ordem por raridade; completar a lista sugere marcar o 100%
-- **Sincronizar com a sua Steam** (opcional): conecte o perfil nos Ajustes (só a URL, sem senha; os detalhes de jogos precisam estar públicos) e traga as conquistas que você já desbloqueou, com a data de verdade, e as horas de cada jogo. É manual: um botão por jogo ou "Sincronizar tudo". Só adiciona desbloqueios, nunca desmarca o que você marcou
+- **Sincronizar com a sua Steam** (opcional): conecte o perfil nos Ajustes (só a URL, sem senha; os detalhes de jogos precisam estar públicos) e traga as conquistas que você já desbloqueou, com a data de verdade, e as horas de cada jogo. Sincroniza sozinho quando você abre o app (no máximo a cada 30 min, e só nos jogos que você jogou desde a última vez), e há um botão por jogo e "Sincronizar tudo" para fazer na hora. Só adiciona desbloqueios, nunca desmarca o que você marcou
 - **Tempo jogado: sessões ou Steam, você escolhe por jogo.** No controle manual valem as sessões mais o tempo antes do Zerômetro; na Steam vale o total de lá. O tempo da Steam fica guardado à parte, e as sessões continuam contando na ofensiva e nas estatísticas nos dois casos
 - **Tempo jogado antes do Zerômetro:** para jogos que você já vinha jogando ("tenho 39h de Witcher 3"), sem inventar sessões; conta no total e no progresso do jogo, mas não na ofensiva nem nas médias
 - **Instalável como app** (PWA) no computador (Chrome, Edge, Safari) e no celular, com janela própria, atalhos no ícone e um aviso com o passo a passo de cada navegador
@@ -122,9 +122,10 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 - [x] ~Registrar sessões offline e sincronizar quando a conexão voltar~
 - [ ] Retrospectiva do ano
 - [ ] Alertas de lançamento da lista de desejos
-- [ ] Sincronização de tempo jogado da Steam
+- [x] ~Sincronização de tempo jogado da Steam~
 - [x] ~Conquistas da Steam e do RetroAchievements (lista da fonte, marcadas à mão)~
 - [x] ~Sincronizar conquistas e horas com o perfil da Steam~
+- [x] ~Sincronizar com a Steam sozinho ao abrir o app~
 - [ ] Sincronizar as conquistas com o perfil do RetroAchievements
 - [ ] Importar a biblioteca da Steam
 
@@ -262,7 +263,7 @@ Para inspecionar localmente: `mise run mcp:inspect` e aponte para `http://localh
 
 - Dados de jogos e tempos para zerar fornecidos pelo [IGDB](https://www.igdb.com)
 - Conquistas (nomes, descrições, ícones e raridade) da [Steam](https://store.steampowered.com) e do [RetroAchievements](https://retroachievements.org), mostradas direto dos servidores deles, com link para a página do jogo na fonte. O Zerômetro só mostra metadados: nada de ROMs, hashes ou emuladores
-- Na sincronização com a Steam, a instância guarda só o seu SteamID público, o nome e o avatar do perfil, os desbloqueios e as horas por jogo, no próprio banco. "Desconectar" nos Ajustes apaga o perfil (o que já foi sincronizado fica)
+- Na sincronização com a Steam, a instância guarda só o seu SteamID público, o nome e o avatar do perfil, os desbloqueios e as horas por jogo, no próprio banco, além de quando foi a última sincronização automática e o erro dela, se houver. "Desconectar" nos Ajustes apaga o perfil e esse estado (o que já foi sincronizado fica)
 - O servidor OAuth do MCP (`src/server/oauth/`) foi adaptado do [my-scratchpad](https://github.com/Levieber/my-scratchpad) (MIT)
 - Projeto pessoal, sem afiliação com IGDB, Twitch, Valve, RetroAchievements ou qualquer publisher
 

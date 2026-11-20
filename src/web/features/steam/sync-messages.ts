@@ -1,4 +1,4 @@
-import type { SteamGameSync, SteamLibrarySync } from "@shared/steam";
+import type { SteamAutoSync, SteamGameSync, SteamLibrarySync } from "@shared/steam";
 import { formatMinutes } from "@/lib/format";
 
 // Textos do resultado de uma sincronização com a Steam (toast).
@@ -47,4 +47,23 @@ export function librarySyncMessage(sync: SteamLibrarySync): {
     .filter(Boolean)
     .join(" · ");
   return description ? { title, description } : { title };
+}
+
+const MAX_GAMES_IN_TOAST = 3;
+
+/** Automática: só vale avisar quando chegou conquista nova (horas mudam em silêncio). */
+export function autoSyncMessage(
+  sync: SteamAutoSync,
+): { title: string; description: string } | null {
+  const games = sync.games
+    .filter((g) => g.newUnlocks > 0)
+    .toSorted((a, b) => b.newUnlocks - a.newUnlocks);
+  if (games.length === 0) return null;
+  const shown = games.slice(0, MAX_GAMES_IN_TOAST).map((g) => `${g.name} (+${g.newUnlocks})`);
+  const rest = games.length - shown.length;
+  return {
+    title: `Steam: ${unlocksText(sync.newUnlocks)}`,
+    description:
+      shown.join(", ") + (rest > 0 ? ` e mais ${rest} ${rest === 1 ? "jogo" : "jogos"}` : ""),
+  };
 }

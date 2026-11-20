@@ -29,7 +29,7 @@ import type {
   UpdateSessionInput,
 } from "@shared/sessions";
 import type { UpdateSettingsInput } from "@shared/settings";
-import type { LinkSteamProfileInput } from "@shared/steam";
+import type { LinkSteamProfileInput, SteamAutoSyncState } from "@shared/steam";
 import type {
   StartTimerInput,
   StartTimerResult,
@@ -41,7 +41,11 @@ import { DEFAULT_TIME_ZONE, nextOccurrence, todayIn, zonedParts } from "@shared/
 import { reachedStreakMilestone } from "@/features/audio/sound-events";
 import type { SoundName } from "@/features/audio/sounds";
 import { useSound } from "@/features/audio/use-sound";
-import { gameSyncMessage, librarySyncMessage } from "@/features/steam/sync-messages";
+import {
+  autoSyncMessage,
+  gameSyncMessage,
+  librarySyncMessage,
+} from "@/features/steam/sync-messages";
 import {
   currentTimer,
   currentUserId,
@@ -1089,6 +1093,8 @@ export function useSyncSteamGame(gameId: number) {
       const { title, description } = gameSyncMessage(sync);
       toast.success(title, { description });
       setLibraryItem(queryClient, item);
+      // Deu certo: o servidor limpou o erro da automática.
+      setAutoSyncState(queryClient, (auto) => auto && { ...auto, lastError: null });
       return Promise.all([
         setGameAchievements(queryClient, gameId, achievements),
         queryClient.invalidateQueries({ queryKey: statsKeys.all }),
@@ -1105,6 +1111,8 @@ export function useSyncSteamLibrary() {
     onSuccess: (sync) => {
       const { title, description } = librarySyncMessage(sync);
       toast.success(title, { description });
+      // O servidor zerou o relógio da automática.
+      setAutoSyncState(queryClient, () => ({ lastRunAt: sync.syncedAt, lastError: null }));
       return Promise.all([
         queryClient.invalidateQueries({ queryKey: libraryKeys.all }),
         queryClient.invalidateQueries({ queryKey: achievementKeys.all }),
@@ -1113,4 +1121,36 @@ export function useSyncSteamLibrary() {
     },
     onError,
   });
+}
+
+/**
+ * Sincronização automática (ao abrir o app). Silenciosa: só avisa se trouxe conquistas novas, e
+ * erros ficam no estado (aparecem nos Ajustes) em vez de virar toast.
+ */
+export function useAutoSyncSteam() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => unwrap(api.steam.sync.auto.$post()),
+    onSuccess: (sync) => {
+      setAutoSyncState(queryClient, () => sync.state);
+      if (sync.games.length === 0) return;
+      const message = autoSyncMessage(sync);
+      if (message) toast.success(message.title, { description: message.description });
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: libraryKeys.all }),
+        queryClient.invalidateQueries({ queryKey: achievementKeys.all }),
+        queryClient.invalidateQueries({ queryKey: statsKeys.all }),
+      ]);
+    },
+  });
+}
+
+function setAutoSyncState(
+  queryClient: ReturnType<typeof useQueryClient>,
+  update: (auto: SteamAutoSyncState | null) => SteamAutoSyncState | null,
+) {
+  // O queryKey do queryOptions carrega o tipo da resposta.
+  queryClient.setQueryData(steamProfileQuery().queryKey, (data) =>
+    data ? { ...data, auto: update(data.auto) } : data,
+  );
 }

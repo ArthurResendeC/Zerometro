@@ -15,6 +15,7 @@ import { SoundToggle } from "@/features/audio/sound-toggle";
 import { OfflineBanner } from "@/features/offline/offline-banner";
 import { PendingIndicator } from "@/features/offline/pending-indicator";
 import { InstallAppToast } from "@/features/pwa/install-toast";
+import { useSteamAutoSync } from "@/features/steam/use-steam-auto-sync";
 import { sessionQuery } from "@/lib/queries";
 import { useLogSessionDialog } from "@/stores/log-session-dialog";
 
@@ -44,7 +45,6 @@ const navLinkClass =
   "menu-cursor py-2 pr-2 display-xs max-lg:px-1 max-sm:px-0.5 max-lg:before:hidden text-muted-foreground hover:bg-accent hover:text-foreground aria-[current=page]:text-foreground";
 
 function RootLayout() {
-  const openLogSession = useLogSessionDialog((state) => state.openNew);
   const { session } = Route.useRouteContext();
   const pathname = useLocation({ select: (l) => l.pathname });
 
@@ -56,6 +56,14 @@ function RootLayout() {
       </>
     );
   }
+
+  return <SignedInLayout userId={session.userId} />;
+}
+
+/** O app depois de entrar: menu, timer, diálogos e a sincronização automática com a Steam. */
+function SignedInLayout({ userId }: { userId: string }) {
+  const openLogSession = useLogSessionDialog((state) => state.openNew);
+  useSteamAutoSync();
 
   return (
     <div className="min-h-dvh">
@@ -97,7 +105,7 @@ function RootLayout() {
           </Link>
           <div className="ml-auto flex items-center">
             <PendingIndicator
-              userId={session.userId}
+              userId={userId}
               className="max-sm:h-8 max-sm:gap-0.5 max-sm:px-0.5 sm:mr-1"
             />
             <SoundToggle className="max-sm:size-8 sm:mr-2" />

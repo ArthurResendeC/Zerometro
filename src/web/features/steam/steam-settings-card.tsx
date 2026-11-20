@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
-import { linkSteamProfileSchema, type SteamProfile } from "@shared/steam";
+import { linkSteamProfileSchema, type SteamAutoSyncState, type SteamProfile } from "@shared/steam";
 import { ExternalLink } from "@/components/external-link";
 import { DownloadIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ export function SteamSettingsCard() {
           não feito, e o tempo da Steam só vale no jogo em que você escolher usá-lo.
         </p>
       </div>
-      {data.profile ? <LinkedProfile profile={data.profile} /> : <LinkForm />}
+      {data.profile ? <LinkedProfile profile={data.profile} auto={data.auto} /> : <LinkForm />}
     </Card>
   );
 }
@@ -79,7 +79,13 @@ function LinkForm() {
   );
 }
 
-function LinkedProfile({ profile }: { profile: SteamProfile }) {
+function LinkedProfile({
+  profile,
+  auto,
+}: {
+  profile: SteamProfile;
+  auto: SteamAutoSyncState | null;
+}) {
   const sync = useSyncSteamLibrary();
   const unlink = useUnlinkSteamProfile();
 
@@ -111,10 +117,38 @@ function LinkedProfile({ profile }: { profile: SteamProfile }) {
           Desconectar
         </Button>
       </div>
+      <AutoSyncStatus auto={auto} />
       <p className="text-xs text-muted-foreground">
         "Sincronizar tudo" passa pelos jogos da biblioteca que estão na sua conta, um de cada vez.
         Para um jogo só, use o botão na página dele.
       </p>
+    </div>
+  );
+}
+
+const dayAndTime = (iso: string) =>
+  new Date(iso).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+/** Quando a sincronização automática rodou por último e, se falhou, por quê. */
+function AutoSyncStatus({ auto }: { auto: SteamAutoSyncState | null }) {
+  return (
+    <div className="space-y-1 text-sm" aria-live="polite">
+      <p className="text-muted-foreground">
+        Sincroniza sozinho quando você abre o app (no máximo a cada 30 min), só nos jogos que você
+        jogou desde a última vez.
+        {auto && !auto.lastError && <> Última: {dayAndTime(auto.lastRunAt)}.</>}
+      </p>
+      {auto?.lastError && (
+        <p className="text-destructive">
+          A última sincronização automática ({dayAndTime(auto.lastError.at)}) falhou:{" "}
+          {auto.lastError.message}.
+        </p>
+      )}
     </div>
   );
 }
