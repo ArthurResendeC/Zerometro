@@ -71,3 +71,24 @@ export interface SteamLibrarySync {
   games: SteamGameSync[];
   newUnlocks: number;
 }
+
+/** Intervalo mínimo entre duas sincronizações automáticas (ao abrir o app). */
+export const STEAM_AUTO_SYNC_INTERVAL_MS = 30 * 60_000;
+
+/** Estado da sincronização automática de um usuário. */
+export interface SteamAutoSyncState {
+  /** Início da última rodada (automática ou "Sincronizar tudo"). */
+  lastRunAt: string;
+  /** Falha da última rodada automática; some quando uma sincronização dá certo. */
+  lastError: { message: string; at: string } | null;
+}
+
+/** Resultado de `POST /api/steam/sync/auto`. */
+export interface SteamAutoSync {
+  /** skipped: sem perfil, Steam desligada ou rodou há pouco. failed: ver `state.lastError`. */
+  status: "skipped" | "synced" | "failed";
+  /** Só os jogos em que algo pode ter mudado (os outros só tiveram as horas conferidas). */
+  games: SteamGameSync[];
+  newUnlocks: number;
+  state: SteamAutoSyncState | null;
+}

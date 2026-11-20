@@ -1,9 +1,23 @@
 import { describe, expect, test } from "bun:test";
 import type { GameAchievements } from "../../shared/achievements";
 import type { LibraryItem } from "../../shared/library";
-import type { SteamGameSync, SteamLibrarySync, SteamProfile } from "../../shared/steam";
+import type {
+  SteamAutoSync,
+  SteamAutoSyncState,
+  SteamGameSync,
+  SteamLibrarySync,
+  SteamProfile,
+} from "../../shared/steam";
 import { createSteamUserFromEnv } from "../services/steam/user";
-import { createFakeSteamUser, createTestApp, FAKE_STEAM_ID } from "../testing";
+import {
+  createFakeIgdb,
+  createFakeSteamUser,
+  createTestApp,
+  createTestClock,
+  FAKE_STEAM_ID,
+  fakeIgdbGame,
+  TEST_NOW,
+} from "../testing";
 
 const P5R = 1687950;
 
@@ -27,6 +41,7 @@ describe("/api/steam/profile", () => {
     expect(await (await request("/api/steam/profile")).json()).toEqual({
       enabled: true,
       profile: null,
+      auto: null,
     });
 
     const linked = await linkProfile(request);
@@ -38,7 +53,7 @@ describe("/api/steam/profile", () => {
     ).toEqual(profile);
 
     const unlinked = await request("/api/steam/profile", { method: "DELETE" });
-    expect(await unlinked.json()).toEqual({ enabled: true, profile: null });
+    expect(await unlinked.json()).toEqual({ enabled: true, profile: null, auto: null });
   });
 
   test("texto que não é perfil → 400; perfil que não existe → 404; sem chave → 503", async () => {
@@ -175,5 +190,148 @@ describe("sincronizar com a Steam", () => {
     const denied = await closed.request("/api/steam/sync", { method: "POST" });
     expect(denied.status).toBe(409);
     expect(await denied.json()).toMatchObject({ error: { code: "steam_profile_private" } });
+  });
+});
+
+/** `n` minutos depois de TEST_NOW. */
+const minutes = (n: number) => new Date(TEST_NOW.getTime() + n * 60_000);
+
+/** App com o P5R na biblioteca e o perfil ligado; `auto` chama a sincronização automática. */
+async function setupAuto(options: Parameters<typeof createFakeSteamUser>[0]) {
+  const clock = createTestClock();
+  const fake = createFakeSteamUser(options);
+  const app = await createTestApp({ steamUser: fake, clock });
+  const item = await addP5r(app.request);
+  await linkProfile(app.request);
+  fake.calls.length = 0;
+  const auto = async () =>
+    (await (await app.request("/api/steam/sync/auto", { method: "POST" })).json()) as SteamAutoSync;
+  const libraryItem = async () =>
+    ((await (await app.request(`/api/library/${item.gameId}`)).json()) as { item: LibraryItem })
+      .item;
+  return { ...app, clock, fake, item, auto, libraryItem };
+}
+
+describe("sincronização automática (ao abrir o app)", () => {
+  test("sem perfil: pula sem chamar a Steam", async () => {
+    const fake = createFakeSteamUser({ owned: { [P5R]: 3000 } });
+    const { request } = await createTestApp({ steamUser: fake });
+    const res = await request("/api/steam/sync/auto", { method: "POST" });
+    expect(await res.json()).toEqual({ status: "skipped", games: [], newUnlocks: 0, state: null });
+    expect(fake.calls).toEqual([]);
+  });
+
+  test("primeira vez busca tudo; dentro do intervalo pula; depois, só o que mudou", async () => {
+    const owned = { [P5R]: 3000 };
+    const { auto, clock, fake, libraryItem } = await setupAuto({
+      owned,
+      unlocked: { [P5R]: [{ apiName: "ACH_1", unlockedAt: null }] },
+    });
+
+    const first = await auto();
+    expect(first).toMatchObject({
+      status: "synced",
+      newUnlocks: 1,
+      state: { lastRunAt: TEST_NOW.toISOString(), lastError: null },
+    });
+    expect(first.games.map((g) => g.name)).toEqual(["Persona 5 Royal"]);
+    expect(fake.calls).toEqual(["owned:", "unlocked:1687950"]);
+
+    // 29 minutos depois (outra aba, outro aparelho): nem pergunta à Steam.
+    fake.calls.length = 0;
+    clock.set(minutes(29));
+    expect((await auto()).status).toBe("skipped");
+    expect(fake.calls).toEqual([]);
+
+    // Passou o intervalo e não jogou: só confere as horas.
+    clock.set(minutes(31));
+    const quiet = await auto();
+    expect(quiet).toMatchObject({ status: "synced", games: [], newUnlocks: 0 });
+    expect(fake.calls).toEqual(["owned:"]);
+    expect((await libraryItem()).steamPlaytime).toEqual({
+      minutes: 3000,
+      syncedAt: minutes(31).toISOString(),
+    });
+
+    // Jogou mais: busca as conquistas desse jogo.
+    fake.calls.length = 0;
+    owned[P5R] = 3090;
+    clock.set(minutes(62));
+    const played = await auto();
+    expect(played.games.map((g) => [g.name, g.steamMinutes])).toEqual([["Persona 5 Royal", 3090]]);
+    expect(fake.calls).toEqual(["owned:", "unlocked:1687950"]);
+  });
+
+  test("jogou depois da última sincronização (mesmas horas): busca as conquistas", async () => {
+    const owned: Record<number, { minutes: number; lastPlayedAt: Date | null }> = {
+      [P5R]: { minutes: 3000, lastPlayedAt: new Date("2026-05-01T20:00:00Z") },
+    };
+    const { auto, clock, fake } = await setupAuto({ owned });
+    await auto();
+
+    clock.set(minutes(40));
+    owned[P5R] = { minutes: 3000, lastPlayedAt: minutes(35) };
+    fake.calls.length = 0;
+    expect((await auto()).games).toHaveLength(1);
+    expect(fake.calls).toEqual(["owned:", "unlocked:1687950"]);
+  });
+
+  test("perfil que esconde o tempo de jogo: só os jogos que está jogando", async () => {
+    const celeste = fakeIgdbGame({ igdbId: 26226, name: "Celeste", steamAppId: 504230 });
+    const clock = createTestClock();
+    const { request } = await createTestApp({
+      clock,
+      igdb: createFakeIgdb([fakeIgdbGame(), celeste]),
+      steamUser: createFakeSteamUser({ owned: { [P5R]: 0, 504230: 0 } }),
+    });
+    await addP5r(request);
+    await request("/api/library", json({ igdbId: 26226, status: "backlog" }));
+    await linkProfile(request);
+    const auto = async () =>
+      (await (await request("/api/steam/sync/auto", { method: "POST" })).json()) as SteamAutoSync;
+
+    // Nunca sincronizados: os dois.
+    expect((await auto()).games.map((g) => g.name).toSorted()).toEqual([
+      "Celeste",
+      "Persona 5 Royal",
+    ]);
+    clock.set(minutes(31));
+    expect((await auto()).games.map((g) => g.name)).toEqual(["Persona 5 Royal"]);
+  });
+
+  test("perfil privado: não estoura, guarda o erro, e uma sincronização que dá certo limpa", async () => {
+    const options = { owned: { [P5R]: 3000 }, private: true };
+    const { auto, clock, item, request } = await setupAuto(options);
+
+    const failed = await auto();
+    expect(failed).toMatchObject({
+      status: "failed",
+      state: { lastError: { message: expect.stringContaining("Detalhes dos jogos") } },
+    });
+    const profile = (await (await request("/api/steam/profile")).json()) as {
+      auto: SteamAutoSyncState;
+    };
+    expect(profile.auto.lastError?.at).toBe(TEST_NOW.toISOString());
+
+    // Arrumou o perfil e sincronizou o jogo na mão: o erro some, o relógio continua.
+    options.private = false;
+    clock.set(minutes(5));
+    await request(`/api/library/${item.gameId}/steam/sync`, { method: "POST" });
+    const after = (await (await request("/api/steam/profile")).json()) as {
+      auto: SteamAutoSyncState;
+    };
+    expect(after.auto).toEqual({ lastRunAt: TEST_NOW.toISOString(), lastError: null });
+  });
+
+  test('"Sincronizar tudo" zera o relógio; perfil novo começa do zero', async () => {
+    const { auto, clock, fake, request } = await setupAuto({ owned: { [P5R]: 3000 } });
+    await request("/api/steam/sync", { method: "POST" });
+    fake.calls.length = 0;
+    clock.set(minutes(10));
+    expect((await auto()).status).toBe("skipped");
+
+    await linkProfile(request);
+    expect((await auto()).status).toBe("synced");
+    expect(fake.calls).toContain("owned:");
   });
 });

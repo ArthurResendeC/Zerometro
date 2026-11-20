@@ -1,6 +1,7 @@
 import {
   parseSteamProfile,
   type LinkSteamProfileInput,
+  type SteamAutoSyncState,
   type SteamProfile,
 } from "../../shared/steam";
 import { ValidationError } from "../errors";
@@ -13,6 +14,7 @@ import type { SteamUserApi } from "./steam/user";
 // horas na sincronização. É público (SteamID e nome), sem token nem senha.
 
 const profileKey = (userId: string) => `steam:profile:${userId}`;
+const autoSyncKey = (userId: string) => `steam:auto:${userId}`;
 
 export function getSteamProfile({ db, userId }: UserScope): SteamProfile | null {
   const raw = getKv(db, profileKey(userId));
@@ -36,6 +38,8 @@ export async function linkSteamProfile(
   const profile: SteamProfile = { ...player, linkedAt: ctx.now.toISOString() };
   ctx.db.transaction((tx) => {
     setKv(tx, profileKey(ctx.userId), JSON.stringify(profile));
+    // Perfil novo: a próxima abertura do app já sincroniza.
+    deleteKv(tx, autoSyncKey(ctx.userId));
     logActivity(tx, ctx, "steam.link", { steamId: profile.steamId, name: profile.name });
   });
   return profile;
@@ -46,5 +50,21 @@ export function unlinkSteamProfile(ctx: ServiceContext): void {
   const profile = getSteamProfile(ctx);
   if (!profile) return;
   deleteKv(ctx.db, profileKey(ctx.userId));
+  deleteKv(ctx.db, autoSyncKey(ctx.userId));
   logActivity(ctx.db, ctx, "steam.unlink", { steamId: profile.steamId });
+}
+
+/** Quando foi a última sincronização automática (ou "Sincronizar tudo") e se deu erro. */
+export function getAutoSyncState({ db, userId }: UserScope): SteamAutoSyncState | null {
+  const raw = getKv(db, autoSyncKey(userId));
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as SteamAutoSyncState;
+  } catch {
+    return null;
+  }
+}
+
+export function setAutoSyncState({ db, userId }: UserScope, state: SteamAutoSyncState): void {
+  setKv(db, autoSyncKey(userId), JSON.stringify(state));
 }

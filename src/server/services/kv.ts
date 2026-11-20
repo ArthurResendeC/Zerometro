@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import type { Db, DbOrTx } from "../db/client";
+import type { DbOrTx } from "../db/client";
 import { kv } from "../db/schema";
 
 export function getKv(db: DbOrTx, key: string): string | null {
@@ -13,6 +13,6 @@ export function setKv(db: DbOrTx, key: string, value: string): void {
     .run();
 }
 
-export function deleteKv(db: Db, key: string): void {
+export function deleteKv(db: DbOrTx, key: string): void {
   db.delete(kv).where(eq(kv.key, key)).run();
 }

@@ -227,20 +227,20 @@ export const FAKE_STEAM_ID = "76561197960435530";
  */
 export function createFakeSteamUser(
   options: {
-    owned?: Record<number, number>;
+    /** Minutos por app, ou os minutos e quando jogou por último. Lido a cada chamada. */
+    owned?: Record<number, number | { minutes: number; lastPlayedAt: Date | null }>;
     unlocked?: Record<number, SteamUnlock[]>;
     private?: boolean;
     enabled?: boolean;
   } = {},
 ): SteamUserApi & { calls: string[] } {
   const calls: string[] = [];
-  const owned = options.owned ?? {};
   const games = (): SteamOwnedGame[] =>
-    Object.entries(owned).map(([appId, minutes]) => ({
-      appId: Number(appId),
-      minutes,
-      lastPlayedAt: null,
-    }));
+    Object.entries(options.owned ?? {}).map(([appId, game]) =>
+      typeof game === "number"
+        ? { appId: Number(appId), minutes: game, lastPlayedAt: null }
+        : { appId: Number(appId), minutes: game.minutes, lastPlayedAt: game.lastPlayedAt },
+    );
   return {
     enabled: options.enabled ?? true,
     calls,
