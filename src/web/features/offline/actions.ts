@@ -3,7 +3,7 @@ import { DEFAULT_TIME_ZONE } from "@shared/dates";
 import type { LibraryItem } from "@shared/library";
 import type { ActiveSession } from "@shared/timer";
 import { ApiError } from "@/lib/api";
-import type { AuthSession } from "@/lib/auth-client";
+import type { AuthSession } from "@/lib/auth";
 import {
   type EffectiveTimer,
   type GameRef,
@@ -30,7 +30,7 @@ export const requestSync = () => syncTrigger();
 export const isOffline = () => typeof navigator !== "undefined" && navigator.onLine === false;
 
 export function currentUserId(queryClient: QueryClient): string | undefined {
-  return queryClient.getQueryData<AuthSession | null>(["auth", "session"])?.user.id;
+  return queryClient.getQueryData<AuthSession | null>(["auth", "session"])?.userId;
 }
 
 /**

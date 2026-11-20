@@ -1,30 +1,26 @@
 import { createMcpHandler } from "@modelcontextprotocol/server";
-import type { AuthGateway } from "../auth";
+import { type Auth, OWNER_ID } from "../auth";
 import { createMcpServer, type McpDeps } from "./server";
 
 // Rotas públicas fora de /api, na raiz do domínio:
-// - /.well-known/*: descoberta OAuth (RFC 8414/9728) e OIDC, servidas pela Better Auth
-// - /mcp: o servidor MCP (Streamable HTTP), só com access token válido
+// - OAuth do MCP (src/server/oauth): /.well-known/*, /register, /authorize e /token
+// - /mcp: o servidor MCP (Streamable HTTP), só com access token válido ou o token da instância
 
 export interface RootRoutes {
-  wellKnown: (request: Request) => Promise<Response>;
+  /** Rotas por método, no formato do `Bun.serve`. */
+  oauth: Auth["oauth"]["routes"];
   mcp: (request: Request) => Promise<Response>;
 }
 
-export function createRootRoutes(deps: McpDeps & { auth: AuthGateway }): RootRoutes {
-  // Um McpServer novo por requisição (sem estado entre chamadas), já no escopo do usuário
-  // do token. Atende a revisão 2026-07-28 e, por compatibilidade, a de 2025 sem sessão.
-  const handler = createMcpHandler(
-    ({ authInfo }) => createMcpServer(deps, String(authInfo?.extra?.userId)),
-    { onerror: (error) => console.error("[mcp]", error) },
-  );
+export function createRootRoutes(deps: McpDeps & { auth: Auth }): RootRoutes {
+  // Um McpServer novo por requisição (sem estado entre chamadas), já no escopo do dono. Atende a
+  // revisão 2026-07-28 e, por compatibilidade, a de 2025 sem sessão.
+  const handler = createMcpHandler(() => createMcpServer(deps, OWNER_ID), {
+    onerror: (error) => console.error("[mcp]", error),
+  });
 
   return {
-    wellKnown: (request) => deps.auth.handler(request),
-    mcp: deps.auth.protectMcp((request, userId) =>
-      handler.fetch(request, {
-        authInfo: { token: "", clientId: "", scopes: [], extra: { userId } },
-      }),
-    ),
+    oauth: deps.auth.oauth.routes,
+    mcp: deps.auth.oauth.protect((request) => handler.fetch(request)),
   };
 }

@@ -2,11 +2,11 @@
 // Recria do zero o banco de DATABASE_PATH (só aceita um arquivo com "demo" no nome, para
 // nunca apagar dados de verdade) com jogos reais do IGDB, ~10 meses de sessões, uma ofensiva
 // em andamento e um timer rodando. As datas são relativas a hoje, então os gráficos sempre
-// parecem atuais. Os dados ficam no dono provisório da migration 0002: o primeiro login do
-// dono (primeiro e-mail de ALLOWED_EMAILS) adota tudo.
+// parecem atuais. Os dados ficam no dono da instância (`owner`, criado pelas migrations): é só
+// entrar com o ZEROMETRO_TOKEN.
 import { rmSync } from "node:fs";
 import { basename } from "node:path";
-import { LEGACY_OWNER_ID } from "../src/server/auth";
+import { OWNER_ID } from "../src/server/auth";
 import { createDb, runMigrations } from "../src/server/db/client";
 import {
   type NewGame,
@@ -17,7 +17,6 @@ import {
   libraryEntries,
   objectives,
   playSessions,
-  user,
 } from "../src/server/db/schema";
 import {
   addDays,
@@ -221,14 +220,6 @@ const db = createDb(path);
 runMigrations(db);
 
 db.transaction((tx) => {
-  tx.insert(user)
-    .values({
-      id: LEGACY_OWNER_ID,
-      name: "Dados anteriores ao login",
-      email: "legacy-owner@zerometro.invalid",
-    })
-    .run();
-
   const gameIds = new Map<GameKey, number>();
   for (const [key, row] of Object.entries(GAMES) as [GameKey, GameRow][]) {
     const [
@@ -268,7 +259,7 @@ db.transaction((tx) => {
   for (const [key, spec] of Object.entries(LIBRARY) as [GameKey, EntrySpec][]) {
     const dates = finishedDates.get(key);
     const entry: NewLibraryEntry = {
-      userId: LEGACY_OWNER_ID,
+      userId: OWNER_ID,
       gameId: gameIds.get(key)!,
       status: spec.status,
       platformPlayed: spec.platform ?? null,
@@ -283,7 +274,7 @@ db.transaction((tx) => {
 
   for (const { game, ...session } of sessions) {
     tx.insert(playSessions)
-      .values({ ...session, userId: LEGACY_OWNER_ID, gameId: gameIds.get(game)! })
+      .values({ ...session, userId: OWNER_ID, gameId: gameIds.get(game)! })
       .run();
   }
 
@@ -298,7 +289,7 @@ db.transaction((tx) => {
   }
   for (const [key, type, completedOn] of extraCompletions) {
     tx.insert(completions)
-      .values({ userId: LEGACY_OWNER_ID, gameId: gameIds.get(key)!, type, completedOn })
+      .values({ userId: OWNER_ID, gameId: gameIds.get(key)!, type, completedOn })
       .run();
   }
 
@@ -316,7 +307,7 @@ db.transaction((tx) => {
   for (const [index, [key, title, target, progress]] of demoObjectives.entries()) {
     tx.insert(objectives)
       .values({
-        userId: LEGACY_OWNER_ID,
+        userId: OWNER_ID,
         gameId: gameIds.get(key)!,
         title,
         target,
@@ -331,7 +322,7 @@ db.transaction((tx) => {
   const timerStart = new Date(now.getTime() - 47 * 60_000);
   tx.insert(playSessions)
     .values({
-      userId: LEGACY_OWNER_ID,
+      userId: OWNER_ID,
       gameId: gameIds.get("eldenRing")!,
       playedOn: zonedParts(timerStart, TZ).date,
       startedAt: timerStart.toISOString(),

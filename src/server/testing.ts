@@ -1,13 +1,11 @@
 // Helpers de teste compartilhados.
-import { spyOn } from "bun:test";
 import { DEFAULT_TIME_ZONE } from "../shared/dates";
 import type { FeedGame, FeedKey } from "../shared/feeds";
 import type { IgdbGamePage } from "../shared/game-page";
 import type { IgdbGameDetails } from "../shared/igdb";
-import { testUtils, type TestHelpers } from "better-auth/plugins";
 import { createApp } from "./app";
 import { createRootRoutes } from "./mcp/routes";
-import { createAuth, createAuthGateway } from "./auth";
+import { createAuth, OWNER_ID, SESSION_COOKIE } from "./auth";
 import { user } from "./db/schema";
 import { createTestDb, type Db } from "./db/client";
 import type { Clock, ServiceContext } from "./services/context";
@@ -137,7 +135,6 @@ export function createTestClock(start: Date = TEST_NOW): Clock & { set: (date: D
 export const TEST_USER_ID = "user-dono";
 export const TEST_EMAILS = { owner: "dono@zerometro.test", friend: "amigo@zerometro.test" };
 export const TEST_BASE_URL = "http://localhost:3000";
-export const TEST_AUTH_SECRET = "segredo-de-teste-com-mais-de-32-caracteres";
 
 /** Cria (se ainda não existir) um usuário direto no banco. */
 export function createTestUser(db: Db, id: string = TEST_USER_ID): string {
@@ -160,9 +157,12 @@ export function createTestContext(overrides: Partial<ServiceContext> = {}): Serv
   };
 }
 
+/** Token da instância nos testes. */
+export const TEST_TOKEN = "token-de-teste-com-mais-de-32-caracteres";
+
 /**
- * App completo com Better Auth de verdade (plugin testUtils) num banco em memória.
- * `request` já vai logado como o dono; `loginAs` cria e loga outro convidado.
+ * App completo num banco em memória, com o token de teste. `request` já vai com o cookie de
+ * sessão (como o site depois de entrar); `fetchRoot` roteia como o Bun.serve (MCP e OAuth na raiz).
  */
 export async function createTestApp(
   overrides: { db?: Db; igdb?: IgdbApi; clock?: ReturnType<typeof createTestClock> } = {},
@@ -170,50 +170,43 @@ export async function createTestApp(
   const db = overrides.db ?? createTestDb();
   const igdb = overrides.igdb ?? createFakeIgdb();
   const clock = overrides.clock ?? createTestClock();
-  const allowedEmails = [TEST_EMAILS.owner, TEST_EMAILS.friend];
   const auth = createAuth({
-    db,
-    secret: TEST_AUTH_SECRET,
-    baseURL: TEST_BASE_URL,
-    google: { clientId: "test-client-id", clientSecret: "test-client-secret" },
-    allowedEmails,
-    plugins: [testUtils()],
+    token: TEST_TOKEN,
+    publicUrl: TEST_BASE_URL,
+    now: () => clock.now().getTime(),
+    log: () => {},
   });
   const feeds = createFeedsService({ db, igdb, clock });
   const gamePages = createGamePagesService({ db, igdb, clock });
-  const deps = {
-    db,
-    auth: createAuthGateway(auth, allowedEmails),
-    igdb,
-    feeds,
-    gamePages,
-    clock,
-  };
+  const deps = { db, auth, igdb, feeds, gamePages, clock };
   const app = createApp({ ...deps, logRequests: false });
   const root = createRootRoutes(deps);
   /** Mesmo roteamento do Bun.serve (index.ts), sem a SPA. */
-  const fetchRoot = (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+  const fetchRoot = async (input: string | URL | Request, init?: RequestInit) => {
     const request =
       input instanceof Request ? input : new Request(new URL(input, TEST_BASE_URL), init);
     const { pathname } = new URL(request.url);
     if (pathname === "/mcp") return root.mcp(request);
-    if (pathname.startsWith("/.well-known/")) return root.wellKnown(request);
-    return Promise.resolve(app.fetch(request));
+    const oauth = root.oauth[pathname];
+    if (oauth) {
+      const handler = oauth[request.method as "GET" | "POST"];
+      return handler ? handler(request) : new Response(null, { status: 405 });
+    }
+    return app.fetch(request);
   };
-  const helpers = ((await auth.$context) as unknown as { test: TestHelpers }).test;
 
-  async function loginAs(email: string) {
-    const created = await helpers.saveUser(helpers.createUser({ email, name: email }));
-    const { headers } = await helpers.login({ userId: created.id });
-    const request = (path: string, init: RequestInit = {}) => {
-      const merged = new Headers(init.headers);
-      for (const [key, value] of headers) merged.set(key, value);
-      return app.request(path, { ...init, headers: merged });
-    };
-    return { userId: created.id, headers, request };
-  }
+  const login = await app.request("/api/auth/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ token: TEST_TOKEN }),
+  });
+  const cookie = sessionCookie(login) ?? "";
+  const request = (path: string, init: RequestInit = {}) => {
+    const headers = new Headers(init.headers);
+    headers.set("cookie", cookie);
+    return app.request(path, { ...init, headers });
+  };
 
-  const owner = await loginAs(TEST_EMAILS.owner);
   return {
     app,
     fetchRoot,
@@ -223,37 +216,16 @@ export async function createTestApp(
     gamePages,
     clock,
     auth,
-    helpers,
-    loginAs,
-    userId: owner.userId,
-    request: owner.request,
+    cookie,
+    userId: OWNER_ID,
+    request,
   };
 }
 
-const b64 = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
-
-/**
- * Login com Google simulado: o endpoint de token do Google devolve um id_token montado aqui
- * (no fluxo com code, a Better Auth só decodifica o id_token). Devolve a função que desfaz.
- */
-export function mockGoogleLogin(email: string): () => void {
-  const idToken = [
-    b64({ alg: "none", typ: "JWT" }),
-    b64({ sub: `google-${email}`, email, email_verified: true, name: "Fulano", picture: null }),
-    "",
-  ].join(".");
-  const realFetch = globalThis.fetch;
-  const spy = spyOn(globalThis, "fetch").mockImplementation((async (input, init) => {
-    const url = input instanceof Request ? input.url : String(input);
-    if (url.startsWith("https://oauth2.googleapis.com/token")) {
-      return Response.json({
-        access_token: "at",
-        id_token: idToken,
-        token_type: "Bearer",
-        expires_in: 3600,
-      });
-    }
-    return realFetch(input, init);
-  }) as typeof fetch);
-  return () => spy.mockRestore();
+/** `nome=valor` do cookie de sessão que a resposta define, se definir. */
+export function sessionCookie(res: Response): string | undefined {
+  return res.headers
+    .getSetCookie()
+    .find((c) => c.startsWith(`${SESSION_COOKIE}=`))
+    ?.split(";")[0];
 }

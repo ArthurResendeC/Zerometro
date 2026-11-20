@@ -1,10 +1,12 @@
 import { Hono } from "hono";
-import type { AuthGateway } from "./auth";
+import type { Auth } from "./auth";
 import type { AppEnv } from "./lib/hono";
 import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
 import type { Db } from "./db/client";
+import type { AuthSession } from "../shared/auth";
 import { AppError, type ApiErrorBody } from "./errors";
+import { createAuthRoutes, requireAuth } from "./routes/auth";
 import { createCompletionRoutes } from "./routes/completions";
 import { createFeedRoutes } from "./routes/feeds";
 import { healthRoutes } from "./routes/health";
@@ -22,8 +24,8 @@ import type { IgdbApi } from "./services/igdb";
 
 export interface AppDeps {
   db: Db;
-  /** Login (Better Auth) e resolução do usuário da requisição; injetável para testes. */
-  auth: AuthGateway;
+  /** Token da instância: login do site, sessão por cookie e OAuth do MCP. */
+  auth: Auth;
   igdb: IgdbApi;
   /** Listas do IGDB da tela inicial (cache compartilhado entre requisições). */
   feeds: FeedsService;
@@ -58,20 +60,11 @@ export function createApp(deps: AppDeps) {
         );
       })
       .route("/health", healthRoutes)
-      // Login, callback do Google, logout etc. (públicas).
-      .on(["GET", "POST"], "/auth/*", (c) => deps.auth.handler(c.req.raw))
-      // Daqui para baixo, só com sessão válida de um convidado.
-      .use(async (c, next) => {
-        const userId = await deps.auth.getUserId(c.req.raw.headers);
-        if (!userId) {
-          return c.json<ApiErrorBody>(
-            { error: { code: "unauthorized", message: "Entre para continuar" } },
-            401,
-          );
-        }
-        c.set("userId", userId);
-        await next();
-      })
+      // Entrar e sair (públicas).
+      .route("/auth", createAuthRoutes(deps))
+      // Daqui para baixo, só com o cookie de sessão ou o token.
+      .use(requireAuth(deps.auth))
+      .get("/auth/session", (c) => c.json<AuthSession>({ userId: c.get("userId") }))
       .route("/igdb", createIgdbRoutes(deps))
       .route("/feeds", createFeedRoutes(deps))
       .route("/library", createLibraryRoutes(deps))

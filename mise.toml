@@ -49,6 +49,10 @@ env = { NODE_ENV = "production" }
 dir = "{{config_root}}/dist"
 run = "bun index.js"
 
+[tasks.token]
+description = "Gera um token de acesso novo (ex.: mise run token >> .env)"
+run = "bun -e 'console.log(`ZEROMETRO_TOKEN=${Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString(\"hex\")}`)'"
+
 [tasks.icons]
 description = "Gera os ícones PNG do app (PWA e iOS) a partir da chama em pixel art"
 run = "bun scripts/generate-icons.ts"
@@ -60,13 +64,12 @@ run = "docker build -t zerometro:local ."
 [tasks."docker:run"]
 description = "Roda a imagem como na Railway: PORT injetada, volume em /data e segredos do .env"
 depends = ["docker:build"]
-# Segredos passados por nome (-e VAR), sem valor na linha de comando. Porta 3000 = redirect do Google em dev.
+# Segredos passados por nome (-e VAR), sem valor na linha de comando.
 run = """
 docker rm -f zerometro-local >/dev/null 2>&1 || true
 docker run --rm --name zerometro-local -p 3000:8080 -e PORT=8080 \
-  -v zerometro-data-local:/data -e BETTER_AUTH_URL=http://localhost:3000 \
-  -e BETTER_AUTH_SECRET -e GOOGLE_CLIENT_ID -e GOOGLE_CLIENT_SECRET \
-  -e IGDB_CLIENT_ID -e IGDB_CLIENT_SECRET -e ALLOWED_EMAILS \
+  -v zerometro-data-local:/data -e PUBLIC_URL=http://localhost:3000 \
+  -e ZEROMETRO_TOKEN -e IGDB_CLIENT_ID -e IGDB_CLIENT_SECRET \
   zerometro:local
 """
 

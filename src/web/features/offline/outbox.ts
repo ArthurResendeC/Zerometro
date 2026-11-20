@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { OWNER_ID } from "@shared/auth";
 import type { OutboxItem } from "./outbox-core";
 
 // Fila de operações feitas sem conexão (ou enquanto havia algo na fila), guardada no
@@ -36,7 +37,14 @@ export const useOutbox = create<OutboxState>()(
     }),
     {
       name: OUTBOX_STORAGE_KEY,
-      version: 1,
+      // v2: a instância passou a ter um dono só (OWNER_ID); o que estava na fila é dele.
+      version: 2,
+      migrate: (persisted) => {
+        const items = (persisted as { items?: unknown } | undefined)?.items;
+        if (!Array.isArray(items)) return { items: [] };
+        for (const item of items as OutboxItem[]) item.userId = OWNER_ID;
+        return { items };
+      },
       storage: createJSONStorage(() => localStorage),
       partialize: ({ items }) => ({ items }),
       // Editado à mão ou corrompido: melhor uma fila vazia do que quebrar o app.

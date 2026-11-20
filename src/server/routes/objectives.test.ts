@@ -9,7 +9,7 @@ function json(body: unknown, method = "POST"): RequestInit {
 
 describe("/api/objectives", () => {
   test("criar, listar, incrementar, editar, reordenar e apagar", async () => {
-    const { request, loginAs } = await createTestApp();
+    const { request } = await createTestApp();
     const created = await request("/api/library", json({ igdbId: 114283, status: "playing" }));
     const { item } = (await created.json()) as { item: LibraryItem };
     const base = `/api/library/${item.gameId}/objectives`;
@@ -33,11 +33,6 @@ describe("/api/objectives", () => {
     expect(
       ((await reordered.json()) as { objectives: ObjectiveItem[] }).objectives.map((o) => o.id),
     ).toEqual(ids);
-
-    const friend = await loginAs("amigo@zerometro.test");
-    expect(
-      (await friend.request(`/api/objectives/${objective.id}`, { method: "DELETE" })).status,
-    ).toBe(404);
 
     const deleted = await request(`/api/objectives/${objective.id}`, { method: "DELETE" });
     expect(await deleted.json()).toMatchObject({ summary: { total: 1 } });

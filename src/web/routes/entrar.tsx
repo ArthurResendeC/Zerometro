@@ -1,16 +1,17 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { authClient, isOAuthFlow, safeRedirect } from "@/lib/auth-client";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ApiError } from "@/lib/api";
+import { safeRedirect, signIn } from "@/lib/auth";
+import { authKeys } from "@/lib/queries";
 
-// looseObject: no fluxo OAuth dos clientes MCP a URL traz a query assinada (client_id, sig...),
-// que precisa continuar na URL para o oauthProviderClient mandar junto do login.
-const searchSchema = z.looseObject({
+const searchSchema = z.object({
   redirect: z.string().optional().catch(undefined),
-  /** Erro devolvido pela Better Auth no callback do Google. */
-  error: z.string().optional().catch(undefined),
 });
 
 export const Route = createFileRoute("/entrar")({
@@ -18,42 +19,34 @@ export const Route = createFileRoute("/entrar")({
   component: LoginPage,
 });
 
-function errorMessage(code: string): string {
-  // not_invited vem do hook de convidados no servidor; access_denied, do "Cancelar" no Google.
-  if (code === "not_invited" || code === "unable_to_create_user") {
-    return "Esse e-mail não está na lista de convidados. Peça um convite ao dono do Zerômetro.";
+function failureMessage(error: unknown): string {
+  if (error instanceof ApiError && error.status === 401) {
+    return "Token incorreto. Confira com quem cuida desta instância.";
   }
-  if (code === "access_denied") return "Login cancelado.";
-  return "Não deu para entrar. Tente de novo.";
+  if (error instanceof ApiError) {
+    return `O servidor recusou o login (erro ${error.status}). Tente de novo mais tarde.`;
+  }
+  return "Não deu para falar com o servidor. Confira a conexão e tente de novo.";
 }
 
 function LoginPage() {
-  const search = Route.useSearch();
-  const { redirect, error } = search;
-  const connectingApp = isOAuthFlow(search);
-  const [pending, setPending] = useState(false);
-  const [failure, setFailure] = useState<string | null>(null);
+  const { redirect } = Route.useSearch();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [token, setToken] = useState("");
 
-  const signIn = async () => {
-    setPending(true);
-    setFailure(null);
-    const result = await authClient.signIn.social({
-      provider: "google",
-      callbackURL: safeRedirect(redirect),
-      errorCallbackURL: "/entrar",
-    });
-    // Em caso de sucesso o navegador já está indo para o Google.
-    if (result.error) {
-      setPending(false);
-      setFailure(
-        result.error.status
-          ? `O servidor recusou o login (erro ${result.error.status}). Tente de novo mais tarde.`
-          : "Não deu para falar com o servidor. Confira a conexão e tente de novo.",
-      );
-    }
+  const login = useMutation({
+    mutationFn: signIn,
+    onSuccess: async (session) => {
+      queryClient.setQueryData(authKeys.session, session);
+      router.history.push(safeRedirect(redirect));
+    },
+  });
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (token.trim()) login.mutate(token.trim());
   };
-
-  const message = failure ?? (error && errorMessage(error));
 
   return (
     <main className="flex min-h-dvh items-center justify-center px-4">
@@ -62,46 +55,39 @@ function LoginPage() {
           <h1 className="display-lg">
             Zer<span className="text-primary">ô</span>metro
           </h1>
-          <p className="text-muted-foreground">
-            {connectingApp
-              ? "Entre para conectar um aplicativo (ex.: o Claude) à sua conta. Depois você escolhe se autoriza."
-              : "Seu backlog de jogos e o tempo que você joga."}
-          </p>
+          <p className="text-muted-foreground">Seu backlog de jogos e o tempo que você joga.</p>
         </div>
-        <Button variant="outline" size="lg" onClick={signIn} disabled={pending}>
-          <GoogleIcon /> {pending ? "Abrindo o Google…" : "Entrar com Google"}
-        </Button>
-        {message && (
-          <p role="alert" className="text-sm text-destructive">
-            <span aria-hidden>✕ </span>
-            {message}
-          </p>
-        )}
-        <p className="text-xs text-muted-foreground">Acesso só para convidados.</p>
+        <form onSubmit={submit} className="w-full space-y-3 text-left">
+          <Label htmlFor="token">Token de acesso</Label>
+          <Input
+            id="token"
+            type="password"
+            autoComplete="current-password"
+            value={token}
+            onChange={(event) => setToken(event.target.value)}
+            aria-invalid={login.isError || undefined}
+            aria-describedby={login.isError ? "login-error" : undefined}
+          />
+          {login.isError && (
+            <p id="login-error" role="alert" className="text-sm text-destructive">
+              <span aria-hidden>✕ </span>
+              {failureMessage(login.error)}
+            </p>
+          )}
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full"
+            disabled={login.isPending || !token.trim()}
+          >
+            {login.isPending ? "Entrando…" : "Entrar"}
+          </Button>
+        </form>
+        <p className="text-xs text-muted-foreground">
+          O token fica no <code>.env</code> da instância (<code>ZEROMETRO_TOKEN</code>). O acesso
+          vale 30 dias neste aparelho.
+        </p>
       </Card>
     </main>
-  );
-}
-
-function GoogleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden className="size-4">
-      <path
-        fill="#4285F4"
-        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"
-      />
-      <path
-        fill="#34A853"
-        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M5.84 14.1A6.6 6.6 0 0 1 5.5 12c0-.73.13-1.44.34-2.1V7.06H2.18A11 11 0 0 0 1 12c0 1.77.43 3.45 1.18 4.94l3.66-2.84z"
-      />
-      <path
-        fill="#EA4335"
-        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15A10.96 10.96 0 0 0 12 1 11 11 0 0 0 2.18 7.06l3.66 2.84C6.71 7.3 9.14 5.38 12 5.38z"
-      />
-    </svg>
   );
 }

@@ -17,8 +17,8 @@ const STATIC_URLS = [OFFLINE_URL, "/icons/icon-192.png", "/icons/icon-512.png"];
 /** Internet ruim: depois disso, abre a versão guardada (a da rede atualiza o cache quando chegar). */
 const NAVIGATION_TIMEOUT_MS = 4000;
 
-// Login com Google, OAuth do MCP e a API passam direto, sem o service worker no meio.
-const BYPASS = ["/api/", "/mcp", "/.well-known/", "/sw.js"];
+// O OAuth do MCP e a API passam direto, sem o service worker no meio.
+const BYPASS = ["/api/", "/mcp", "/.well-known/", "/authorize", "/token", "/register", "/sw.js"];
 const FONT_HOSTS = new Set(["fonts.googleapis.com", "fonts.gstatic.com"]);
 /** Capas e imagens do IGDB (imutáveis, com CORS): as que já apareceram ficam para o offline. */
 const COVER_HOST = "images.igdb.com";

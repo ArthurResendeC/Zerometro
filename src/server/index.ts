@@ -1,6 +1,6 @@
 import { env } from "./env";
 import { createApp } from "./app";
-import { createAuth, createAuthGateway, parseEmailList, resolvePublicUrl } from "./auth";
+import { createAuth, resolvePublicUrl, tokenProblem } from "./auth";
 import { db } from "./db";
 import { runMigrations } from "./db/client";
 import { createRootRoutes } from "./mcp/routes";
@@ -12,12 +12,10 @@ import index from "../web/index.html";
 
 const isProduction = env.NODE_ENV === "production";
 
-// Migrations no boot: na Railway o volume do SQLite só é montado quando o container sobe
-// (não no build nem no pre-deploy). Uma réplica só, então não há corrida.
-runMigrations(db);
-
-if (!env.BETTER_AUTH_SECRET && isProduction) {
-  console.error("BETTER_AUTH_SECRET é obrigatório em produção (openssl rand -base64 32)");
+// Configuração antes de tudo: um deploy que não sobe não pode ter migrado o banco.
+const problem = tokenProblem(env.ZEROMETRO_TOKEN);
+if (problem) {
+  console.error(problem);
   process.exit(1);
 }
 let publicUrl: string;
@@ -27,29 +25,18 @@ try {
   console.error((error as Error).message);
   process.exit(1);
 }
-const allowedEmails = parseEmailList(env.ALLOWED_EMAILS);
-const google =
-  env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
-    ? { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }
-    : undefined;
-if (!google)
-  console.warn("⚠️  GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET ausentes: ninguém consegue entrar");
-if (allowedEmails.length === 0) console.warn("⚠️  ALLOWED_EMAILS vazio: ninguém consegue entrar");
 
-const auth = createAuth({
-  db,
-  // Em dev sem segredo, as sessões só valem até reiniciar o servidor.
-  secret: env.BETTER_AUTH_SECRET ?? crypto.randomUUID() + crypto.randomUUID(),
-  baseURL: publicUrl,
-  google,
-  allowedEmails,
-});
+// Migrations no boot: na Railway o volume do SQLite só é montado quando o container sobe
+// (não no build nem no pre-deploy). Uma réplica só, então não há corrida.
+runMigrations(db);
+
+const auth = createAuth({ token: env.ZEROMETRO_TOKEN!, publicUrl });
 
 const igdb = createIgdbFromEnv(db, env);
 const clock = { now: () => new Date(), timeZone: env.TZ };
 const deps = {
   db,
-  auth: createAuthGateway(auth, allowedEmails),
+  auth,
   igdb,
   feeds: createFeedsService({ db, igdb, clock }),
   gamePages: createGamePagesService({ db, igdb, clock }),
@@ -58,14 +45,16 @@ const deps = {
 const app = createApp(deps);
 const root = createRootRoutes(deps);
 
-// Um único processo: API (Hono) em /api/*, MCP em /mcp, descoberta OAuth em /.well-known/*,
-// arquivos do PWA com URL fixa (ícones, /sw.js, /offline.html) e a SPA (HTML import do Bun) no resto.
+// Um único processo: API (Hono) em /api/*, MCP em /mcp, OAuth do MCP na raiz (/.well-known/*,
+// /register, /authorize, /token), arquivos do PWA com URL fixa (ícones, /sw.js, /offline.html)
+// e a SPA (HTML import do Bun) no resto.
 const server = Bun.serve({
   port: env.PORT,
   routes: {
     "/api/*": (req) => app.fetch(req),
     "/mcp": root.mcp,
-    "/.well-known/*": root.wellKnown,
+    ...root.oauth,
+    "/.well-known/*": () => new Response("Not found", { status: 404 }),
     ...createPublicRoutes(PUBLIC_DIR),
     "/*": index,
   },

@@ -50,18 +50,15 @@ export default defineRailway(() => {
       TZ: fromEnv("TZ") ?? "America/Sao_Paulo",
       DATABASE_PATH: `${DATA_DIR}/zerometro.db`,
       PORT: String(PORT),
-      // Origem confiável do login e base do redirect do Google. Com domínio próprio a Railway
-      // não preenche RAILWAY_PUBLIC_DOMAIN com ele; sem domínio próprio, o servidor usa o gerado.
-      ...(domain && { BETTER_AUTH_URL: `https://${domain}` }),
+      // Emissor do OAuth do MCP e cookie Secure. Com domínio próprio a Railway não preenche
+      // RAILWAY_PUBLIC_DOMAIN com ele; sem domínio próprio, o servidor usa o gerado.
+      ...(domain && { PUBLIC_URL: `https://${domain}` }),
       //
       // Segredos: nunca neste arquivo (vai para o git). Defina uma vez com
       // `railway variable set NOME=valor`; preserve() mantém o valor que já está lá.
-      BETTER_AUTH_SECRET: preserve(),
-      GOOGLE_CLIENT_ID: preserve(),
-      GOOGLE_CLIENT_SECRET: preserve(),
+      ZEROMETRO_TOKEN: preserve(),
       IGDB_CLIENT_ID: preserve(),
       IGDB_CLIENT_SECRET: preserve(),
-      ALLOWED_EMAILS: preserve(),
     },
   });
 

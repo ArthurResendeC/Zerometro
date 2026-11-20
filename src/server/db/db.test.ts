@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+import { mkdirSync, mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { eq } from "drizzle-orm";
-import { createTestDb, type Db, MIGRATIONS_FOLDER } from "./client";
+import { createDb, createTestDb, type Db, MIGRATIONS_FOLDER, runMigrations } from "./client";
 import { completions, games, libraryEntries, objectives, playSessions, user } from "./schema";
 
 const U = "user-1";
@@ -205,6 +207,88 @@ describe("migration 0005: zerados viram conclusões", () => {
     expect(rows.toSorted((a, b) => a.gameId - b.gameId)).toEqual([
       { gameId: game.id, type: "main", on: "2026-03-10" },
       { gameId: other.id, type: "main", on: "2026-05-01" },
+    ]);
+  });
+});
+
+/** Banco migrado só até `last` (uma cópia da pasta de migrations com o journal cortado). */
+async function migratedUntil(last: number) {
+  const folder = mkdtempSync(join(tmpdir(), "zerometro-migrations-"));
+  mkdirSync(join(folder, "meta"));
+  const journal = await Bun.file(join(MIGRATIONS_FOLDER, "meta", "_journal.json")).json();
+  journal.entries = journal.entries.filter((entry: { idx: number }) => entry.idx <= last);
+  await Bun.write(join(folder, "meta", "_journal.json"), JSON.stringify(journal));
+  await Promise.all(
+    journal.entries.map((entry: { tag: string }) =>
+      Bun.write(
+        join(folder, `${entry.tag}.sql`),
+        Bun.file(join(MIGRATIONS_FOLDER, `${entry.tag}.sql`)),
+      ),
+    ),
+  );
+  const old = createDb(":memory:");
+  runMigrations(old, folder);
+  return old;
+}
+
+describe("migration 0007: um dono só, sem as tabelas da Better Auth", () => {
+  test("os dados de quem mais jogou passam para `owner`; os outros usuários saem", async () => {
+    const old = await migratedUntil(6);
+    const sql = (statement: string) => old.$client.run(statement);
+    sql(`INSERT INTO user (id, name, email) VALUES
+      ('google-eu', 'Eu', 'eu@gmail.com'), ('google-amigo', 'Amigo', 'amigo@gmail.com')`);
+    sql(`INSERT INTO session (id, expires_at, token, user_id) VALUES ('s', 0, 't', 'google-eu')`);
+    sql(`INSERT INTO games (id, igdb_id, name) VALUES (1, 1, 'Hades'), (2, 2, 'Celeste')`);
+    sql(`INSERT INTO library_entries (user_id, game_id, status) VALUES
+      ('google-eu', 1, 'playing'), ('google-eu', 2, 'finished'), ('google-amigo', 1, 'backlog')`);
+    sql(`INSERT INTO play_sessions (user_id, game_id, played_on, minutes) VALUES
+      ('google-eu', 1, '2026-11-01', 30), ('google-eu', 1, '2026-11-02', 45),
+      ('google-amigo', 1, '2026-11-02', 10)`);
+    sql(
+      `INSERT INTO completions (user_id, game_id, type, completed_on) VALUES ('google-eu', 2, 'main', '2026-10-01')`,
+    );
+    sql(
+      `INSERT INTO objectives (user_id, game_id, title) VALUES ('google-eu', 1, 'Zerar no Inferno')`,
+    );
+    sql(
+      `INSERT INTO activity_log (user_id, actor, action) VALUES ('google-eu', 'web', 'x'), (NULL, 'job', 'y')`,
+    );
+    sql(`INSERT INTO kv (key, value) VALUES
+      ('settings:google-eu', '{"meu":1}'), ('settings:google-amigo', '{"dele":1}'), ('igdb:token', 'abc')`);
+
+    runMigrations(old);
+
+    const all = (query: string) => old.$client.query(query).all();
+    expect(all("SELECT id FROM user")).toEqual([{ id: "owner" }]);
+    expect(all("SELECT user_id, game_id, status FROM library_entries ORDER BY game_id")).toEqual([
+      { user_id: "owner", game_id: 1, status: "playing" },
+      { user_id: "owner", game_id: 2, status: "finished" },
+    ]);
+    expect(all("SELECT user_id, minutes FROM play_sessions ORDER BY id")).toEqual([
+      { user_id: "owner", minutes: 30 },
+      { user_id: "owner", minutes: 45 },
+    ]);
+    expect(all("SELECT user_id FROM completions")).toEqual([{ user_id: "owner" }]);
+    expect(all("SELECT user_id FROM objectives")).toEqual([{ user_id: "owner" }]);
+    expect(all("SELECT user_id FROM activity_log ORDER BY id")).toEqual([
+      { user_id: "owner" },
+      { user_id: null },
+    ]);
+    expect(all("SELECT key, value FROM kv ORDER BY key")).toEqual([
+      { key: "igdb:token", value: "abc" },
+      { key: "settings:owner", value: '{"meu":1}' },
+    ]);
+    const tables = all("SELECT name FROM sqlite_master WHERE type = 'table'").map(
+      (row) => (row as { name: string }).name,
+    );
+    for (const gone of ["session", "account", "verification", "jwks", "oauth_client"]) {
+      expect(tables).not.toContain(gone);
+    }
+  });
+
+  test("banco novo: só o `owner`", () => {
+    expect(db.$client.query("SELECT id FROM user WHERE id = 'owner'").all()).toEqual([
+      { id: "owner" },
     ]);
   });
 });

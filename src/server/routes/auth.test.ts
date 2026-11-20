@@ -1,184 +1,121 @@
-import { afterEach, describe, expect, test } from "bun:test";
-import type { LibraryItem } from "../../shared/library";
-import { createAuthGateway, LEGACY_OWNER_ID } from "../auth";
-import { createTestDb } from "../db/client";
-import {
-  completions,
-  games,
-  kv,
-  libraryEntries,
-  objectives,
-  playSessions,
-  user,
-} from "../db/schema";
-import { createTestApp, mockGoogleLogin, TEST_EMAILS } from "../testing";
+import { describe, expect, test } from "bun:test";
+import { createAuth, SESSION_COOKIE } from "../auth";
+import { createTestApp, createTestClock, sessionCookie, TEST_TOKEN } from "../testing";
 
-function json(body: unknown, method = "POST"): RequestInit {
-  return { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
-}
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-afterEach(() => restoreGoogle?.());
-let restoreGoogle: (() => void) | undefined;
-const fakeGoogle = (email: string) => {
-  restoreGoogle = mockGoogleLogin(email);
-};
-
-type TestApp = Awaited<ReturnType<typeof createTestApp>>["app"];
-
-/** Clica em "Entrar com Google", "volta" do Google e devolve a resposta do callback. */
-async function signInWithGoogle(app: TestApp, email: string) {
-  fakeGoogle(email);
-  const start = await app.request("/api/auth/sign-in/social", {
+function json(body: unknown): RequestInit {
+  return {
     method: "POST",
-    headers: { "Content-Type": "application/json", Origin: "http://localhost:3000" },
-    body: JSON.stringify({ provider: "google", callbackURL: "/", errorCallbackURL: "/entrar" }),
-  });
-  const { url } = (await start.json()) as { url: string };
-  const state = new URL(url).searchParams.get("state");
-  const cookie = start.headers
-    .getSetCookie()
-    .map((c) => c.split(";")[0])
-    .join("; ");
-  return app.request(`/api/auth/callback/google?code=codigo&state=${state}`, {
-    headers: { cookie },
-  });
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  };
 }
 
-const sessionCookie = (res: Response) =>
-  res.headers
-    .getSetCookie()
-    .find((c) => c.startsWith("better-auth.session_token="))
-    ?.split(";")[0];
-
-describe("login com Google", () => {
-  test("convidado entra e cai na página pedida", async () => {
+describe("login com o token", () => {
+  test("token certo: cookie de sessão de 30 dias, HttpOnly e Lax; abre a API", async () => {
     const { app } = await createTestApp();
-    const res = await signInWithGoogle(app, TEST_EMAILS.friend);
+    const res = await app.request("/api/auth/login", json({ token: TEST_TOKEN }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ userId: "owner" });
 
-    expect(res.status).toBe(302);
-    expect(new URL(res.headers.get("location") ?? "", "http://x").pathname).toBe("/");
-    const cookie = sessionCookie(res);
-    expect(cookie).toBeDefined();
-    expect((await app.request("/api/library", { headers: { cookie: cookie! } })).status).toBe(200);
+    const header = res.headers.getSetCookie().find((c) => c.startsWith(`${SESSION_COOKIE}=`));
+    expect(header).toContain("Max-Age=2592000");
+    expect(header).toContain("HttpOnly");
+    expect(header).toContain("SameSite=Lax");
+    expect(header).toContain("Path=/");
+    expect(header).not.toContain("Secure"); // http://localhost nos testes
+
+    const cookie = sessionCookie(res)!;
+    expect((await app.request("/api/library", { headers: { cookie } })).status).toBe(200);
+    const session = await app.request("/api/auth/session", { headers: { cookie } });
+    expect(await session.json()).toEqual({ userId: "owner" });
   });
 
-  test("não convidado volta para /entrar com error=not_invited e sem sessão", async () => {
+  test("token errado ou vazio: 401/400 e nenhum cookie", async () => {
     const { app } = await createTestApp();
-    const res = await signInWithGoogle(app, "intruso@gmail.com");
+    const wrong = await app.request("/api/auth/login", json({ token: `${TEST_TOKEN}x` }));
+    expect(wrong.status).toBe(401);
+    expect(((await wrong.json()) as { error: { code: string } }).error.code).toBe("invalid_token");
+    expect(sessionCookie(wrong)).toBeUndefined();
 
-    expect(res.status).toBe(302);
-    const location = new URL(res.headers.get("location") ?? "", "http://x");
-    expect(location.pathname).toBe("/entrar");
-    expect(location.searchParams.get("error")).toBe("not_invited");
-    expect(sessionCookie(res)).toBeUndefined();
+    expect((await app.request("/api/auth/login", json({ token: "  " }))).status).toBe(400);
+  });
+
+  test("site com https: o cookie é Secure", async () => {
+    const auth = createAuth({ token: TEST_TOKEN, publicUrl: "https://zerometro.exemplo.com" });
+    expect(auth.cookieOptions().secure).toBe(true);
   });
 });
 
-describe("autenticação", () => {
-  test("API exige sessão; health e rotas da Better Auth são públicas", async () => {
-    const { app, request } = await createTestApp();
-
-    const anonymous = await app.request("/api/library");
-    expect(anonymous.status).toBe(401);
-    expect(await anonymous.json()).toEqual({
-      error: { code: "unauthorized", message: "Entre para continuar" },
-    });
-    expect((await app.request("/api/health")).status).toBe(200);
-    expect(await (await app.request("/api/auth/ok")).json()).toEqual({ ok: true });
-
-    expect((await request("/api/library")).status).toBe(200);
-    const session = await request("/api/auth/get-session");
-    expect(await session.json()).toMatchObject({ user: { email: TEST_EMAILS.owner } });
-  });
-
-  test("cookie inválido → 401", async () => {
+describe("acesso à API", () => {
+  test("sem sessão: 401; health e login são públicos", async () => {
     const { app } = await createTestApp();
-    const res = await app.request("/api/library", {
-      headers: { cookie: "better-auth.session_token=forjado.assinatura" },
+    expect((await app.request("/api/health")).status).toBe(200);
+    expect((await app.request("/api/library")).status).toBe(401);
+    expect((await app.request("/api/auth/session")).status).toBe(401);
+  });
+
+  test("o token como Bearer também vale (scripts)", async () => {
+    const { app } = await createTestApp();
+    const ok = await app.request("/api/library", {
+      headers: { authorization: `Bearer ${TEST_TOKEN}` },
     });
-    expect(res.status).toBe(401);
-  });
-
-  test("e-mail fora da lista de convidados não cria conta", async () => {
-    const { loginAs } = await createTestApp();
-    await expect(loginAs("intruso@zerometro.test")).rejects.toMatchObject({
-      body: { code: "not_invited", message: "Esse e-mail não está na lista de convidados" },
+    expect(ok.status).toBe(200);
+    const wrong = await app.request("/api/library", {
+      headers: { authorization: `Bearer ${TEST_TOKEN}x` },
     });
+    expect(wrong.status).toBe(401);
   });
 
-  test("quem sai da lista de convidados perde o acesso na hora", async () => {
-    const { auth, loginAs } = await createTestApp();
-    const friend = await loginAs(TEST_EMAILS.friend);
+  test("cookie adulterado, de outro token ou vencido: 401", async () => {
+    const clock = createTestClock();
+    const { app, cookie } = await createTestApp({ clock });
+    const [name, value] = cookie.split("=");
+    const [payload, signature] = (value ?? "").split(".");
+    const forged = Buffer.from(JSON.stringify({ iat: 0, exp: 9_999_999_999 })).toString(
+      "base64url",
+    );
+    const other = createAuth({
+      token: "outro-token-de-outra-instancia-com-32-chars",
+      publicUrl: "http://localhost:3000",
+      now: () => clock.now().getTime(),
+    }).issueSession();
 
-    expect((await friend.request("/api/library")).status).toBe(200);
-    const onlyOwner = createAuthGateway(auth, [TEST_EMAILS.owner]);
-    expect(await onlyOwner.getUserId(friend.headers)).toBeNull();
+    const answers = await Promise.all(
+      [`${forged}.${signature}`, `${payload}.x`, other, "lixo"].map((bad) =>
+        app.request("/api/library", { headers: { cookie: `${name}=${bad}` } }),
+      ),
+    );
+    expect(answers.map((res) => res.status)).toEqual([401, 401, 401, 401]);
+
+    clock.set(new Date(clock.now().getTime() + 30 * DAY_MS));
+    expect((await app.request("/api/library", { headers: { cookie } })).status).toBe(401);
   });
 
-  test("cada convidado vê só a própria biblioteca", async () => {
-    const { request, loginAs } = await createTestApp();
-    await request("/api/library", json({ igdbId: 114283, status: "playing" }));
-    const friend = await loginAs(TEST_EMAILS.friend);
+  test("um dia de uso renova o cookie por mais 30 dias", async () => {
+    const clock = createTestClock();
+    const { app, cookie } = await createTestApp({ clock });
 
-    const res = await friend.request("/api/library");
-    expect(((await res.json()) as { items: LibraryItem[] }).items).toEqual([]);
+    const sameDay = await app.request("/api/library", { headers: { cookie } });
+    expect(sessionCookie(sameDay)).toBeUndefined();
+
+    clock.set(new Date(clock.now().getTime() + 29 * DAY_MS));
+    const renewed = sessionCookie(await app.request("/api/library", { headers: { cookie } }));
+    expect(renewed).toBeDefined();
+    expect(renewed).not.toBe(cookie);
+
+    // 29 dias depois da renovação, o cookie antigo já venceu e o novo ainda vale.
+    clock.set(new Date(clock.now().getTime() + 29 * DAY_MS));
+    expect((await app.request("/api/library", { headers: { cookie } })).status).toBe(401);
+    expect((await app.request("/api/library", { headers: { cookie: renewed! } })).status).toBe(200);
   });
 
-  test("o dono adota os dados de antes do login no primeiro acesso", async () => {
-    // Estado depois da migration 0002 num banco que já tinha dados.
-    const db = createTestDb();
-    db.insert(user)
-      .values({ id: LEGACY_OWNER_ID, name: "Legado", email: "legacy-owner@zerometro.invalid" })
-      .run();
-    const [game] = db
-      .insert(games)
-      .values({ igdbId: 114283, name: "Persona 5 Royal" })
-      .returning()
-      .all();
-    if (!game) throw new Error("jogo não criado");
-    db.insert(libraryEntries)
-      .values({ userId: LEGACY_OWNER_ID, gameId: game.id, status: "playing" })
-      .run();
-    db.insert(playSessions)
-      .values({ userId: LEGACY_OWNER_ID, gameId: game.id, playedOn: "2026-11-18", minutes: 90 })
-      .run();
-    db.insert(kv)
-      .values({ key: `settings:${LEGACY_OWNER_ID}`, value: '{"streakMinMinutes":45}' })
-      .run();
-    db.insert(completions)
-      .values({ userId: LEGACY_OWNER_ID, gameId: game.id, type: "main", completedOn: "2026-11-10" })
-      .run();
-    db.insert(objectives)
-      .values({ userId: LEGACY_OWNER_ID, gameId: game.id, title: "Todos os confidants" })
-      .run();
-
-    const { request, loginAs } = await createTestApp({ db });
-
-    const library = (await (await request("/api/library")).json()) as { items: LibraryItem[] };
-    expect(library.items).toMatchObject([
-      {
-        name: "Persona 5 Royal",
-        minutesPlayed: 90,
-        displayState: "postgame",
-        objectives: { total: 1, unlocked: 0 },
-      },
-    ]);
-    expect(await (await request("/api/settings")).json()).toMatchObject({
-      settings: { streakMinMinutes: 45 },
-    });
-    expect(
-      db
-        .select()
-        .from(user)
-        .all()
-        .map((u) => u.id),
-    ).not.toContain(LEGACY_OWNER_ID);
-
-    // Outros convidados não herdam nada.
-    const friend = await loginAs(TEST_EMAILS.friend);
-    const friendLibrary = (await (await friend.request("/api/library")).json()) as {
-      items: LibraryItem[];
-    };
-    expect(friendLibrary.items).toEqual([]);
+  test("sair apaga o cookie", async () => {
+    const { app, cookie } = await createTestApp();
+    const res = await app.request("/api/auth/logout", { method: "POST", headers: { cookie } });
+    expect(res.status).toBe(204);
+    const header = res.headers.getSetCookie().find((c) => c.startsWith(`${SESSION_COOKIE}=`));
+    expect(header).toContain("Max-Age=0");
   });
 });

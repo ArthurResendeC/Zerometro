@@ -1,20 +1,18 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
-import { eq } from "drizzle-orm";
-import { activityLog, user } from "../db/schema";
+import { activityLog } from "../db/schema";
 import {
   createFakeIgdb,
   createTestApp,
   fakeFeedGame,
   fakeIgdbGame,
-  mockGoogleLogin,
   TEST_BASE_URL,
-  TEST_EMAILS,
   TEST_TODAY,
+  TEST_TOKEN,
 } from "../testing";
 
 // Fluxo completo de um conector MCP (como o do claude.ai): descoberta → registro dinâmico →
-// login + consentimento → token → chamadas de tools, tudo contra o app de teste.
+// consentimento com o token da instância → token → chamadas de tools, tudo contra o app de teste.
 
 const REDIRECT_URI = "https://claude.ai/api/mcp/auth_callback";
 const MCP_URL = `${TEST_BASE_URL}/mcp`;
@@ -49,15 +47,14 @@ async function discover(app: TestApp) {
     resource: string;
     authorization_servers: string[];
   };
-  const issuer = new URL(prm.authorization_servers[0] ?? "");
   const metadata = (await (
-    await app.fetchRoot(`/.well-known/oauth-authorization-server${issuer.pathname}`)
+    await app.fetchRoot("/.well-known/oauth-authorization-server")
   ).json()) as Record<string, string>;
   return { prm, metadata };
 }
 
-/** Faz o fluxo OAuth inteiro como o usuário dono de `cookie` e devolve o access token. */
-async function authorize(app: TestApp, cookie: string): Promise<string> {
+/** Faz o fluxo OAuth inteiro (o dono aprova com o token) e devolve o access token. */
+async function authorize(app: TestApp): Promise<string> {
   const { metadata } = await discover(app);
   const registered = (await (
     await app.fetchRoot(
@@ -66,41 +63,26 @@ async function authorize(app: TestApp, cookie: string): Promise<string> {
         client_name: "Claude",
         redirect_uris: [REDIRECT_URI],
         token_endpoint_auth_method: "none",
-        grant_types: ["authorization_code", "refresh_token"],
-        response_types: ["code"],
       }),
     )
   ).json()) as { client_id: string };
 
   const verifier = crypto.randomUUID() + crypto.randomUUID();
   const challenge = new Bun.CryptoHasher("sha256").update(verifier).digest("base64url");
-  const url = new URL(metadata.authorization_endpoint ?? "");
-  url.search = new URLSearchParams({
+  const query = new URLSearchParams({
     response_type: "code",
     client_id: registered.client_id,
     redirect_uri: REDIRECT_URI,
-    scope: "openid offline_access",
     state: "estado",
     code_challenge: challenge,
     code_challenge_method: "S256",
     resource: MCP_URL,
-  }).toString();
-
-  const toConsent = await app.fetchRoot(url.toString(), {
-    redirect: "manual",
-    headers: { cookie },
   });
-  const consentPage = new URL(toConsent.headers.get("location") ?? "", TEST_BASE_URL);
-  expect(consentPage.pathname).toBe("/autorizar");
-
-  const consent = (await (
-    await app.fetchRoot("/api/auth/oauth2/consent", {
-      method: "POST",
-      headers: { cookie, "content-type": "application/json" },
-      body: JSON.stringify({ accept: true, oauth_query: consentPage.search.slice(1) }),
-    })
-  ).json()) as { url: string };
-  const callback = new URL(consent.url);
+  const consent = await app.fetchRoot(metadata.authorization_endpoint ?? "", {
+    method: "POST",
+    body: new URLSearchParams([...query, ["decision", "allow"], ["token", TEST_TOKEN]]),
+  });
+  const callback = new URL(consent.headers.get("location") ?? "");
   expect(callback.searchParams.get("state")).toBe("estado");
 
   const token = (await (
@@ -117,7 +99,7 @@ async function authorize(app: TestApp, cookie: string): Promise<string> {
       }),
     })
   ).json()) as { access_token: string; refresh_token?: string };
-  expect(token.refresh_token).toBeString(); // offline_access: o conector renova sozinho
+  expect(token.refresh_token).toBeString(); // o conector renova sozinho
   return token.access_token;
 }
 
@@ -159,92 +141,11 @@ describe("descoberta OAuth", () => {
     const { prm, metadata } = await discover(t);
     expect(prm.resource).toBe(MCP_URL);
     expect(metadata).toMatchObject({
-      issuer: `${TEST_BASE_URL}/api/auth`,
-      registration_endpoint: `${TEST_BASE_URL}/api/auth/oauth2/register`,
-      authorization_endpoint: `${TEST_BASE_URL}/api/auth/oauth2/authorize`,
+      issuer: TEST_BASE_URL,
+      registration_endpoint: `${TEST_BASE_URL}/register`,
+      authorization_endpoint: `${TEST_BASE_URL}/authorize`,
+      token_endpoint: `${TEST_BASE_URL}/token`,
     });
-  });
-
-  test("login com Google no meio do fluxo continua direto para o consentimento", async () => {
-    const restore = mockGoogleLogin(TEST_EMAILS.friend);
-    try {
-      const { metadata } = await discover(t);
-      const { client_id } = (await (
-        await t.fetchRoot(
-          metadata.registration_endpoint ?? "",
-          json({ redirect_uris: [REDIRECT_URI], token_endpoint_auth_method: "none" }),
-        )
-      ).json()) as { client_id: string };
-      const url = new URL(metadata.authorization_endpoint ?? "");
-      url.search = new URLSearchParams({
-        response_type: "code",
-        client_id,
-        redirect_uri: REDIRECT_URI,
-        scope: "openid offline_access",
-        code_challenge: "x".repeat(43),
-        code_challenge_method: "S256",
-        resource: MCP_URL,
-      }).toString();
-      const login = new URL(
-        (await t.fetchRoot(url.toString(), { redirect: "manual" })).headers.get("location") ?? "",
-        TEST_BASE_URL,
-      );
-
-      // O que a tela /entrar faz: POST do login social com a query assinada (oauth_query).
-      const start = await t.fetchRoot("/api/auth/sign-in/social", {
-        method: "POST",
-        headers: { "content-type": "application/json", origin: TEST_BASE_URL },
-        body: JSON.stringify({
-          provider: "google",
-          callbackURL: "/",
-          errorCallbackURL: "/entrar",
-          oauth_query: login.search.slice(1),
-        }),
-      });
-      const google = new URL(((await start.json()) as { url: string }).url);
-      const cookie = start.headers
-        .getSetCookie()
-        .map((c) => c.split(";")[0])
-        .join("; ");
-
-      // Volta do Google (navegação do navegador): em vez do callbackURL, segue o fluxo OAuth
-      // até o consentimento. Sem os cabeçalhos de navegação, o plugin responde em JSON.
-      const back = await t.fetchRoot(
-        `/api/auth/callback/google?code=codigo&state=${google.searchParams.get("state")}`,
-        {
-          headers: { cookie, accept: "text/html", "sec-fetch-mode": "navigate" },
-          redirect: "manual",
-        },
-      );
-      const next = new URL(back.headers.get("location") ?? "", TEST_BASE_URL);
-      expect(next.pathname).toBe("/autorizar");
-      expect(next.searchParams.get("client_id")).toBe(client_id);
-    } finally {
-      restore();
-    }
-  });
-
-  test("sem sessão, o authorize manda para a tela de login com a query assinada", async () => {
-    const { metadata } = await discover(t);
-    const url = new URL(metadata.authorization_endpoint ?? "");
-    const registered = (await (
-      await t.fetchRoot(
-        metadata.registration_endpoint ?? "",
-        json({ redirect_uris: [REDIRECT_URI], token_endpoint_auth_method: "none" }),
-      )
-    ).json()) as { client_id: string };
-    url.search = new URLSearchParams({
-      response_type: "code",
-      client_id: registered.client_id,
-      redirect_uri: REDIRECT_URI,
-      code_challenge: "x".repeat(43),
-      code_challenge_method: "S256",
-      resource: MCP_URL,
-    }).toString();
-    const res = await t.fetchRoot(url.toString(), { redirect: "manual" });
-    const login = new URL(res.headers.get("location") ?? "", TEST_BASE_URL);
-    expect(login.pathname).toBe("/entrar");
-    expect(login.searchParams.get("sig")).toBeString();
   });
 });
 
@@ -255,8 +156,7 @@ describe("tools", () => {
     await t.request("/api/library", json({ igdbId: 2, status: "backlog" }));
     await t.request("/api/sessions", json({ gameId: 1, minutes: 45 }));
 
-    const cookie = (await t.helpers.login({ userId: t.userId })).headers.get("cookie") ?? "";
-    const client = await connect(t, await authorize(t, cookie));
+    const client = await connect(t, await authorize(t));
 
     const { tools } = await client.listTools();
     const readOnly = tools
@@ -326,8 +226,7 @@ describe("tools", () => {
   });
 
   test("escrita: adiciona jogo, timer, registra sessão e muda status, como actor mcp", async () => {
-    const cookie = (await t.helpers.login({ userId: t.userId })).headers.get("cookie") ?? "";
-    const client = await connect(t, await authorize(t, cookie));
+    const client = await connect(t, await authorize(t));
 
     const added = await callJson(client, "add_game", { igdbId: 12517 });
     expect(added.data).toMatchObject({ name: "Undertale", status: "backlog" });
@@ -393,8 +292,7 @@ describe("tools", () => {
   });
 
   test("tempo anterior: add_game e set_prior_playtime, fora das estatísticas", async () => {
-    const cookie = (await t.helpers.login({ userId: t.userId })).headers.get("cookie") ?? "";
-    const client = await connect(t, await authorize(t, cookie));
+    const client = await connect(t, await authorize(t));
 
     const added = await callJson(client, "add_game", {
       igdbId: 114283,
@@ -423,8 +321,7 @@ describe("tools", () => {
   });
 
   test("conclusões: zerei continuando a jogar (pós-jogo), platinei e apagar com confirmação", async () => {
-    const cookie = (await t.helpers.login({ userId: t.userId })).headers.get("cookie") ?? "";
-    const client = await connect(t, await authorize(t, cookie));
+    const client = await connect(t, await authorize(t));
     await callJson(client, "add_game", { igdbId: 114283, status: "playing" });
 
     const zerei = await callJson(client, "mark_completed", { game: "persona" });
@@ -473,8 +370,7 @@ describe("tools", () => {
   });
 
   test("objetivos: criar contador, incrementar, concluir e sugerir 100%; apagar com confirmação", async () => {
-    const cookie = (await t.helpers.login({ userId: t.userId })).headers.get("cookie") ?? "";
-    const client = await connect(t, await authorize(t, cookie));
+    const client = await connect(t, await authorize(t));
     await callJson(client, "add_game", { igdbId: 114283, status: "playing" });
 
     const korok = await callJson(client, "add_objective", {
@@ -515,34 +411,12 @@ describe("tools", () => {
     await client.close();
   });
 
-  test("cada token só enxerga os dados do próprio usuário", async () => {
+  test("o token da instância como Bearer também conecta (ex.: claude mcp add --header)", async () => {
     await t.request("/api/library", json({ igdbId: 114283, status: "playing" }));
-    const friend = await t.loginAs(TEST_EMAILS.friend);
-
-    const client = await connect(t, await authorize(t, friend.headers.get("cookie") ?? ""));
-    expect((await callJson(client, "list_library")).data).toEqual({ games: [] });
+    const client = await connect(t, TEST_TOKEN);
+    const { games } = (await callJson(client, "list_library")).data;
+    expect(games.map((g: { name: string }) => g.name)).toEqual(["Persona 5 Royal"]);
     await client.close();
-  });
-
-  test("quem sai da lista de convidados perde o acesso na hora (403), mesmo com token válido", async () => {
-    const friend = await t.loginAs(TEST_EMAILS.friend);
-    const token = await authorize(t, friend.headers.get("cookie") ?? "");
-
-    // Mesmo efeito de tirar o e-mail de ALLOWED_EMAILS: o e-mail da conta não está mais na lista.
-    t.db
-      .update(user)
-      .set({ email: "ex-amigo@zerometro.test" })
-      .where(eq(user.id, friend.userId))
-      .run();
-    const res = await t.fetchRoot("/mcp", {
-      ...json({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
-      headers: {
-        "content-type": "application/json",
-        accept: "application/json, text/event-stream",
-        authorization: `Bearer ${token}`,
-      },
-    });
-    expect(res.status).toBe(403);
   });
 
   test("token inválido → 401", async () => {

@@ -6,23 +6,19 @@ import {
   redirect,
   useLocation,
 } from "@tanstack/react-router";
-import { ChartIcon, ListIcon, PlusIcon, TimerIcon } from "@/components/icons";
+import { ChartIcon, ListIcon, PlusIcon, SettingsIcon, TimerIcon } from "@/components/icons";
 import { LogSessionDialog } from "@/components/log-session-dialog";
 import { TimerBar } from "@/components/timer";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
-import { UserAvatar } from "@/components/user-avatar";
 import { SoundToggle } from "@/features/audio/sound-toggle";
 import { OfflineBanner } from "@/features/offline/offline-banner";
 import { PendingIndicator } from "@/features/offline/pending-indicator";
 import { InstallAppToast } from "@/features/pwa/install-toast";
-import { isOAuthFlow } from "@/lib/auth-client";
 import { sessionQuery } from "@/lib/queries";
 import { useLogSessionDialog } from "@/stores/log-session-dialog";
 
 const LOGIN_PATH = "/entrar";
-/** Consentimento do fluxo OAuth dos clientes MCP: tela cheia, sem o cabeçalho do app. */
-const CONSENT_PATH = "/autorizar";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   // Tudo exige login, menos a própria tela de login.
@@ -33,8 +29,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     if (!session && !onLogin) {
       throw redirect({ to: LOGIN_PATH, search: { redirect: location.href } });
     }
-    // Logado na tela de login vai para o início, menos no fluxo OAuth (ex.: prompt=login).
-    if (session && onLogin && !isOAuthFlow(location.search)) throw redirect({ to: "/" });
+    // Já entrou: a tela de login leva ao início.
+    if (session && onLogin) throw redirect({ to: "/" });
     return { session };
   },
   component: RootLayout,
@@ -52,7 +48,7 @@ function RootLayout() {
   const { session } = Route.useRouteContext();
   const pathname = useLocation({ select: (l) => l.pathname });
 
-  if (pathname === LOGIN_PATH || pathname === CONSENT_PATH || !session) {
+  if (pathname === LOGIN_PATH || !session) {
     return (
       <>
         <Outlet />
@@ -101,16 +97,16 @@ function RootLayout() {
           </Link>
           <div className="ml-auto flex items-center">
             <PendingIndicator
-              userId={session.user.id}
+              userId={session.userId}
               className="max-sm:h-8 max-sm:gap-0.5 max-sm:px-0.5 sm:mr-1"
             />
             <SoundToggle className="max-sm:size-8 sm:mr-2" />
             <Link
               to="/ajustes"
-              aria-label="Ajustes e conta"
-              className="mr-1 sm:mr-3 [&[aria-current=page]>span]:shadow-[0_0_0_2px_var(--primary)]"
+              aria-label="Ajustes"
+              className="mr-1 flex size-9 items-center justify-center bg-muted text-muted-foreground shadow-[0_0_0_2px_var(--border)] hover:text-foreground aria-[current=page]:text-foreground aria-[current=page]:shadow-[0_0_0_2px_var(--primary)] sm:mr-3"
             >
-              <UserAvatar user={session.user} />
+              <SettingsIcon className="size-4" />
             </Link>
             <Button
               asChild

@@ -3,9 +3,6 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@better-auth/cimd": "^1.7.26",
-    "@better-auth/mcp": "^1.7.26",
-    "@better-auth/oauth-provider": "^1.7.26",
     "@hono/zod-validator": "^0.9.1",
     "@modelcontextprotocol/server": "^2.4.0",
     "@tanstack/query-async-storage-persister": "^5.108.2",
@@ -15,7 +12,6 @@
     "@tanstack/react-query-persist-client": "^5.108.2",
     "@tanstack/react-router": "^1.170.46",
     "@tanstack/react-table": "^9.3.1",
-    "better-auth": "^1.7.26",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.4",

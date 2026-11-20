@@ -140,6 +140,19 @@ export const CalendarIcon = pixelIcon(
   r(2, 0) + r(5, 0) + r(0, 1, 8, 2) + r(0, 3, 1, 5) + r(7, 3, 1, 5) + r(1, 7, 6, 1) + r(2, 4, 2, 2),
   "CalendarIcon",
 );
+export const SettingsIcon = pixelIcon(
+  r(3, 0, 2) +
+    r(1, 1, 6) +
+    r(1, 2, 2) +
+    r(5, 2, 2) +
+    r(0, 3, 2, 2) +
+    r(6, 3, 2, 2) +
+    r(1, 5, 2) +
+    r(5, 5, 2) +
+    r(1, 6, 6) +
+    r(3, 7, 2),
+  "SettingsIcon",
+);
 export const LogOutIcon = pixelIcon(
   r(0, 0, 4, 1) +
     r(0, 1, 1, 6) +

@@ -50,6 +50,13 @@
       "when": 1795195293294,
       "tag": "0006_sessoes_offline",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1795200819274,
+      "tag": "0007_sem_better_auth",
+      "breakpoints": true
     }
   ]
 }

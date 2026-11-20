@@ -39,7 +39,7 @@ describe("/api/library", () => {
   });
 
   test("busca pelo id do IGDB: item, null fora da biblioteca, só do próprio usuário", async () => {
-    const { request, loginAs } = await createTestApp();
+    const { request } = await createTestApp();
     await request("/api/library", json({ igdbId: 114283, status: "backlog" }));
 
     const found = await request("/api/library/igdb/114283");
@@ -52,9 +52,6 @@ describe("/api/library", () => {
     const missing = await request("/api/library/igdb/999");
     expect(missing.status).toBe(200);
     expect(await missing.json()).toEqual({ item: null });
-
-    const friend = await loginAs("amigo@zerometro.test");
-    expect(await (await friend.request("/api/library/igdb/114283")).json()).toEqual({ item: null });
 
     expect((await request("/api/library/igdb/abc")).status).toBe(400);
   });
@@ -105,7 +102,7 @@ describe("/api/library", () => {
   });
 
   test("conclusões: marcar, listar, filtrar pós-jogo e apagar", async () => {
-    const { request, loginAs } = await createTestApp();
+    const { request } = await createTestApp();
     const created = await request("/api/library", json({ igdbId: 114283, status: "playing" }));
     const { item } = (await created.json()) as { item: LibraryItem };
     const base = `/api/library/${item.gameId}/completions`;
@@ -123,12 +120,6 @@ describe("/api/library", () => {
 
     expect((await request(base, json({ type: "platina" }))).status).toBe(400);
     expect((await request(base, json({ type: "main", date: "2030-01-01" }))).status).toBe(400);
-
-    const friend = await loginAs("amigo@zerometro.test");
-    const stolen = await friend.request(`/api/completions/${body.completion.id}`, {
-      method: "DELETE",
-    });
-    expect(stolen.status).toBe(404);
 
     const removed = await request(`/api/completions/${body.completion.id}`, { method: "DELETE" });
     expect(await removed.json()).toMatchObject({ item: { completion: null } });

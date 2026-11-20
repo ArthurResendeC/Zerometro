@@ -16,10 +16,6 @@ import {
   sessionSources,
   ttbSources,
 } from "../../shared/domain";
-import { user } from "./auth-schema";
-
-export * from "./auth-schema";
-export * from "./oauth-schema";
 
 // Datas/horas como texto ISO 8601 em UTC; datas de calendário (played_on) como YYYY-MM-DD no fuso do usuário.
 const nowIso = sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`;
@@ -30,6 +26,26 @@ const updatedAt = () =>
     .notNull()
     .default(nowIso)
     .$onUpdate(() => new Date().toISOString());
+
+const nowMs = sql`(cast(unixepoch('subsecond') * 1000 as integer))`;
+
+/**
+ * O dono dos dados. Cada instância é de uma pessoa só (entra com o ZEROMETRO_TOKEN), então há
+ * uma linha, `owner`; a tabela fica como alvo das FKs de `user_id` (ver OWNER_ID em auth.ts).
+ * Os campos são os da época da Better Auth, que a migration 0007 aposentou.
+ */
+export const user = sqliteTable("user", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
+  image: text("image"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().default(nowMs),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .notNull()
+    .default(nowMs)
+    .$onUpdate(() => new Date()),
+});
 
 const userId = () =>
   text("user_id")
