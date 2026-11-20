@@ -55,6 +55,15 @@ describe("createJsonClient", () => {
     expect((error as Error).message).not.toContain("segredo");
   });
 
+  test("acceptStatus: devolve o corpo de um status de erro esperado", async () => {
+    const { client } = setup(() => Response.json({ erro: "privado" }, { status: 403 }));
+
+    expect(await client.get("x", {}, { acceptStatus: [403] })).toEqual({ erro: "privado" });
+    await expect(client.get("x", {}, { acceptStatus: [400] })).rejects.toBeInstanceOf(
+      AchievementSourceError,
+    );
+  });
+
   test("falha de rede e JSON inválido também viram AchievementSourceError", async () => {
     const offline = setup(() => Promise.reject(new TypeError("fetch failed")));
     await expect(offline.client.get("x")).rejects.toThrow("Falha de rede ao chamar a Fonte (x)");

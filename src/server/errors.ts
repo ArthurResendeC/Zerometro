@@ -85,3 +85,14 @@ export class AchievementSourceNotConfiguredError extends AppError {
     );
   }
 }
+
+/** O perfil da Steam não mostra os jogos (privacidade): a mensagem diz o que mudar. */
+export class SteamProfilePrivateError extends AppError {
+  constructor() {
+    super(
+      409,
+      "steam_profile_private",
+      'O perfil da Steam não mostra os jogos. Na Steam, em Editar perfil → Privacidade, deixe "Detalhes dos jogos" como Público',
+    );
+  }
+}

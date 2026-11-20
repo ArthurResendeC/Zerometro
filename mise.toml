@@ -136,7 +136,7 @@ description = "Testa busca e tempo para zerar no IGDB real (ex.: mise run igdb:s
 run = "bun scripts/igdb-smoke.ts"
 
 [tasks."achievements:smoke"]
-description = "Testa as listas de conquistas na Steam (Celeste) e no RetroAchievements (Super Metroid) reais"
+description = "Testa as listas de conquistas na Steam (Celeste) e no RetroAchievements (Super Metroid) reais; com um perfil da Steam, testa também a sincronização"
 run = "bun scripts/achievements-smoke.ts"
 
 [tasks."demo:capture"]

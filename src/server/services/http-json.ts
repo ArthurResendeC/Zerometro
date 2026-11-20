@@ -20,8 +20,17 @@ export interface JsonClientOptions {
   sleep?: (ms: number) => Promise<unknown>;
 }
 
+export interface JsonGetOptions {
+  /** Status de erro cujo corpo ainda interessa (ex.: a Steam explica o 403 no JSON). */
+  acceptStatus?: number[];
+}
+
 export interface JsonClient {
-  get<T>(path: string, params?: Record<string, string | number>): Promise<T>;
+  get<T>(
+    path: string,
+    params?: Record<string, string | number>,
+    options?: JsonGetOptions,
+  ): Promise<T>;
 }
 
 const DEFAULT_TIMEOUT_MS = 15_000;
@@ -44,7 +53,11 @@ export function createJsonClient(options: JsonClientOptions): JsonClient {
   }
 
   return {
-    async get<T>(path: string, params: Record<string, string | number> = {}): Promise<T> {
+    async get<T>(
+      path: string,
+      params: Record<string, string | number> = {},
+      { acceptStatus = [] }: JsonGetOptions = {},
+    ): Promise<T> {
       const url = new URL(path, baseUrl);
       for (const [key, value] of Object.entries({ ...defaultParams, ...params })) {
         url.searchParams.set(key, String(value));
@@ -63,7 +76,7 @@ export function createJsonClient(options: JsonClientOptions): JsonClient {
         });
       }
 
-      if (!res.ok) {
+      if (!res.ok && !acceptStatus.includes(res.status)) {
         throw new AchievementSourceError(`${label} respondeu HTTP ${res.status} em ${path}`);
       }
       try {
