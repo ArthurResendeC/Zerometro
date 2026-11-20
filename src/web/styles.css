@@ -5,6 +5,15 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* O Bun reescreve o `max-*` do Tailwind (width < X) como max-width: calc(X - .001px), e o Chrome
+   arredonda o .001px: na largura exata do breakpoint (ex.: 1024px) `lg:` e `max-lg:` valiam juntos.
+   O `not (min-width)` é o complemento exato de `lg:` e passa intacto pelo Bun. */
+@custom-variant max-sm (@media not all and (min-width: 40rem));
+@custom-variant max-md (@media not all and (min-width: 48rem));
+@custom-variant max-lg (@media not all and (min-width: 64rem));
+@custom-variant max-xl (@media not all and (min-width: 80rem));
+@custom-variant max-2xl (@media not all and (min-width: 96rem));
+
 :root {
   --radius: 0px;
   --background: #f6efdf;

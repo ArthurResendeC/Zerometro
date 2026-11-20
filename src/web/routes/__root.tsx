@@ -39,8 +39,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 // menu-cursor: o ▶ piscando aparece no hover e no link da página atual (aria-current).
+// A fonte pixel é larga: o menu só cabe por extenso a partir de lg (texto nos links) e xl (texto
+// nos botões). Abaixo disso vira ícone, senão o cabeçalho estoura a janela e cria scroll lateral.
 const navLinkClass =
-  "menu-cursor py-2 pr-2 display-xs max-sm:px-1 max-sm:before:hidden text-muted-foreground hover:bg-accent hover:text-foreground aria-[current=page]:text-foreground";
+  "menu-cursor py-2 pr-2 display-xs max-lg:px-1 max-lg:before:hidden text-muted-foreground hover:bg-accent hover:text-foreground aria-[current=page]:text-foreground";
 
 function RootLayout() {
   const openLogSession = useLogSessionDialog((state) => state.openNew);
@@ -66,10 +68,10 @@ function RootLayout() {
           >
             Zer<span className="text-primary">ô</span>metro
           </Link>
-          {/* No celular o logo já leva ao início. */}
+          {/* Sem espaço para o texto, o logo já leva ao início. */}
           <Link
             to="/"
-            className={`${navLinkClass} hidden sm:inline`}
+            className={`${navLinkClass} hidden lg:inline`}
             activeProps={{ className: "text-foreground" }}
             activeOptions={{ exact: true }}
           >
@@ -81,9 +83,9 @@ function RootLayout() {
             activeProps={{ className: "text-foreground" }}
             aria-label="Biblioteca"
           >
-            {/* No celular, só o ícone: o texto não cabe ao lado dos botões. */}
-            <ListIcon className="sm:hidden" />
-            <span className="max-sm:hidden">Biblioteca</span>
+            {/* Em janelas estreitas, só o ícone: o texto não cabe ao lado dos botões. */}
+            <ListIcon className="lg:hidden" />
+            <span className="max-lg:hidden">Biblioteca</span>
           </Link>
           <Link
             to="/estatisticas"
@@ -91,8 +93,8 @@ function RootLayout() {
             activeProps={{ className: "text-foreground" }}
             aria-label="Estatísticas"
           >
-            <ChartIcon className="sm:hidden" />
-            <span className="max-sm:hidden">Estatísticas</span>
+            <ChartIcon className="lg:hidden" />
+            <span className="max-lg:hidden">Estatísticas</span>
           </Link>
           <div className="ml-auto flex items-center">
             <SoundToggle className="max-sm:size-8 sm:mr-2" />
@@ -108,21 +110,21 @@ function RootLayout() {
               size="sm"
               variant="outline"
               aria-label="Adicionar jogo"
-              className="max-sm:mr-2 max-sm:px-2.5"
+              className="max-sm:mr-2 max-xl:px-2.5"
             >
               <Link to="/adicionar">
                 <PlusIcon />
-                <span className="hidden md:inline">Adicionar jogo</span>
+                <span className="hidden xl:inline">Adicionar jogo</span>
               </Link>
             </Button>
             <Button
               size="sm"
               onClick={() => openLogSession()}
               aria-label="Registrar sessão"
-              className="max-sm:mr-2 max-sm:px-2.5"
+              className="max-sm:mr-2 max-xl:px-2.5"
             >
               <TimerIcon />
-              <span className="hidden md:inline">Registrar sessão</span>
+              <span className="hidden xl:inline">Registrar sessão</span>
             </Button>
           </div>
         </nav>
