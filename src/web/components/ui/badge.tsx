@@ -23,6 +23,8 @@ const badgeVariants = cva(
           "bg-status-paused text-status-paused-foreground [--px-frame-color:var(--status-paused)]",
         dropped:
           "bg-status-dropped text-status-dropped-foreground [--px-frame-color:var(--status-dropped)]",
+        /** Conclusão 100% (dourado). */
+        full: "bg-score-mixed text-score-mixed-foreground [--px-frame-color:var(--score-mixed)]",
       },
     },
     defaultVariants: { variant: "default" },

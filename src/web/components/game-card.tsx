@@ -1,8 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { progressTargetLabels } from "@shared/completions";
 import type { LibraryItem } from "@shared/library";
 import { GameCover } from "@/components/game-cover";
-import { StatusBadge } from "@/components/status-badge";
+import { CompletionBadge, StatusBadge } from "@/components/status-badge";
 import { XpBar } from "@/components/ui/progress";
 import { formatMinutes, formatPercent } from "@/lib/format";
 
@@ -16,6 +17,13 @@ interface GameCardProps {
 export function GameCard({ item, showStatus = false }: GameCardProps) {
   const played = item.minutesPlayed > 0;
   const finished = item.status === "finished";
+  // Pós-jogo sempre aparece (está na aba "Jogando", mas já foi zerado).
+  const statusShown = showStatus || item.displayState === "postgame";
+  // O selo de conclusão só some quando repetiria o de status ("Zerado" uma vez só).
+  const { completion } = item;
+  const completionShown =
+    completion !== null &&
+    !(statusShown && finished && completion.best === "main" && completion.count === 1);
 
   return (
     <Link
@@ -26,7 +34,12 @@ export function GameCard({ item, showStatus = false }: GameCardProps) {
       <div className="relative m-1 bg-card px-2.5 pt-3.5 pb-2.5 pixel-frame transition-transform ease-[steps(2)] group-hover:-translate-y-1 group-hover:pixel-drop group-focus-visible:-translate-y-1 group-focus-visible:outline-[3px] group-focus-visible:outline-offset-[7px] group-focus-visible:outline-ring group-focus-visible:outline-solid before:absolute before:inset-x-6 before:top-1 before:h-1.5 before:bg-[repeating-linear-gradient(90deg,var(--border)_0_4px,transparent_4px_8px)]">
         <div className="relative">
           <GameCover name={item.name} imageId={item.coverImageId} />
-          {showStatus && <StatusBadge status={item.status} className="absolute top-1 left-1" />}
+          {statusShown && (
+            <StatusBadge status={item.displayState} className="absolute top-1 left-1" />
+          )}
+          {completionShown && (
+            <CompletionBadge completion={completion} className="absolute bottom-1 left-1" />
+          )}
         </div>
       </div>
       <div className="space-y-1">
@@ -41,7 +54,7 @@ export function GameCard({ item, showStatus = false }: GameCardProps) {
             <XpBar
               value={item.progress * 100}
               tone={finished || item.progress >= 1 ? "finished" : "primary"}
-              label={`Progresso estimado em ${item.name}`}
+              label={`Progresso estimado em ${item.name}, ${progressTargetLabels[item.progressTarget]}`}
             />
           </div>
         )}

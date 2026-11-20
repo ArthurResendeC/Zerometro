@@ -8,8 +8,10 @@ import type { Db } from "./db/client";
 import {
   account,
   activityLog,
+  completions,
   kv,
   libraryEntries,
+  objectives,
   playSessions,
   session,
   oauthSchema,
@@ -189,6 +191,9 @@ export function adoptLegacyData(db: Db, userId: string): boolean {
       .where(eq(libraryEntries.userId, LEGACY_OWNER_ID))
       .run();
     tx.update(playSessions).set({ userId }).where(eq(playSessions.userId, LEGACY_OWNER_ID)).run();
+    // Sem isso, apagar o dono provisório levaria conclusões e objetivos junto (cascade).
+    tx.update(completions).set({ userId }).where(eq(completions.userId, LEGACY_OWNER_ID)).run();
+    tx.update(objectives).set({ userId }).where(eq(objectives.userId, LEGACY_OWNER_ID)).run();
     tx.update(activityLog).set({ userId }).where(eq(activityLog.userId, LEGACY_OWNER_ID)).run();
     tx.update(kv)
       .set({ key: `settings:${userId}` })

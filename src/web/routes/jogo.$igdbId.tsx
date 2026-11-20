@@ -5,7 +5,7 @@ import type { IgdbGamePage } from "@shared/game-page";
 import { igdbIdSchema } from "@shared/igdb";
 import { AddToLibraryButton, defaultAddStatus } from "@/components/add-to-library-button";
 import { ArrowLeftIcon } from "@/components/icons";
-import { StatusBadge } from "@/components/status-badge";
+import { CompletionBadge, StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AboutTab } from "@/features/game/about-tab";
@@ -94,7 +94,17 @@ function GamePage() {
         )}
       </div>
 
-      <GameHero game={game} badges={item && <StatusBadge status={item.status} />} />
+      <GameHero
+        game={game}
+        badges={
+          item && (
+            <>
+              <StatusBadge status={item.displayState} />
+              {item.completion && <CompletionBadge completion={item.completion} />}
+            </>
+          )
+        }
+      />
 
       {tab === "sessoes" && item ? (
         <MySessions item={item} />

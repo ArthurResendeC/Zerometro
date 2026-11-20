@@ -1,7 +1,13 @@
 import { useForm } from "@tanstack/react-form";
 import { useState } from "react";
 import { todayIn } from "@shared/dates";
-import { type GameStatus, gameStatuses, gameStatusLabels } from "@shared/domain";
+import { progressTargetLabels } from "@shared/completions";
+import {
+  completionTypeLabels,
+  type GameStatus,
+  gameStatuses,
+  gameStatusLabels,
+} from "@shared/domain";
 import {
   type LibraryItem,
   MAX_PRIOR_MINUTES,
@@ -94,13 +100,11 @@ function PlayedSummary({ item }: { item: LibraryItem }) {
               value={item.progress * 100}
               cells={20}
               tone={item.progress >= 1 ? "finished" : "primary"}
-              label="Progresso estimado da história"
+              label={`Progresso estimado ${progressTargetLabels[item.progressTarget]}`}
             />
             <span className="display-xs tabular-nums">{formatPercent(item.progress)}</span>
           </div>
-          <p className="text-xs text-muted-foreground">
-            {formatPercent(item.progress)} da história (estimativa pelo tempo do IGDB)
-          </p>
+          <p className="text-xs text-muted-foreground">{progressText(item, item.progress)}</p>
         </div>
       )}
       {item.priorMinutes > 0 && (
@@ -383,4 +387,16 @@ function RemoveButton({ item }: { item: LibraryItem }) {
       </AlertDialogContent>
     </AlertDialog>
   );
+}
+
+/** O que a barra de progresso mede: a história antes de zerar, depois o próximo nível. */
+function progressText(item: LibraryItem, progress: number): string {
+  const { completion, progressTarget } = item;
+  // Já zerou e o IGDB não tem tempo do próximo nível: a barra fica cheia no nível alcançado.
+  if (completion && progressTarget === completion.best) {
+    return completion.best === "full"
+      ? "Concluído 100%"
+      : `${completionTypeLabels[completion.best]} concluída (o IGDB não tem tempo do próximo nível)`;
+  }
+  return `${formatPercent(progress)} ${progressTargetLabels[progressTarget]} (estimativa pelo tempo do IGDB)`;
 }

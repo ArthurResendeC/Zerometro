@@ -2,7 +2,15 @@ import { afterEach, describe, expect, test } from "bun:test";
 import type { LibraryItem } from "../../shared/library";
 import { createAuthGateway, LEGACY_OWNER_ID } from "../auth";
 import { createTestDb } from "../db/client";
-import { games, kv, libraryEntries, playSessions, user } from "../db/schema";
+import {
+  completions,
+  games,
+  kv,
+  libraryEntries,
+  objectives,
+  playSessions,
+  user,
+} from "../db/schema";
 import { createTestApp, mockGoogleLogin, TEST_EMAILS } from "../testing";
 
 function json(body: unknown, method = "POST"): RequestInit {
@@ -137,11 +145,24 @@ describe("autenticação", () => {
     db.insert(kv)
       .values({ key: `settings:${LEGACY_OWNER_ID}`, value: '{"streakMinMinutes":45}' })
       .run();
+    db.insert(completions)
+      .values({ userId: LEGACY_OWNER_ID, gameId: game.id, type: "main", completedOn: "2026-11-10" })
+      .run();
+    db.insert(objectives)
+      .values({ userId: LEGACY_OWNER_ID, gameId: game.id, title: "Todos os confidants" })
+      .run();
 
     const { request, loginAs } = await createTestApp({ db });
 
     const library = (await (await request("/api/library")).json()) as { items: LibraryItem[] };
-    expect(library.items).toMatchObject([{ name: "Persona 5 Royal", minutesPlayed: 90 }]);
+    expect(library.items).toMatchObject([
+      {
+        name: "Persona 5 Royal",
+        minutesPlayed: 90,
+        displayState: "postgame",
+        objectives: { total: 1, unlocked: 0 },
+      },
+    ]);
     expect(await (await request("/api/settings")).json()).toMatchObject({
       settings: { streakMinMinutes: 45 },
     });

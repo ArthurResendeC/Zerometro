@@ -90,3 +90,17 @@ export function estimateProgress(
   }
   return best === null ? { progress: null, target: "main" } : { progress: 1, target: best };
 }
+
+/** Texto curto dos selos: "Zerado", "Zerado+", "100%". */
+export const completionBadgeLabels: Record<CompletionType, string> = {
+  main: "Zerado",
+  extras: "Zerado+",
+  full: "100%",
+};
+
+/** "45% da história", "60% rumo à história + extras", "80% rumo ao 100%". */
+export const progressTargetLabels: Record<CompletionType, string> = {
+  main: "da história",
+  extras: "rumo à história + extras",
+  full: "rumo ao 100%",
+};

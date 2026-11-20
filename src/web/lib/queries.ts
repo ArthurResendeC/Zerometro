@@ -40,6 +40,7 @@ export const libraryListQuery = (filters: LibraryListQuery = {}) =>
         api.library.$get({
           query: {
             ...(filters.status && { status: filters.status }),
+            ...(filters.displayState && { displayState: filters.displayState }),
             ...(filters.q && { q: filters.q }),
           },
         }),
