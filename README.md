@@ -77,7 +77,7 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
   </tr>
 </table>
 
-<sub>Prints com os dados de exemplo de <code>mise run demo</code>. Capas e tempos para zerar: IGDB.</sub>
+<sub>Prints com os dados de exemplo de <code>mise run demo</code>, refeitos com <code>mise run readme:shots</code>. Capas e tempos para zerar: IGDB.</sub>
 
 ---
 
@@ -201,6 +201,7 @@ Outras tarefas (`mise tasks` lista todas):
 | `mise run demo`                        | sobe com dados de exemplo em `data/demo.db`                                      |
 | `mise run demo:capture`                | congela as páginas de jogo do demo (IGDB real)                                   |
 | `mise run demo:capture-achievements`   | congela as conquistas do demo (Steam real)                                       |
+| `mise run readme:shots [telas]`        | refaz os prints do README num demo novo (precisa de um Chromium headless)        |
 | `mise run icons`                       | gera os ícones PNG do app (PWA e iOS)                                            |
 
 ### Variáveis de ambiente
