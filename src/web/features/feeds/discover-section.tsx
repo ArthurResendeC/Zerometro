@@ -1,10 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 import { type Feed, type FeedGame, type FeedKey, feedTitles } from "@shared/feeds";
 import { genreLabel } from "@shared/genres";
-import { igdbGameUrl } from "@shared/igdb";
 import type { LibraryItem } from "@shared/library";
-import { GameCover } from "@/components/game-cover";
+import { GameRow, GameRowCard } from "@/components/game-row";
 import { AddToLibraryButton, defaultAddStatus } from "@/components/add-to-library-button";
 import { StarIcon } from "@/components/icons";
 import { StatusBadge } from "@/components/status-badge";
@@ -62,7 +60,7 @@ function FeedRow({ feed, inLibrary, today }: FeedRowProps) {
   return (
     <div className="space-y-3">
       <h3 className="display-xs text-muted-foreground">{feedTitles[feed.key]}</h3>
-      <ol className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-3 sm:gap-4">
+      <GameRow>
         {feed.games.map((game, i) => (
           <FeedGameCard
             key={game.igdbId}
@@ -74,7 +72,7 @@ function FeedRow({ feed, inLibrary, today }: FeedRowProps) {
             today={today}
           />
         ))}
-      </ol>
+      </GameRow>
     </div>
   );
 }
@@ -104,40 +102,27 @@ function FeedGameCard({
       : releaseDate;
 
   return (
-    <li className="flex w-28 shrink-0 snap-start flex-col gap-2 sm:w-36">
-      <a
-        href={igdbGameUrl(game)}
-        target="_blank"
-        rel="noreferrer"
-        className="group flex flex-col gap-2 focus-visible:outline-none"
-        title={`${game.name} no IGDB`}
-      >
-        <div className="m-1 bg-card p-2 pixel-frame transition-transform ease-[steps(2)] group-hover:-translate-y-1 group-hover:pixel-drop group-focus-visible:-translate-y-1 group-focus-visible:outline-[3px] group-focus-visible:outline-offset-[7px] group-focus-visible:outline-ring group-focus-visible:outline-solid">
-          <div className="relative">
-            <GameCover name={game.name} imageId={game.coverImageId} />
-            <CoverTag feedKey={feedKey} game={game} rank={rank} />
-          </div>
-        </div>
-        <p className="line-clamp-2 min-h-10 leading-5">{game.name}</p>
-      </a>
-      <p className="truncate text-xs text-muted-foreground">{meta || " "}</p>
-      {/* Altura do botão: selo e botão ficam alinhados entre os cards. */}
-      <div className="mt-auto flex min-h-11 items-center">
-        {libraryItem ? (
-          <Link to="/jogo/$igdbId" params={{ igdbId: libraryItem.igdbId }}>
+    <GameRowCard
+      game={game}
+      tag={<CoverTag feedKey={feedKey} game={game} rank={rank} />}
+      meta={meta || ""}
+      footer={
+        // Altura do botão: selo e botão ficam alinhados entre os cards.
+        <div className="mt-auto flex min-h-11 items-center">
+          {libraryItem ? (
             <StatusBadge status={libraryItem.status} />
-          </Link>
-        ) : (
-          libraryLoaded && (
-            <AddToLibraryButton
-              game={game}
-              status={defaultAddStatus(game.releaseDate, today)}
-              className="w-[calc(100%-0.5rem)]"
-            />
-          )
-        )}
-      </div>
-    </li>
+          ) : (
+            libraryLoaded && (
+              <AddToLibraryButton
+                game={game}
+                status={defaultAddStatus(game.releaseDate, today)}
+                className="w-[calc(100%-0.5rem)]"
+              />
+            )
+          )}
+        </div>
+      }
+    />
   );
 }
 

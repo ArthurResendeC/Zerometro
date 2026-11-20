@@ -123,6 +123,10 @@ run = "npx @modelcontextprotocol/inspector"
 description = "Testa busca e tempo para zerar no IGDB real (ex.: mise run igdb:smoke ocarina of time)"
 run = "bun scripts/igdb-smoke.ts"
 
+[tasks."demo:capture"]
+description = "Congela no demo as páginas de jogo do IGDB real (scripts/demo-game-pages.json); rodar antes do demo:seed quando quiser dados novos"
+run = "bun scripts/capture-demo-games.ts"
+
 [tasks."demo:seed"]
 description = "Recria o banco de demonstração (data/demo.db) com dados de exemplo para prints"
 env = { DATABASE_PATH = "{{config_root}}/data/demo.db" }

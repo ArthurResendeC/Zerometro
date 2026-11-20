@@ -78,11 +78,25 @@ function ResultRow({ game, existing }: { game: IgdbGameSummary; existing?: Libra
 
   return (
     <li className="flex items-center gap-4 p-3">
-      <GameCover name={game.name} imageId={game.coverImageId} size="cover_small" className="w-12" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-lg leading-6">{game.name}</p>
-        <p className="truncate text-xs text-muted-foreground">{meta.join(" · ")}</p>
-      </div>
+      {/* Capa e nome abrem a página do jogo, para ver antes de adicionar. */}
+      <Link
+        to="/jogo/$igdbId"
+        params={{ igdbId: game.igdbId }}
+        className="group flex min-w-0 flex-1 items-center gap-4"
+      >
+        <GameCover
+          name={game.name}
+          imageId={game.coverImageId}
+          size="cover_small"
+          className="w-12 shrink-0"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-lg leading-6 group-hover:underline group-hover:underline-offset-4">
+            {game.name}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">{meta.join(" · ")}</p>
+        </div>
+      </Link>
 
       {existing ? (
         <Link to="/jogo/$igdbId" params={{ igdbId: existing.igdbId }}>

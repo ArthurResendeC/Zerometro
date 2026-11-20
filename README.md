@@ -32,6 +32,12 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
   <sub><b>Estatísticas</b> · últimos 12 meses ou um ano: heatmap, gêneros e jogos mais jogados, ritmo (dia da semana, hora do dia, duração das sessões), recordes e zerados contra o tempo do IGDB</sub>
 </p>
 
+<p align="center">
+  <img src="docs/readme/jogo-sobre.png" alt="Aba Sobre o jogo do Elden Ring: banner, capa, estúdios e plataformas; notas da crítica e do público, tempos para zerar, sinopse, trailer e, ao lado, onde comprar, lançamento por plataforma, português do Brasil, classificação indicativa, temas e links" width="100%">
+  <br>
+  <sub><b>Sobre o jogo</b> · a página de qualquer jogo do IGDB, na biblioteca ou não: notas, tempos para zerar, sinopse, trailer, imagens, onde comprar, se tem PT-BR, classificação indicativa e jogos relacionados</sub>
+</p>
+
 <table>
   <tr>
     <td width="50%" valign="top">
@@ -39,8 +45,8 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
       <br><sub><b>Biblioteca</b> · cartuchos por status, com o progresso estimado como barra de XP</sub>
     </td>
     <td width="50%" valign="top">
-      <img src="docs/readme/jogo.png" alt="Página do Elden Ring com tempo jogado, tempos para zerar do IGDB e histórico de sessões">
-      <br><sub><b>Jogo</b> · tempo jogado contra os tempos do IGDB e o histórico de sessões</sub>
+      <img src="docs/readme/jogo.png" alt="Aba Minhas sessões do Elden Ring: tempo jogado, tempos para zerar do IGDB, barra de progresso e histórico de sessões">
+      <br><sub><b>Minhas sessões</b> · a outra aba da página do jogo: tempo jogado contra os tempos do IGDB e o histórico de sessões</sub>
     </td>
   </tr>
   <tr>
@@ -82,6 +88,7 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 - **Registro de sessões:** manual ("joguei 2h ontem") ou pelo **timer** ("Comecei a jogar" / "Parei"), que roda no servidor e não se perde ao fechar a aba
 - **Estatísticas:** 🔥 ofensiva atual e recorde (com mínimo diário configurável), hoje, média diária e semanal, gráfico das últimas 8 semanas e heatmap dos últimos 12 meses na tela inicial
 - **Página de estatísticas** (últimos 12 meses ou um ano): heatmap estilo GitHub, gêneros e jogos mais jogados, média por dia da semana, hora do dia (sessões de timer), duração das sessões, recordes (maior sessão, melhor dia e semana), zerados por mês e seu ritmo comparado ao tempo da história no IGDB
+- **Página de cada jogo**, na biblioteca ou não, com duas abas: **Sobre o jogo** (banner, notas da crítica e do público, tempos para zerar, sinopse, trailer, imagens, onde comprar, lançamento por plataforma, português do Brasil, classificação indicativa e jogos relacionados para ir de jogo em jogo) e **Minhas sessões** (tempo jogado, progresso, sessões e detalhes)
 - **Descobrir na tela inicial:** listas do IGDB com os lançamentos bem avaliados, os jogos em alta e os próximos lançamentos, atualizadas uma vez por dia, com botão de adicionar (próximos ou desejos) e o status dos que já estão na biblioteca
 - **Tempo para zerar:** história, história + extras e 100%, com o progresso estimado de cada jogo
 - **Tempo jogado antes do Zerômetro:** para jogos que você já vinha jogando ("tenho 39h de Witcher 3"), sem inventar sessões; conta no total e no progresso do jogo, mas não na ofensiva nem nas médias
@@ -93,7 +100,7 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 
 - [x] ~**Tools de edição e remoção no MCP** (editar/apagar sessão, editar/remover jogo, com confirmação)~
 - [x] ~Tela inicial com listas do IGDB: lançamentos bem avaliados, em alta e próximos lançamentos~
-- [ ] Página própria para jogos do IGDB que ainda não estão na biblioteca (hoje os cards de "Descobrir" abrem o site do IGDB)
+- [x] ~Página própria para jogos do IGDB, inclusive os que ainda não estão na biblioteca~
 - [x] ~Heatmap anual estilo GitHub e gráficos com Recharts~
 - [ ] Kanban da biblioteca com arrastar e soltar (o hook já existe: `useMoveGameStatus`)
 - [ ] Metas anuais (ex.: zerar 20 jogos no ano) e o som de "meta batida"
@@ -160,16 +167,17 @@ mise run dev                 # http://localhost:3000
 
 Outras tarefas (`mise tasks` lista todas):
 
-| Tarefa                               | O que faz                                   |
-| ------------------------------------ | ------------------------------------------- |
-| `mise run check`                     | formatação + lint + typecheck + testes      |
-| `mise run fmt` / `mise run lint:fix` | formata (oxfmt) e corrige lint (oxlint)     |
-| `mise run build` / `mise run start`  | build de produção em `dist/` e execução     |
-| `mise run db:generate`               | gera migration a partir do schema           |
-| `mise run db:studio`                 | abre o Drizzle Studio                       |
-| `mise run mcp:inspect`               | abre o MCP Inspector                        |
-| `mise run igdb:smoke [termo]`        | testa busca e tempo para zerar no IGDB real |
-| `mise run demo`                      | sobe com dados de exemplo em `data/demo.db` |
+| Tarefa                               | O que faz                                      |
+| ------------------------------------ | ---------------------------------------------- |
+| `mise run check`                     | formatação + lint + typecheck + testes         |
+| `mise run fmt` / `mise run lint:fix` | formata (oxfmt) e corrige lint (oxlint)        |
+| `mise run build` / `mise run start`  | build de produção em `dist/` e execução        |
+| `mise run db:generate`               | gera migration a partir do schema              |
+| `mise run db:studio`                 | abre o Drizzle Studio                          |
+| `mise run mcp:inspect`               | abre o MCP Inspector                           |
+| `mise run igdb:smoke [termo]`        | testa busca e tempo para zerar no IGDB real    |
+| `mise run demo`                      | sobe com dados de exemplo em `data/demo.db`    |
+| `mise run demo:capture`              | congela as páginas de jogo do demo (IGDB real) |
 
 ### Variáveis de ambiente
 
