@@ -215,6 +215,8 @@ O Zerômetro expõe um servidor MCP em `/mcp` (Streamable HTTP), com dois jeitos
 - **OAuth 2.1** (para o claude.ai, que só conecta assim): o conector se registra sozinho, abre a página `/authorize` da sua instância e você aprova digitando o `ZEROMETRO_TOKEN`. O conector recebe tokens próprios (1h, renovados sozinhos por até 30 dias de inatividade); o seu token nunca sai do seu navegador.
 - **O próprio token como Bearer**, para clientes configurados à mão.
 
+**Por que o token aparece no OAuth:** o registro de conectores (`/register`) é aberto, como o protocolo exige, então qualquer pessoa que descubra a URL consegue iniciar uma conexão. É na página `/authorize` que a instância confere quem está aprovando, e numa instância self-hosted a única prova de que é o dono é o `ZEROMETRO_TOKEN`. Sem essa checagem, um estranho poderia conectar o próprio claude.ai à sua biblioteca.
+
 **Conectar no claude.ai:** Configurações → Conectores → Adicionar conector personalizado → URL `https://<seu-domínio>/mcp` → Conectar → digite o token. O site precisa estar acessível pela internet (o claude.ai conecta a partir dos servidores da Anthropic).
 
 **Claude Code** (OAuth, abre o navegador para aprovar):
@@ -301,7 +303,7 @@ Com domínio próprio, crie no seu DNS o registro que a Railway mostra em _Setti
 
 **Ver ou trocar o token:** `railway variable list --service web` mostra o atual. Para trocar (ex.: vazou), rode `railway variable set --service web "$(mise run -q token)"`: o deploy novo desloga todos os aparelhos e desconecta todos os conectores MCP, e você entra de novo com o token novo.
 
-Mudanças de infraestrutura: edite `.railway/railway.ts`, rode `mise run deploy:plan` e depois `mise run deploy:apply`. Rode sempre com o **seu** `.env`: sem `ZEROMETRO_DOMAIN`, o plan apaga a `PUBLIC_URL` da instância.
+Mudanças de infraestrutura: edite `.railway/railway.ts`, rode `mise run deploy:plan` e depois `mise run deploy:apply`. Rode sempre com o **seu** `.env`: sem `ZEROMETRO_DOMAIN`, o plan apaga a `PUBLIC_URL` da instância. Se o plan apagar algo (variáveis ou recursos que saíram do `railway.ts`), o apply recusa até você confirmar com `railway config apply --confirm-destructive`. Confira antes no plan que só sai o esperado. Se o plan apagar algo (variáveis ou recursos que saíram do `railway.ts`), o apply recusa até você confirmar com `railway config apply --confirm-destructive`. Confira antes no plan que só sai o esperado.
 
 ### Backup do banco
 
