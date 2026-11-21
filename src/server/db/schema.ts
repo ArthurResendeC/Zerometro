@@ -101,6 +101,13 @@ export const libraryEntries = sqliteTable(
     /** Total na Steam na última sincronização (null: nunca sincronizou ou não está na conta). */
     steamMinutes: integer("steam_minutes"),
     steamSyncedAt: text("steam_synced_at"),
+    /**
+     * Total da Steam já contado (como "antes" ou em sessões `steam`): a próxima sincronização
+     * transforma em sessão só o que passar disso. null: ainda sem base (a próxima só marca).
+     */
+    steamCountedMinutes: integer("steam_counted_minutes"),
+    /** Quando a base foi marcada: as sessões do timer/manuais depois disso são descontadas. */
+    steamCountedAt: text("steam_counted_at"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

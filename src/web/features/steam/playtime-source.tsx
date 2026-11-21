@@ -90,7 +90,8 @@ function explain(item: LibraryItem): string {
   if (item.playtimeSource === "steam" && steam) {
     return (
       `Pelo total da Steam (sincronizado em ${shortDay(steam.syncedAt)}). ` +
-      `As sessões daqui (${formatMinutes(item.sessionMinutes)}) continuam contando na ofensiva e nas estatísticas.`
+      "O que você jogar na Steam daqui em diante vira sessão e conta na ofensiva e nas estatísticas, " +
+      `junto com as sessões daqui (${formatMinutes(item.sessionMinutes)} até agora).`
     );
   }
   const manual =

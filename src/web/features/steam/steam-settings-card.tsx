@@ -30,7 +30,8 @@ export function SteamSettingsCard() {
         <Label>🎮 Steam</Label>
         <p className="text-sm text-muted-foreground">
           Traga as conquistas que você já desbloqueou e as horas de cada jogo. Nada é marcado como
-          não feito, e o tempo da Steam só vale no jogo em que você escolher usá-lo.
+          não feito, e o tempo da Steam só vale no jogo em que você escolher usá-lo: nele, o que
+          você jogar na Steam daqui em diante vira sessão e conta na ofensiva.
         </p>
       </div>
       {data.profile ? <LinkedProfile profile={data.profile} auto={data.auto} /> : <LinkForm />}

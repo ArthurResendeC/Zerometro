@@ -886,7 +886,7 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     {
       title: "Sincronizar com a Steam",
       description:
-        "Traz da conta Steam do usuário (o perfil conectado nos Ajustes do site) as conquistas desbloqueadas, com a data real, e o tempo total de cada jogo. Com game: só esse jogo; sem game: todos os da biblioteca que estão na conta (pode levar um tempo). Só adiciona desbloqueios, nunca desmarca. Um jogo na conta sem lista de conquistas ganha a da Steam. O tempo da Steam fica guardado à parte (steamPlaytime): só vira o tempo jogado se o jogo usar a Steam como fonte (set_playtime_source). Se o perfil não estiver conectado ou esconder os jogos, a mensagem de erro diz o que o usuário precisa fazer.",
+        "Traz da conta Steam do usuário (o perfil conectado nos Ajustes do site) as conquistas desbloqueadas, com a data real, e o tempo total de cada jogo. Com game: só esse jogo; sem game: todos os da biblioteca que estão na conta (pode levar um tempo). Só adiciona desbloqueios, nunca desmarca. Um jogo na conta sem lista de conquistas ganha a da Steam. O tempo da Steam fica guardado à parte (steamPlaytime): só vira o tempo jogado se o jogo usar a Steam como fonte (set_playtime_source), e aí o que foi jogado na Steam desde a última sincronização vira sessão (source steam, sessionMinutes), que entra na ofensiva e nas estatísticas, descontado o que o timer ou log_session já registraram. O total da primeira sincronização (ou da importação) não tem data e fica como tempo antes do Zerômetro. O servidor também sincroniza sozinho de hora em hora. Se o perfil não estiver conectado ou esconder os jogos, a mensagem de erro diz o que o usuário precisa fazer.",
       inputSchema: z.object({
         game: gameRefSchema.optional().describe("Um jogo só; omita para sincronizar todos"),
       }),
@@ -906,9 +906,10 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
           newUnlocks: result.newUnlocks,
           games: result.games
             .filter((g) => g.owned || g.newUnlocks > 0 || g.error)
-            .map(({ gameId, name, steamMinutes, newUnlocks, linkedSet, error }) =>
+            .map(({ gameId, name, steamMinutes, newUnlocks, sessionMinutes, linkedSet, error }) =>
               Object.assign(
                 { gameId, name, steamMinutes, newUnlocks },
+                sessionMinutes > 0 && { sessionMinutes },
                 linkedSet && { linkedSet },
                 error && { error },
               ),
@@ -1016,7 +1017,7 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     {
       title: "Fonte do tempo jogado",
       description:
-        'Escolhe de onde vem o tempo jogado de um jogo: "sessions" (controle manual: sessões registradas + tempo antes do Zerômetro) ou "steam" (o total da Steam, da última sync_steam). As sessões continuam contando na ofensiva e nas estatísticas nos dois casos. Para usar "steam", sincronize o jogo antes.',
+        'Escolhe de onde vem o tempo jogado de um jogo: "sessions" (controle manual: sessões registradas + tempo antes do Zerômetro) ou "steam" (o total da Steam, da última sync_steam; o jogado na Steam daí em diante vira sessão e entra na ofensiva e nas estatísticas). As sessões continuam contando na ofensiva e nas estatísticas nos dois casos. Para usar "steam", sincronize o jogo antes.',
       inputSchema: z.object({
         game: gameRefSchema,
         source: playtimeSourceSchema.describe("sessions ou steam"),

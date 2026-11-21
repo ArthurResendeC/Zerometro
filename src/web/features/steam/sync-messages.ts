@@ -11,6 +11,10 @@ import { formatMinutes } from "@/lib/format";
 const unlocksText = (n: number) =>
   n === 0 ? "nenhuma conquista nova" : n === 1 ? "1 conquista nova" : `${n} conquistas novas`;
 
+/** O jogado na Steam desde a última sincronização que virou sessão (entra na ofensiva). */
+const sessionText = (minutes: number) =>
+  minutes > 0 && `+${formatMinutes(minutes)} em sessões da Steam`;
+
 export function gameSyncMessage(sync: SteamGameSync): { title: string; description?: string } {
   if (sync.appId === null) return { title: "Esse jogo não está na Steam" };
   if (!sync.owned && sync.newUnlocks === 0) {
@@ -19,12 +23,13 @@ export function gameSyncMessage(sync: SteamGameSync): { title: string; descripti
       description: "Jogos emprestados (Compartilhamento Familiar) não aparecem na conta.",
     };
   }
-  const parts = [unlocksText(sync.newUnlocks)];
+  const parts: (string | false)[] = [unlocksText(sync.newUnlocks)];
   if (sync.steamMinutes !== null) parts.push(`${formatMinutes(sync.steamMinutes)} na Steam`);
+  if (sync.sessionMinutes > 0) parts.push(sessionText(sync.sessionMinutes));
   return {
     title: "Sincronizado com a Steam",
     description: [
-      parts.join(" · "),
+      parts.filter(Boolean).join(" · "),
       sync.linkedSet && "A lista de conquistas da Steam foi ligada ao jogo.",
       // A Steam devolve 0 para tudo quando o perfil esconde o tempo de jogo.
       sync.steamMinutes === 0 &&
@@ -47,6 +52,7 @@ export function librarySyncMessage(sync: SteamLibrarySync): {
       : `${owned.length} ${owned.length === 1 ? "jogo sincronizado" : "jogos sincronizados"}`;
   const description = [
     owned.length > 0 && unlocksText(sync.newUnlocks),
+    sessionText(sync.games.reduce((sum, g) => sum + g.sessionMinutes, 0)),
     failed.length > 0 && `${failed.length} com erro (${failed.map((g) => g.name).join(", ")})`,
   ]
     .filter(Boolean)
