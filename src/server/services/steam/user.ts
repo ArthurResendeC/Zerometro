@@ -34,6 +34,8 @@ export interface SteamUnlock {
 
 export interface SteamOwnedGame {
   appId: number;
+  /** O nome na Steam (null se ela não mandar). */
+  name: string | null;
   /** Tempo total na Steam, em minutos. */
   minutes: number;
   lastPlayedAt: Date | null;
@@ -74,7 +76,12 @@ interface RawOwnedGames {
   /** Vem vazio (`{}`) quando o perfil esconde os jogos. */
   response?: {
     game_count?: number;
-    games?: { appid: number; playtime_forever?: number; rtime_last_played?: number }[];
+    games?: {
+      appid: number;
+      name?: string;
+      playtime_forever?: number;
+      rtime_last_played?: number;
+    }[];
   };
 }
 
@@ -143,6 +150,7 @@ export function createSteamUserApi(options: SteamUserApiOptions): SteamUserApi {
       const filter = Object.fromEntries(appIds.map((id, i) => [`appids_filter[${i}]`, id]));
       const raw = await client.get<RawOwnedGames>(OWNED_GAMES_PATH, {
         steamid: steamId,
+        include_appinfo: 1,
         include_played_free_games: 1,
         ...filter,
       });
@@ -150,6 +158,7 @@ export function createSteamUserApi(options: SteamUserApiOptions): SteamUserApi {
       if (!response || response.game_count === undefined) throw new SteamProfilePrivateError();
       return (response.games ?? []).map((g) => ({
         appId: g.appid,
+        name: g.name?.trim() || null,
         minutes: g.playtime_forever ?? 0,
         lastPlayedAt: fromUnix(g.rtime_last_played),
       }));

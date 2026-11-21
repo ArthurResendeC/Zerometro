@@ -1,4 +1,8 @@
-import { linkSteamProfileSchema } from "../../shared/steam";
+import {
+  linkSteamProfileSchema,
+  steamImportSchema,
+  steamSyncGamesSchema,
+} from "../../shared/steam";
 import type { AppDeps } from "../app";
 import { createRouter, webContext } from "../lib/hono";
 import { validate } from "../lib/validate";
@@ -9,9 +13,10 @@ import {
   linkSteamProfile,
   unlinkSteamProfile,
 } from "../services/steam-account";
+import { importSteamGames, previewSteamImport } from "../services/steam-import";
 import { autoSyncSteam, syncSteamLibrary } from "../services/steam-sync";
 
-/** A conta Steam do usuário: perfil e sincronização de todos os jogos. */
+/** A conta Steam do usuário: perfil, sincronização de todos os jogos e importação da conta. */
 export function createSteamRoutes(deps: AppDeps) {
   const syncDeps = { catalog: deps.achievements, igdb: deps.igdb, steamUser: deps.steamUser };
   const body = (profile: SteamProfile | null, auto: SteamAutoSyncState | null) => ({
@@ -41,5 +46,17 @@ export function createSteamRoutes(deps: AppDeps) {
       .post("/sync", async (c) => c.json(await syncSteamLibrary(webContext(deps, c), syncDeps)))
       // Chamado pelo app ao abrir e ao voltar ao primeiro plano; o servidor decide se roda.
       .post("/sync/auto", async (c) => c.json(await autoSyncSteam(webContext(deps, c), syncDeps)))
+      // Só alguns jogos: as conquistas dos que acabaram de ser importados, em lotes.
+      .post("/sync/games", validate("json", steamSyncGamesSchema), async (c) =>
+        c.json(
+          await syncSteamLibrary(webContext(deps, c), syncDeps, {
+            gameIds: c.req.valid("json").gameIds,
+          }),
+        ),
+      )
+      .get("/import", async (c) => c.json(await previewSteamImport(webContext(deps, c), syncDeps)))
+      .post("/import", validate("json", steamImportSchema), async (c) =>
+        c.json(await importSteamGames(webContext(deps, c), syncDeps, c.req.valid("json"))),
+      )
   );
 }

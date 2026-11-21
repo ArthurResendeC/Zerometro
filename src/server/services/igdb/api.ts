@@ -98,6 +98,18 @@ interface RawGameWithExternals extends RawGame {
   external_games?: { uid?: string; external_game_source?: number }[];
 }
 
+/** Máximo de resultados por query no IGDB. */
+const IGDB_MAX_LIMIT = 500;
+/** Jogos por lote em `getGames`: com os jogos base, o tempo para zerar cabe numa query. */
+const GAMES_BATCH = 250;
+/** Apps por lote: um app pode apontar para mais de um jogo, e a resposta tem de caber no limite. */
+const STEAM_LOOKUP_BATCH = 200;
+
+interface RawExternalGame {
+  uid?: string;
+  game?: number;
+}
+
 /** `external_game_sources` do IGDB: 1 = Steam. */
 const EXTERNAL_SOURCE_STEAM = 1;
 const EXTERNAL_FIELDS = "external_games.uid, external_games.external_game_source";
@@ -302,6 +314,13 @@ export interface IgdbApi {
   searchGames(term: string, limit?: number): Promise<IgdbGameSummary[]>;
   /** Detalhes + tempo para zerar. Edições sem tempo próprio herdam o do jogo base. */
   getGame(igdbId: number): Promise<IgdbGameDetails | null>;
+  /** O mesmo que `getGame` para vários jogos, em lotes. Os que não existem ficam de fora. */
+  getGames(igdbIds: number[]): Promise<IgdbGameDetails[]>;
+  /**
+   * O jogo do IGDB de cada app da Steam (por `external_games`), em lotes. Apps sem jogo ficam de
+   * fora. Se o app aponta para mais de um jogo, fica o principal (ver `mainGameRank`).
+   */
+  findBySteamAppIds(appIds: number[]): Promise<Map<number, IgdbGameSummary>>;
   /** Tudo o que a página do jogo mostra (2 requests). null se o jogo não existir. */
   getGamePage(igdbId: number): Promise<IgdbGamePage | null>;
   /** Uma das listas da tela inicial, já ordenada. */
@@ -327,18 +346,41 @@ export function createIgdbApi(client: IgdbClient): IgdbApi {
     },
 
     async getGame(igdbId) {
-      const [raw] = await client.query<RawGameWithExternals[]>(
-        "games",
-        `fields ${GAME_FIELDS}, ${EXTERNAL_FIELDS}; where id = ${toInt(igdbId)}; limit 1;`,
-      );
-      if (!raw) return null;
+      const [game] = await getGames([toInt(igdbId)]);
+      return game ?? null;
+    },
 
-      const ttb = await fetchTimeToBeat(raw);
-      return {
-        ...toSummary(raw),
-        timeToBeat: ttb ? toTimeToBeat(ttb) : null,
-        steamAppId: steamAppIdOf(raw),
-      };
+    getGames,
+
+    async findBySteamAppIds(appIds) {
+      const found = new Map<number, IgdbGameSummary>();
+      for (const batch of chunk(unique(appIds.map(toInt)), STEAM_LOOKUP_BATCH)) {
+        // Um de cada vez: o cliente já segura o limite de requisições do IGDB.
+        // oxlint-disable-next-line no-await-in-loop
+        const links = await client.query<RawExternalGame[]>(
+          "external_games",
+          `fields uid, game; where external_game_source = ${EXTERNAL_SOURCE_STEAM} ` +
+            `& uid = (${batch.map((id) => `"${id}"`).join(",")}); limit ${IGDB_MAX_LIMIT};`,
+        );
+        const gameIds = unique(links.flatMap((l) => (l.game ? [l.game] : [])));
+        if (gameIds.length === 0) continue;
+        // oxlint-disable-next-line no-await-in-loop
+        const raws = await client.query<RawGame[]>(
+          "games",
+          `fields ${GAME_FIELDS}; where id = (${gameIds.join(",")}); limit ${IGDB_MAX_LIMIT};`,
+        );
+        const byId = new Map(raws.map((r) => [r.id, r]));
+        const best = new Map<number, RawGame>();
+        for (const link of links) {
+          const appId = Number(link.uid);
+          const raw = link.game ? byId.get(link.game) : undefined;
+          if (!raw || !Number.isSafeInteger(appId)) continue;
+          const current = best.get(appId);
+          if (!current || mainGameRank(raw) < mainGameRank(current)) best.set(appId, raw);
+        }
+        for (const [appId, raw] of best) found.set(appId, toSummary(raw));
+      }
+      return found;
     },
 
     async getGamePage(igdbId) {
@@ -388,6 +430,41 @@ export function createIgdbApi(client: IgdbClient): IgdbApi {
     },
   };
 
+  async function getGames(igdbIds: number[]): Promise<IgdbGameDetails[]> {
+    const details: IgdbGameDetails[] = [];
+    for (const batch of chunk(unique(igdbIds.map(toInt)), GAMES_BATCH)) {
+      // oxlint-disable-next-line no-await-in-loop
+      const raws = await client.query<RawGameWithExternals[]>(
+        "games",
+        `fields ${GAME_FIELDS}, ${EXTERNAL_FIELDS}; where id = (${batch.join(",")}); ` +
+          `limit ${IGDB_MAX_LIMIT};`,
+      );
+      if (raws.length === 0) continue;
+      // oxlint-disable-next-line no-await-in-loop
+      const ttbs = await fetchTimesToBeat(raws);
+      for (const raw of raws) {
+        const ttb = ttbs.get(raw.id) ?? (raw.version_parent ? ttbs.get(raw.version_parent) : null);
+        details.push({
+          ...toSummary(raw),
+          timeToBeat: ttb ? toTimeToBeat(ttb) : null,
+          steamAppId: steamAppIdOf(raw),
+        });
+      }
+    }
+    return details;
+  }
+
+  /** Tempos para zerar dos jogos e dos jogos base (edições herdam o do base). */
+  async function fetchTimesToBeat(raws: RawGame[]): Promise<Map<number, RawTimeToBeat>> {
+    const ids = unique(raws.flatMap((r) => (r.version_parent ? [r.id, r.version_parent] : [r.id])));
+    const ttbs = await client.query<RawTimeToBeat[]>(
+      "game_time_to_beats",
+      `fields game_id, hastily, normally, completely, count; where game_id = (${ids.join(",")}); ` +
+        `limit ${IGDB_MAX_LIMIT};`,
+    );
+    return new Map(ttbs.map((t) => [t.game_id, t]));
+  }
+
   /** O tempo do próprio jogo; se não houver, o do jogo base (edições). */
   async function fetchTimeToBeat(raw: RawGame): Promise<RawTimeToBeat | null> {
     const ids = raw.version_parent ? [raw.id, raw.version_parent] : [raw.id];
@@ -424,6 +501,22 @@ function toSummary(raw: RawGame): IgdbGameSummary {
       : null,
     gameType: raw.game_type === undefined ? null : (GAME_TYPE_LABELS[raw.game_type] ?? null),
   };
+}
+
+/**
+ * Menor = mais "principal": edição (`version_parent`) só se não houver o jogo em si; depois,
+ * jogo antes de remake/port/versão expandida, e DLC, bundle, mod e afins por último.
+ */
+function mainGameRank(raw: RawGame): number {
+  const type = raw.game_type ?? 0;
+  const typeRank = type === 0 ? 0 : type in GAME_TYPE_LABELS ? 1 : 2;
+  return (raw.version_parent ? 3 : 0) + typeRank;
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
+  return chunks;
 }
 
 /** O primeiro appid da Steam em `external_games` (o uid vem como texto). */

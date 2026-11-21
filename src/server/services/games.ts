@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import type { IgdbGameDetails } from "../../shared/igdb";
-import type { Db } from "../db/client";
+import type { Db, DbOrTx } from "../db/client";
 import { type Game, games, type NewGame } from "../db/schema";
 import { NotFoundError } from "../errors";
 import type { IgdbApi } from "./igdb";
@@ -15,8 +15,12 @@ export function findGameByIgdbId(db: Db, igdbId: number): Game | null {
 export async function syncGameFromIgdb(db: Db, igdb: IgdbApi, igdbId: number): Promise<Game> {
   const details = await igdb.getGame(igdbId);
   if (!details) throw new NotFoundError(`Jogo ${igdbId} não encontrado no IGDB`);
+  return saveGame(db, details);
+}
 
-  const { igdbId: _, ...values } = toGameRow(details);
+/** Grava/atualiza no cache um jogo que acabou de vir do IGDB. */
+export function saveGame(db: DbOrTx, details: IgdbGameDetails): Game {
+  const { igdbId, ...values } = toGameRow(details);
   return db
     .insert(games)
     .values({ igdbId, ...values })

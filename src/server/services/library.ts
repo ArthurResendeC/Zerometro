@@ -5,6 +5,7 @@ import {
   completionTypes,
   type GameStatus,
   gameStatuses,
+  type PlaytimeSource,
   gameStatusLabels,
 } from "../../shared/domain";
 import {
@@ -339,28 +340,58 @@ export async function addToLibrary(
     );
   }
 
-  const dates = applyStatusRules(null, { status: input.status }, ctx.today);
   ctx.db.transaction((tx) => {
-    tx.insert(libraryEntries)
-      .values({
-        userId: ctx.userId,
-        gameId: game.id,
-        status: input.status,
-        platformPlayed: input.platformPlayed ?? null,
-        priorMinutes: input.priorMinutes ?? 0,
-        ...dates,
-      })
-      .run();
-    if (input.status === "finished") ensureCompletion(tx, ctx.userId, game.id, ctx.today);
-    logActivity(tx, ctx, "library.add", {
-      gameId: game.id,
-      name: game.name,
+    insertLibraryEntry(tx, ctx, game, {
       status: input.status,
-      ...(input.priorMinutes && { priorMinutes: input.priorMinutes }),
+      platformPlayed: input.platformPlayed ?? null,
+      priorMinutes: input.priorMinutes ?? 0,
     });
   });
 
   return getLibraryItem(ctx, game.id);
+}
+
+export interface NewLibraryEntry {
+  status: GameStatus;
+  platformPlayed?: string | null;
+  priorMinutes?: number;
+  playtimeSource?: PlaytimeSource;
+  /** Total na Steam já conhecido (a importação traz da conta). */
+  steamMinutes?: number | null;
+}
+
+/**
+ * Grava a entrada de um jogo que ainda não está na biblioteca (quem chama confere antes; o índice
+ * único barra a repetição), com as datas do status, a conclusão se já vem zerado e o histórico.
+ */
+export function insertLibraryEntry(
+  tx: DbOrTx,
+  ctx: ServiceContext,
+  game: { id: number; name: string },
+  entry: NewLibraryEntry,
+  log: Record<string, unknown> = {},
+): void {
+  const dates = applyStatusRules(null, { status: entry.status }, ctx.today);
+  tx.insert(libraryEntries)
+    .values({
+      userId: ctx.userId,
+      gameId: game.id,
+      status: entry.status,
+      platformPlayed: entry.platformPlayed ?? null,
+      priorMinutes: entry.priorMinutes ?? 0,
+      playtimeSource: entry.playtimeSource ?? "sessions",
+      steamMinutes: entry.steamMinutes ?? null,
+      ...dates,
+    })
+    .run();
+  if (entry.status === "finished") ensureCompletion(tx, ctx.userId, game.id, ctx.today);
+  logActivity(tx, ctx, "library.add", {
+    gameId: game.id,
+    name: game.name,
+    status: entry.status,
+    ...(entry.priorMinutes && { priorMinutes: entry.priorMinutes }),
+    ...log,
+  });
 }
 
 export function updateLibraryEntry(

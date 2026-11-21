@@ -86,9 +86,21 @@ export function createFakeIgdb(
   catalog: IgdbGameDetails[] = [fakeIgdbGame()],
   feeds: Partial<Record<FeedKey, FeedGame[]>> = {},
 ): IgdbApi & {
-  calls: { getGame: number[]; getGamePage: number[]; getFeed: FeedKey[] };
+  calls: {
+    getGame: number[];
+    getGames: number[][];
+    findBySteamAppIds: number[][];
+    getGamePage: number[];
+    getFeed: FeedKey[];
+  };
 } {
-  const calls = { getGame: [] as number[], getGamePage: [] as number[], getFeed: [] as FeedKey[] };
+  const calls = {
+    getGame: [] as number[],
+    getGames: [] as number[][],
+    findBySteamAppIds: [] as number[][],
+    getGamePage: [] as number[],
+    getFeed: [] as FeedKey[],
+  };
   return {
     calls,
     async searchGames(term, limit = 10) {
@@ -104,6 +116,20 @@ export function createFakeIgdb(
     async getGame(igdbId) {
       calls.getGame.push(igdbId);
       return catalog.find((g) => g.igdbId === igdbId) ?? null;
+    },
+    async getGames(igdbIds) {
+      calls.getGames.push(igdbIds);
+      return catalog.filter((g) => igdbIds.includes(g.igdbId));
+    },
+    async findBySteamAppIds(appIds) {
+      calls.findBySteamAppIds.push(appIds);
+      return new Map(
+        catalog.flatMap(({ timeToBeat: _ttb, steamAppId, ...summary }) =>
+          steamAppId !== null && appIds.includes(steamAppId)
+            ? [[steamAppId, summary] as const]
+            : [],
+        ),
+      );
     },
     async getGamePage(igdbId) {
       calls.getGamePage.push(igdbId);
@@ -227,8 +253,11 @@ export const FAKE_STEAM_ID = "76561197960435530";
  */
 export function createFakeSteamUser(
   options: {
-    /** Minutos por app, ou os minutos e quando jogou por último. Lido a cada chamada. */
-    owned?: Record<number, number | { minutes: number; lastPlayedAt: Date | null }>;
+    /** Minutos por app, ou os minutos, quando jogou por último e o nome. Lido a cada chamada. */
+    owned?: Record<
+      number,
+      number | { minutes: number; lastPlayedAt: Date | null; name?: string | null }
+    >;
     unlocked?: Record<number, SteamUnlock[]>;
     private?: boolean;
     enabled?: boolean;
@@ -238,8 +267,13 @@ export function createFakeSteamUser(
   const games = (): SteamOwnedGame[] =>
     Object.entries(options.owned ?? {}).map(([appId, game]) =>
       typeof game === "number"
-        ? { appId: Number(appId), minutes: game, lastPlayedAt: null }
-        : { appId: Number(appId), minutes: game.minutes, lastPlayedAt: game.lastPlayedAt },
+        ? { appId: Number(appId), name: null, minutes: game, lastPlayedAt: null }
+        : {
+            appId: Number(appId),
+            name: game.name ?? null,
+            minutes: game.minutes,
+            lastPlayedAt: game.lastPlayedAt,
+          },
     );
   return {
     enabled: options.enabled ?? true,

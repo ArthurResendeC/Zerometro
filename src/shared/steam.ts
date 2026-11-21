@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { type GameStatus, gameStatusSchema } from "./domain";
 
 // Perfil da Steam do usuário, para sincronizar conquistas e tempo jogado. Sem login na Steam:
 // a pessoa informa o perfil (que precisa mostrar os jogos publicamente) e o servidor consulta
@@ -92,3 +93,76 @@ export interface SteamAutoSync {
   newUnlocks: number;
   state: SteamAutoSyncState | null;
 }
+
+// ---------------------------------------------------------------------------
+// Importar a biblioteca da Steam: os jogos da conta que ainda não estão no Zerômetro.
+
+/** Jogou nesses últimos dias: a importação sugere "Jogando"; senão, "Próximos". */
+export const STEAM_IMPORT_RECENT_DAYS = 30;
+
+/** Status sugerido para um jogo que vem da Steam. */
+export function suggestedImportStatus(lastPlayedAt: string | null, now: Date): GameStatus {
+  if (!lastPlayedAt) return "backlog";
+  const days = (now.getTime() - Date.parse(lastPlayedAt)) / 86_400_000;
+  return days <= STEAM_IMPORT_RECENT_DAYS ? "playing" : "backlog";
+}
+
+/** Um jogo da conta que pode entrar na biblioteca. */
+export interface SteamImportCandidate {
+  appId: number;
+  igdbId: number;
+  /** Nome no IGDB (o que fica na biblioteca). */
+  name: string;
+  /** Nome na Steam, quando é outro. */
+  steamName: string | null;
+  coverImageId: string | null;
+  releaseYear: number | null;
+  /** Tempo total na Steam. */
+  minutes: number;
+  lastPlayedAt: string | null;
+  suggestedStatus: GameStatus;
+  /** Ficou de fora numa importação anterior (não vem marcado). */
+  ignored: boolean;
+}
+
+export interface SteamImportPreview {
+  /** Mais jogados primeiro. */
+  candidates: SteamImportCandidate[];
+  /** Na conta, mas o IGDB não conhece o app (ferramentas, trilhas sonoras, alguns jogos). */
+  unmatched: { appId: number; name: string | null; minutes: number }[];
+  /** Jogos da conta que já estão na biblioteca. */
+  inLibrary: number;
+  /** A conta esconde o tempo de jogo (tudo 0): "os que têm horas" não ajuda a escolher. */
+  hidesPlaytime: boolean;
+}
+
+const steamAppIdSchema = z.number().int().positive();
+
+export const steamImportSchema = z.object({
+  /** Os que entram, com o status de cada um. */
+  games: z
+    .array(z.object({ appId: steamAppIdSchema, status: gameStatusSchema }))
+    .max(2000, "No máximo 2000 jogos por vez"),
+  /** Os que ficaram desmarcados: não aparecem marcados da próxima vez. */
+  ignore: z.array(steamAppIdSchema).max(20_000).default([]),
+});
+export type SteamImportInput = z.input<typeof steamImportSchema>;
+
+export interface SteamImportResult {
+  /** Entraram na biblioteca, com o tempo da Steam. Falta trazer as conquistas (`syncSteamGames`). */
+  added: { gameId: number; appId: number; name: string }[];
+  /** Não entraram, com o motivo (já estava, saiu da conta, o IGDB não achou). */
+  skipped: { appId: number; reason: string }[];
+  /** Quantos ficam ignorados agora. */
+  ignored: number;
+}
+
+/** Jogos por pedido ao trazer as conquistas dos importados (o front pede em lotes). */
+export const STEAM_SYNC_GAMES_BATCH = 10;
+
+export const steamSyncGamesSchema = z.object({
+  gameIds: z
+    .array(z.number().int().positive())
+    .min(1)
+    .max(STEAM_SYNC_GAMES_BATCH * 5),
+});

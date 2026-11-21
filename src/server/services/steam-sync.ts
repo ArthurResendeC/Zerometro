@@ -37,7 +37,7 @@ export interface SteamSyncDeps {
   steamUser: SteamUserApi;
 }
 
-function requireProfile(ctx: ServiceContext): SteamProfile {
+export function requireSteamProfile(ctx: ServiceContext): SteamProfile {
   const profile = getSteamProfile(ctx);
   if (!profile) throw new SteamNotLinkedError();
   return profile;
@@ -49,7 +49,7 @@ export async function syncSteamGame(
   deps: SteamSyncDeps,
   gameId: number,
 ): Promise<SteamGameSync> {
-  const profile = requireProfile(ctx);
+  const profile = requireSteamProfile(ctx);
   const item = getLibraryItem(ctx, gameId);
   const result = await syncOne(ctx, deps, profile, item, await locate(ctx, deps, item), null);
   logSync(ctx, [result]);
@@ -59,17 +59,24 @@ export async function syncSteamGame(
   return result;
 }
 
-/** Sincroniza todos os jogos da biblioteca que estão na Steam, um de cada vez. */
+/**
+ * Sincroniza todos os jogos da biblioteca que estão na Steam, um de cada vez. Com `gameIds`, só
+ * esses (as conquistas dos que acabaram de ser importados, em lotes) e sem mexer no relógio da
+ * sincronização automática.
+ */
 export async function syncSteamLibrary(
   ctx: ServiceContext,
   deps: SteamSyncDeps,
+  options: { gameIds?: number[] } = {},
 ): Promise<SteamLibrarySync> {
-  const profile = requireProfile(ctx);
+  const profile = requireSteamProfile(ctx);
   const owned = new Map(
     (await deps.steamUser.getOwnedGames(profile.steamId)).map((g) => [g.appId, g]),
   );
+  const only = options.gameIds && new Set(options.gameIds);
+  const items = listLibrary(ctx).filter((item) => !only || only.has(item.gameId));
   const games: SteamGameSync[] = [];
-  for (const item of listLibrary(ctx)) {
+  for (const item of items) {
     try {
       // Um de cada vez, de propósito: a Steam e o IGDB têm limite de requisições.
       // oxlint-disable-next-line no-await-in-loop
@@ -83,7 +90,7 @@ export async function syncSteamLibrary(
   }
   logSync(ctx, games);
   // Acabou de passar por tudo: a automática não precisa rodar logo em seguida.
-  setAutoSyncState(ctx, { lastRunAt: ctx.now.toISOString(), lastError: null });
+  if (!only) setAutoSyncState(ctx, { lastRunAt: ctx.now.toISOString(), lastError: null });
   return {
     syncedAt: ctx.now.toISOString(),
     games,

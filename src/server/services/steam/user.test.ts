@@ -101,14 +101,22 @@ describe("createSteamUserApi", () => {
       Response.json({
         response: {
           game_count: 1,
-          games: [{ appid: 504230, playtime_forever: 765, rtime_last_played: 1_700_000_000 }],
+          games: [
+            {
+              appid: 504230,
+              name: "Celeste",
+              playtime_forever: 765,
+              rtime_last_played: 1_700_000_000,
+            },
+          ],
         },
       }),
     );
 
     expect(await api.getOwnedGames(STEAM_ID, [504230, 440])).toEqual([
-      { appId: 504230, minutes: 765, lastPlayedAt: new Date(1_700_000_000_000) },
+      { appId: 504230, name: "Celeste", minutes: 765, lastPlayedAt: new Date(1_700_000_000_000) },
     ]);
+    expect(urls[0]?.searchParams.get("include_appinfo")).toBe("1");
     expect(urls[0]?.searchParams.get("appids_filter[0]")).toBe("504230");
     expect(urls[0]?.searchParams.get("appids_filter[1]")).toBe("440");
   });

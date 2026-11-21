@@ -134,6 +134,76 @@ describe("getGame", () => {
   });
 });
 
+describe("getGames", () => {
+  test("busca vários numa query e herda o tempo do jogo base", async () => {
+    const { client, queries } = fakeClient({
+      games: [
+        { id: 12517, name: "Undertale" },
+        { id: 134222, name: "Persona 5 Royal: Launch Edition", version_parent: 114283 },
+      ],
+      game_time_to_beats: [
+        { game_id: 12517, hastily: 15428 },
+        { game_id: 114283, hastily: 315000 },
+      ],
+    });
+
+    const games = await createIgdbApi(client).getGames([12517, 134222, 12517]);
+
+    expect(queries).toHaveLength(2);
+    expect(queries[0]!.body).toContain("where id = (12517,134222); limit 500;");
+    expect(queries[1]!.body).toContain("where game_id = (12517,134222,114283); limit 500;");
+    expect(games.map((g) => [g.igdbId, g.timeToBeat?.mainSec])).toEqual([
+      [12517, 15428],
+      [134222, 315000],
+    ]);
+  });
+
+  test("lista vazia não consulta", async () => {
+    const { client, queries } = fakeClient({});
+    expect(await createIgdbApi(client).getGames([])).toEqual([]);
+    expect(queries).toHaveLength(0);
+  });
+});
+
+describe("findBySteamAppIds", () => {
+  test("liga cada app ao jogo principal; apps sem jogo ficam de fora", async () => {
+    const { client, queries } = fakeClient({
+      external_games: [
+        { uid: "504230", game: 26226 },
+        { uid: "1687950", game: 134222 },
+        { uid: "1687950", game: 114283 },
+        { uid: "220", game: 900 },
+      ],
+      games: [
+        { id: 26226, name: "Celeste", game_type: 0 },
+        { id: 134222, name: "P5R: Launch Edition", game_type: 0, version_parent: 114283 },
+        { id: 114283, name: "Persona 5 Royal", game_type: 10 },
+      ],
+    });
+
+    const found = await createIgdbApi(client).findBySteamAppIds([504230, 1687950, 220, 999]);
+
+    expect(queries[0]).toEqual({
+      endpoint: "external_games",
+      body:
+        'fields uid, game; where external_game_source = 1 & uid = ("504230","1687950","220","999"); ' +
+        "limit 500;",
+    });
+    expect(queries[1]!.body).toContain("where id = (26226,134222,114283,900); limit 500;");
+    expect([...found].map(([appId, g]) => [appId, g.name])).toEqual([
+      [504230, "Celeste"],
+      [1687950, "Persona 5 Royal"],
+    ]);
+  });
+
+  test("em lotes de 200 apps", async () => {
+    const { client, queries } = fakeClient({});
+    const ids = Array.from({ length: 450 }, (_, i) => i + 1);
+    await createIgdbApi(client).findBySteamAppIds(ids);
+    expect(queries.filter((q) => q.endpoint === "external_games")).toHaveLength(3);
+  });
+});
+
 describe("getFeed", () => {
   const now = new Date("2026-11-19T18:00:00.000Z");
   const nowSec = Math.floor(now.getTime() / 1000);
