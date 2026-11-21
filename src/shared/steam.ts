@@ -148,9 +148,9 @@ export interface SteamImportPreview {
 const steamAppIdSchema = z.number().int().positive();
 
 export const steamImportSchema = z.object({
-  /** Os que entram, com o status de cada um. */
+  /** Os que entram, com o status de cada um (sem status: o sugerido, ver `suggestedImportStatus`). */
   games: z
-    .array(z.object({ appId: steamAppIdSchema, status: gameStatusSchema }))
+    .array(z.object({ appId: steamAppIdSchema, status: gameStatusSchema.optional() }))
     .max(2000, "No máximo 2000 jogos por vez"),
   /** Os que ficaram desmarcados: não aparecem marcados da próxima vez. */
   ignore: z.array(steamAppIdSchema).max(20_000).default([]),
@@ -159,7 +159,7 @@ export type SteamImportInput = z.input<typeof steamImportSchema>;
 
 export interface SteamImportResult {
   /** Entraram na biblioteca, com o tempo da Steam. Falta trazer as conquistas (`syncSteamGames`). */
-  added: { gameId: number; appId: number; name: string }[];
+  added: { gameId: number; appId: number; name: string; status: GameStatus }[];
   /** Não entraram, com o motivo (já estava, saiu da conta, o IGDB não achou). */
   skipped: { appId: number; reason: string }[];
   /** Quantos ficam ignorados agora. */

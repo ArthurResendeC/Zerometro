@@ -167,21 +167,31 @@ export async function importSteamGames(
         continue;
       }
       const game = saveGame(tx, detail);
+      const account = owned.get(appId);
+      const status =
+        choice.status ??
+        suggestedImportStatus(
+          {
+            lastPlayedAt: account?.lastPlayedAt?.toISOString() ?? null,
+            recentMinutes: account?.recentMinutes ?? 0,
+          },
+          ctx.now,
+        );
       insertLibraryEntry(
         tx,
         ctx,
         game,
         {
-          status: choice.status,
+          status,
           platformPlayed: detail.platforms.includes("PC") ? "PC" : null,
           playtimeSource: "steam",
           // Sem `steamSyncedAt` de propósito: o jogo conta como "nunca sincronizado", então se
           // a busca das conquistas parar no meio, a sincronização automática termina.
-          steamMinutes: owned.get(appId)?.minutes ?? null,
+          steamMinutes: account?.minutes ?? null,
         },
         { source: "steam", appId },
       );
-      added.push({ gameId: game.id, appId, name: game.name });
+      added.push({ gameId: game.id, appId, name: game.name, status });
       if (game.steamAppId !== appId) otherApp.push({ gameId: game.id, appId });
     }
     const ignored = getIgnoredSteamApps({ db: tx, userId: ctx.userId });

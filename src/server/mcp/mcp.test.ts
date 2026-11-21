@@ -173,6 +173,7 @@ describe("tools", () => {
       "list_library",
       "list_objectives",
       "list_sessions",
+      "list_steam_import",
       "search_igdb",
     ]);
     // Só as que apagam conclusões e objetivos (e elas pedem confirm: true).
@@ -496,6 +497,71 @@ describe("tools", () => {
 
     const all = await callJson(client, "sync_steam", {});
     expect(all.data).toMatchObject({ newUnlocks: 0, games: [{ name: "Persona 5 Royal" }] });
+
+    await client.close();
+  });
+
+  test("steam: lista os jogos da conta fora da biblioteca e importa com as conquistas", async () => {
+    t = await createTestApp({
+      igdb: createFakeIgdb([
+        fakeIgdbGame(),
+        fakeIgdbGame({ igdbId: 26226, name: "Celeste", steamAppId: 504230 }),
+      ]),
+      steamUser: createFakeSteamUser({
+        owned: {
+          1687950: { minutes: 3000, recentMinutes: 90, lastPlayedAt: null, name: "P5R" },
+          504230: 0,
+          431960: { minutes: 600, lastPlayedAt: null, name: "Wallpaper Engine" },
+        },
+        unlocked: { 1687950: [{ apiName: "ACH_1", unlockedAt: null }] },
+      }),
+    });
+    await t.request("/api/steam/profile", { ...json({ profile: "robinwalker" }), method: "PUT" });
+    const client = await connect(t, await authorize(t));
+
+    const list = await callJson(client, "list_steam_import");
+    expect(list.data).toEqual({
+      inLibrary: 0,
+      hidesPlaytime: false,
+      ignored: 0,
+      games: [
+        {
+          appId: 1687950,
+          name: "Persona 5 Royal",
+          steamName: "P5R",
+          hours: 50,
+          recentHours: 1.5,
+          suggestedStatus: "playing",
+        },
+        { appId: 504230, name: "Celeste", hours: 0, suggestedStatus: "backlog" },
+      ],
+      notInIgdb: ["Wallpaper Engine"],
+    });
+
+    const imported = await callJson(client, "import_steam_games", {
+      games: [{ app_id: 1687950 }],
+      ignore: [504230],
+    });
+    expect(imported.data).toEqual({
+      added: [
+        {
+          gameId: expect.any(Number),
+          name: "Persona 5 Royal",
+          status: "playing",
+          steamMinutes: 3000,
+          newUnlocks: 1,
+        },
+      ],
+      skipped: [],
+      ignored: 1,
+    });
+    const game = await callJson(client, "get_game", { game: "persona" });
+    expect(game.data).toMatchObject({ playtimeSource: "steam", minutesPlayed: 3000 });
+
+    const after = await callJson(client, "list_steam_import", { include_ignored: true });
+    expect(after.data.games).toEqual([
+      { appId: 504230, name: "Celeste", hours: 0, suggestedStatus: "backlog", ignored: true },
+    ]);
 
     await client.close();
   });

@@ -61,6 +61,7 @@ import {
 } from "../services/objectives";
 import { listSessions, logSession } from "../services/sessions";
 import { getSettings } from "../services/settings";
+import { importSteamGames, previewSteamImport } from "../services/steam-import";
 import { syncSteamGame, syncSteamLibrary } from "../services/steam-sync";
 import { getHeatmap, getPeriodBreakdown, getRecords, getRhythm, getStats } from "../services/stats";
 import { getActiveSession, startTimer, stopTimer } from "../services/timer";
@@ -169,6 +170,11 @@ function gameSummary(item: LibraryItem) {
 
 export function createMcpServer(deps: McpDeps, userId: string): McpServer {
   const ctx = (): ServiceContext => createContext(deps.db, deps.clock, "mcp", userId);
+  const steamDeps = () => ({
+    catalog: deps.achievements,
+    igdb: deps.igdb,
+    steamUser: deps.steamUser,
+  });
   const server = new McpServer({ name: "zerometro", title: "Zerômetro", version: "1.0.0" });
 
   server.registerTool(
@@ -889,17 +895,12 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     ({ game }) =>
       run(async () => {
         const scope = ctx();
-        const steamDeps = {
-          catalog: deps.achievements,
-          igdb: deps.igdb,
-          steamUser: deps.steamUser,
-        };
         if (game !== undefined) {
           const { gameId } = resolveLibraryGame(scope, game);
-          const sync = await syncSteamGame(scope, steamDeps, gameId);
+          const sync = await syncSteamGame(scope, steamDeps(), gameId);
           return { sync, game: gameSummary(getLibraryItem(scope, gameId)) };
         }
-        const result = await syncSteamLibrary(scope, steamDeps);
+        const result = await syncSteamLibrary(scope, steamDeps());
         return {
           syncedAt: result.syncedAt,
           newUnlocks: result.newUnlocks,
@@ -912,6 +913,100 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
                 error && { error },
               ),
             ),
+        };
+      }),
+  );
+
+  server.registerTool(
+    "list_steam_import",
+    {
+      title: "Jogos da Steam fora da biblioteca",
+      description:
+        "Lista os jogos da conta Steam do usuário que ainda não estão na biblioteca (mais jogados primeiro), com o appId, as horas na Steam, as horas nas últimas 2 semanas e o status sugerido (jogou nas últimas 2 semanas ou há até 30 dias → playing; senão, backlog). Os que o usuário ignorou numa importação anterior ficam de fora, a menos que include_ignored. Também diz quantos já estão na biblioteca e quais apps o IGDB não conhece (esses não dá para importar; se forem jogos, use search_igdb + add_game). Para importar, use import_steam_games com os appIds.",
+      inputSchema: z.object({
+        query: z.string().trim().max(100).optional().describe("Filtra pelo nome"),
+        include_ignored: z.boolean().default(false).describe("Incluir os ignorados"),
+      }),
+      annotations: { ...readOnly, openWorldHint: true },
+    },
+    ({ query, include_ignored: includeIgnored }) =>
+      run(async () => {
+        const preview = await previewSteamImport(ctx(), steamDeps());
+        const term = query?.toLowerCase();
+        const matches = (name: string | null) => !term || (name ?? "").toLowerCase().includes(term);
+        return {
+          inLibrary: preview.inLibrary,
+          hidesPlaytime: preview.hidesPlaytime,
+          ignored: preview.candidates.filter((c) => c.ignored).length,
+          games: preview.candidates
+            .filter(
+              (c) => (includeIgnored || !c.ignored) && (matches(c.name) || matches(c.steamName)),
+            )
+            .map((c) =>
+              Object.assign(
+                {
+                  appId: c.appId,
+                  name: c.name,
+                  hours: hours(c.minutes * 60),
+                  suggestedStatus: c.suggestedStatus,
+                },
+                c.steamName && { steamName: c.steamName },
+                c.recentMinutes > 0 && { recentHours: hours(c.recentMinutes * 60) },
+                c.ignored && { ignored: true },
+              ),
+            ),
+          notInIgdb: preview.unmatched.filter((u) => matches(u.name)).map((u) => u.name ?? u.appId),
+        };
+      }),
+  );
+
+  server.registerTool(
+    "import_steam_games",
+    {
+      title: "Importar jogos da Steam",
+      description:
+        "Põe na biblioteca jogos da conta Steam do usuário (os appIds vêm de list_steam_import). Eles entram com o tempo da Steam como tempo jogado (playtimeSource steam) e com as conquistas já sincronizadas (pode levar alguns segundos por jogo). Sem status, vale o sugerido. ignore guarda appIds que o usuário não quer (somem de list_steam_import). Os que já estão na biblioteca, saíram da conta ou o IGDB não conhece voltam em skipped, com o motivo.",
+      inputSchema: z.object({
+        games: z
+          .array(
+            z.object({
+              app_id: z.number().int().positive(),
+              status: gameStatusSchema.optional().describe("Omita para usar o sugerido"),
+            }),
+          )
+          .max(200)
+          .describe("Os jogos que entram"),
+        ignore: z.array(z.number().int().positive()).max(2000).optional(),
+      }),
+      annotations: { ...write, openWorldHint: true },
+    },
+    ({ games, ignore }) =>
+      run(async () => {
+        const scope = ctx();
+        const result = await importSteamGames(scope, steamDeps(), {
+          games: games.map((g) => ({ appId: g.app_id, ...(g.status && { status: g.status }) })),
+          ignore,
+        });
+        const gameIds = result.added.map((a) => a.gameId);
+        const sync =
+          gameIds.length > 0 ? await syncSteamLibrary(scope, steamDeps(), { gameIds }) : null;
+        const byGame = new Map(sync?.games.map((g) => [g.gameId, g]));
+        return {
+          added: result.added.map(({ gameId, name, status }) => {
+            const synced = byGame.get(gameId);
+            return Object.assign(
+              {
+                gameId,
+                name,
+                status,
+                steamMinutes: synced?.steamMinutes ?? null,
+                newUnlocks: synced?.newUnlocks ?? 0,
+              },
+              synced?.error && { error: synced.error },
+            );
+          }),
+          skipped: result.skipped,
+          ignored: result.ignored,
         };
       }),
   );
