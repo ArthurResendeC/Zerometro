@@ -98,6 +98,7 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 - **Objetivos por jogo:** caixinhas ou contadores ("900 sementes Korok") com barra geral; concluir o último sugere marcar o jogo como 100%
 - **Conquistas da Steam e do RetroAchievements** (opcional, com a chave de cada um): a lista oficial do jogo, com ícone, descrição, raridade ("8% dos jogadores") e pontos do RA, e você marca o que já conseguiu. A da Steam é achada sozinha pelo IGDB; a do RA, pelo nome nos consoles do jogo (você confirma) ou colando o link. Secretas ficam borradas até pedir o spoiler; filtros, busca e ordem por raridade; completar a lista sugere marcar o 100%
 - **Sincronizar com a sua Steam** (opcional): conecte o perfil nos Ajustes (só a URL, sem senha; os detalhes de jogos precisam estar públicos) e traga as conquistas que você já desbloqueou, com a data de verdade, e as horas de cada jogo. Sincroniza sozinho quando você abre o app (no máximo a cada 30 min, e só nos jogos que você jogou desde a última vez), e há um botão por jogo e "Sincronizar tudo" para fazer na hora. Só adiciona desbloqueios, nunca desmarca o que você marcou
+- **Importar a biblioteca da Steam:** "Importar jogos" nos Ajustes mostra os jogos da sua conta que ainda não estão aqui, com os que têm horas já marcados e o status sugerido (jogou nas últimas 2 semanas → Jogando; senão, Próximos). Eles entram com o tempo da Steam e as conquistas. O que ficar desmarcado vai para os ignorados e não volta marcado
 - **Tempo jogado: sessões ou Steam, você escolhe por jogo.** No controle manual valem as sessões mais o tempo antes do Zerômetro; na Steam vale o total de lá. O tempo da Steam fica guardado à parte, e as sessões continuam contando na ofensiva e nas estatísticas nos dois casos
 - **Tempo jogado antes do Zerômetro:** para jogos que você já vinha jogando ("tenho 39h de Witcher 3"), sem inventar sessões; conta no total e no progresso do jogo, mas não na ofensiva nem nas médias
 - **Instalável como app** (PWA) no computador (Chrome, Edge, Safari) e no celular, com janela própria, atalhos no ícone e um aviso com o passo a passo de cada navegador
@@ -127,7 +128,7 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 - [x] ~Sincronizar conquistas e horas com o perfil da Steam~
 - [x] ~Sincronizar com a Steam sozinho ao abrir o app~
 - [ ] Sincronizar as conquistas com o perfil do RetroAchievements
-- [ ] Importar a biblioteca da Steam
+- [x] ~Importar a biblioteca da Steam~
 
 ---
 
@@ -252,7 +253,7 @@ Por segurança, o OAuth só devolve a pessoa para o claude.ai e para endereços 
 
 **Tools disponíveis (leitura):** `search_igdb`, `get_feeds` (as listas da tela inicial: bem avaliados, em alta e próximos), `list_library` (com filtro de pós-jogo), `get_game` (com conclusões, objetivos e conquistas), `list_objectives`, `list_achievements` (secretas sem spoiler, a menos que peça), `get_stats`, `get_period_stats` (um ano ou os últimos 12 meses: gêneros, horários, recordes e zerados), `list_sessions`, `get_active_session`. O jogo pode ser passado pelo id ou pelo nome (sem diferenciar acentos); se o nome for ambíguo, a tool devolve as opções.
 
-**Tools de escrita:** `start_session` / `stop_session` (o mesmo timer do site), `log_session` (sessão já jogada, ex.: "joguei 2h ontem"), `add_game` (pelo igdbId achado com `search_igdb`, opcionalmente com o tempo já jogado), `set_status`, `set_prior_playtime` (tempo jogado antes do Zerômetro, ex.: "já tenho 39h de Witcher 3"), `mark_completed` ("zerei o Ocarina mas vou continuar jogando", "platinei"), `add_objective` ("adiciona o objetivo 900 sementes Korok no BotW") `update_objective` ("peguei mais 10 sementes"), `link_achievement_set` (liga a lista da Steam pelo IGDB; no RA devolve as opções para escolher) `set_achievement` ("peguei a conquista Farewell do Celeste", pelo nome aproximado), `sync_steam` ("sincroniza minhas conquistas do Celeste com a Steam", ou todos os jogos) e `set_playtime_source` ("usa o tempo da Steam no Hades"). As que apagam (`remove_completion`, `delete_objective`) só executam com `confirm: true`; sem isso, mostram o que seria apagado. Tudo fica no histórico de atividade com actor `mcp`.
+**Tools de escrita:** `start_session` / `stop_session` (o mesmo timer do site), `log_session` (sessão já jogada, ex.: "joguei 2h ontem"), `add_game` (pelo igdbId achado com `search_igdb`, opcionalmente com o tempo já jogado), `set_status`, `set_prior_playtime` (tempo jogado antes do Zerômetro, ex.: "já tenho 39h de Witcher 3"), `mark_completed` ("zerei o Ocarina mas vou continuar jogando", "platinei"), `add_objective` ("adiciona o objetivo 900 sementes Korok no BotW") `update_objective` ("peguei mais 10 sementes"), `link_achievement_set` (liga a lista da Steam pelo IGDB; no RA devolve as opções para escolher) `set_achievement` ("peguei a conquista Farewell do Celeste", pelo nome aproximado), `sync_steam` ("sincroniza minhas conquistas do Celeste com a Steam", ou todos os jogos), `import_steam_games` ("importa da Steam os jogos que joguei este ano", com os appIds de `list_steam_import`) e `set_playtime_source` ("usa o tempo da Steam no Hades"). As que apagam (`remove_completion`, `delete_objective`) só executam com `confirm: true`; sem isso, mostram o que seria apagado. Tudo fica no histórico de atividade com actor `mcp`.
 
 **Planejadas:** `update_session`, `update_game_entry`, `remove_game`, `delete_session`. As destrutivas só vão executar com confirmação explícita.
 
@@ -264,7 +265,7 @@ Para inspecionar localmente: `mise run mcp:inspect` e aponte para `http://localh
 
 - Dados de jogos e tempos para zerar fornecidos pelo [IGDB](https://www.igdb.com)
 - Conquistas (nomes, descrições, ícones e raridade) da [Steam](https://store.steampowered.com) e do [RetroAchievements](https://retroachievements.org), mostradas direto dos servidores deles, com link para a página do jogo na fonte. O Zerômetro só mostra metadados: nada de ROMs, hashes ou emuladores
-- Na sincronização com a Steam, a instância guarda só o seu SteamID público, o nome e o avatar do perfil, os desbloqueios e as horas por jogo, no próprio banco, além de quando foi a última sincronização automática e o erro dela, se houver. "Desconectar" nos Ajustes apaga o perfil e esse estado (o que já foi sincronizado fica)
+- Na sincronização com a Steam, a instância guarda só o seu SteamID público, o nome e o avatar do perfil, os desbloqueios e as horas por jogo, no próprio banco, além de quando foi a última sincronização automática e o erro dela, se houver, e os apps que você ignorou ao importar. "Desconectar" nos Ajustes apaga o perfil e esse estado (o que já foi sincronizado fica)
 - O servidor OAuth do MCP (`src/server/oauth/`) foi adaptado do [my-scratchpad](https://github.com/Levieber/my-scratchpad) (MIT)
 - Projeto pessoal, sem afiliação com IGDB, Twitch, Valve, RetroAchievements ou qualquer publisher
 
