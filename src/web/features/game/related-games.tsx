@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { IgdbGamePage, RelatedGame } from "@shared/game-page";
-import { GameRow, GameRowCard } from "@/components/game-row";
+import { GameCarousel, GameCarouselCard } from "@/components/game-row";
 import { StatusBadge } from "@/components/status-badge";
 import { libraryListQuery } from "@/lib/queries";
 
@@ -29,22 +29,19 @@ export function RelatedGames({ game }: { game: IgdbGamePage }) {
   return rows.map(
     ([title, games]) =>
       games.length > 0 && (
-        <section key={title} className="space-y-3">
-          <h2 className="display-md">{title}</h2>
-          <GameRow>
-            {games.map((g) => {
-              const status = inLibrary.get(g.igdbId);
-              return (
-                <GameRowCard
-                  key={g.igdbId}
-                  game={g}
-                  meta={g.releaseYear ?? ""}
-                  footer={status && <StatusBadge status={status} />}
-                />
-              );
-            })}
-          </GameRow>
-        </section>
+        <GameCarousel key={title} title={title} heading="h2">
+          {games.map((g) => {
+            const status = inLibrary.get(g.igdbId);
+            return (
+              <GameCarouselCard
+                key={g.igdbId}
+                game={g}
+                meta={g.releaseYear ?? ""}
+                footer={status && <StatusBadge status={status} />}
+              />
+            );
+          })}
+        </GameCarousel>
       ),
   );
 }

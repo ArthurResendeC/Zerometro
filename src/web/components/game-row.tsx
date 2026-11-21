@@ -9,36 +9,33 @@ import {
   CarouselPrevious,
   useCarousel,
 } from "@/components/ui/carousel";
-import { cn } from "@/lib/utils";
 
-// Fileiras horizontais de capas. Cada card leva para a página do jogo no Zerômetro.
-// - GameCarousel + GameCarouselCard: carrossel com setas ao lado do título (Descobrir).
-// - GameRow + GameRowCard: scroll nativo (relacionados na página do jogo).
-
-export function GameRow({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <ol
-      className={cn(
-        "-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-3 sm:gap-4",
-        className,
-      )}
-    >
-      {children}
-    </ol>
-  );
-}
+// Fileiras horizontais de capas em carrossel, com setas ao lado do título (Descobrir na home,
+// relacionados na página do jogo). Cada card leva para a página do jogo no Zerômetro.
 
 const carouselOpts = { align: "start", slidesToScroll: "auto" } as const;
 
-/** Fileira em carrossel; o título (h3) nomeia a região para leitores de tela. */
-export function GameCarousel({ title, children }: { title: string; children: ReactNode }) {
+const headingClass = {
+  h2: "display-md",
+  h3: "display-xs text-muted-foreground",
+} as const;
+
+interface GameCarouselProps {
+  title: string;
+  /** Nível do título: h3 sob um h2 de seção (Descobrir), h2 quando a fileira é a seção. */
+  heading?: keyof typeof headingClass;
+  children: ReactNode;
+}
+
+/** Fileira em carrossel; o título nomeia a região para leitores de tela. */
+export function GameCarousel({ title, heading: Heading = "h3", children }: GameCarouselProps) {
   const titleId = useId();
   return (
     <Carousel opts={carouselOpts} aria-labelledby={titleId}>
       <div className="flex min-h-11 items-center justify-between gap-4">
-        <h3 id={titleId} className="display-xs text-muted-foreground">
+        <Heading id={titleId} className={headingClass[Heading]}>
           {title}
-        </h3>
+        </Heading>
         <CarouselControls />
       </div>
       {/* Sangra até a borda da tela como o resto das fileiras. O Embla conta o padding inicial
@@ -72,21 +69,11 @@ interface GameRowCardProps {
   footer?: ReactNode;
 }
 
-const cardClass = "flex w-28 shrink-0 flex-col gap-2 sm:w-36";
-
-export function GameRowCard(props: GameRowCardProps) {
-  return (
-    <li className={cn(cardClass, "snap-start")}>
-      <GameRowCardBody {...props} />
-    </li>
-  );
-}
-
 export function GameCarouselCard(props: GameRowCardProps) {
   return (
     // Espaço entre slides na margem direita; a do último (mr-4) espelha o px-4 do container,
     // porque o Embla mede essa margem, não o padding final, como folga do fim.
-    <CarouselItem className={cn(cardClass, "mr-3 basis-auto pl-0 last:mr-4 sm:mr-4 select-none")}>
+    <CarouselItem className="mr-3 flex w-28 shrink-0 basis-auto flex-col gap-2 pl-0 select-none last:mr-4 sm:mr-4 sm:w-36">
       <GameRowCardBody {...props} />
     </CarouselItem>
   );
