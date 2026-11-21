@@ -29,7 +29,12 @@ import type {
   UpdateSessionInput,
 } from "@shared/sessions";
 import type { UpdateSettingsInput } from "@shared/settings";
-import type { LinkSteamProfileInput, SteamAutoSyncState } from "@shared/steam";
+import {
+  type LinkSteamProfileInput,
+  STEAM_SYNC_GAMES_BATCH,
+  type SteamAutoSyncState,
+  type SteamImportInput,
+} from "@shared/steam";
 import type {
   StartTimerInput,
   StartTimerResult,
@@ -45,6 +50,7 @@ import {
   autoSyncMessage,
   gameSyncMessage,
   librarySyncMessage,
+  importMessage,
 } from "@/features/steam/sync-messages";
 import {
   currentTimer,
@@ -1050,7 +1056,10 @@ export function useAchievementChange(gameId: number) {
 // ---------------------------------------------------------------------------
 // Steam: o perfil de quem usa o app e a sincronização (conquistas e horas)
 
-export const steamKeys = { profile: ["steam", "profile"] as const };
+export const steamKeys = {
+  profile: ["steam", "profile"] as const,
+  importPreview: ["steam", "import"] as const,
+};
 
 export const steamProfileQuery = () =>
   queryOptions({
@@ -1120,6 +1129,72 @@ export function useSyncSteamLibrary() {
       ]);
     },
     onError,
+  });
+}
+
+/** Os jogos da conta Steam que ainda não estão na biblioteca (só com o diálogo aberto). */
+export const steamImportPreviewQuery = () =>
+  queryOptions({
+    queryKey: steamKeys.importPreview,
+    queryFn: () => unwrap(api.steam.import.$get()),
+    // A conta e a biblioteca mudam por fora: sempre de novo ao abrir.
+    staleTime: 0,
+    gcTime: 60_000,
+  });
+
+export interface SteamImportProgress {
+  /** Jogos que já tiveram as conquistas e as horas buscadas. */
+  done: number;
+  total: number;
+}
+
+/**
+ * Importa os jogos escolhidos e, em seguida, busca as conquistas e as horas deles em lotes (cada
+ * lote é um pedido curto, e dá para mostrar o progresso). Se um lote falhar, para por ali: a
+ * sincronização automática termina os que faltaram.
+ */
+export function useImportSteamGames() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      input,
+      onProgress,
+    }: {
+      input: SteamImportInput;
+      onProgress: (progress: SteamImportProgress) => void;
+    }) => {
+      const result = await unwrap(api.steam.import.$post({ json: input }));
+      const ids = result.added.map((a) => a.gameId);
+      let newUnlocks = 0;
+      let interrupted = false;
+      onProgress({ done: 0, total: ids.length });
+      for (let i = 0; i < ids.length; i += STEAM_SYNC_GAMES_BATCH) {
+        const gameIds = ids.slice(i, i + STEAM_SYNC_GAMES_BATCH);
+        try {
+          // Um lote de cada vez: o servidor já vai no ritmo da Steam.
+          // oxlint-disable-next-line no-await-in-loop
+          const sync = await unwrap(api.steam.sync.games.$post({ json: { gameIds } }));
+          newUnlocks += sync.newUnlocks;
+        } catch {
+          interrupted = true;
+          break;
+        }
+        onProgress({ done: Math.min(i + gameIds.length, ids.length), total: ids.length });
+      }
+      return { ...result, newUnlocks, interrupted };
+    },
+    onSuccess: (result) => {
+      const { title, description } = importMessage(result);
+      toast.success(title, { description });
+    },
+    onError,
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: steamKeys.importPreview }),
+        queryClient.invalidateQueries({ queryKey: libraryKeys.all }),
+        queryClient.invalidateQueries({ queryKey: achievementKeys.all }),
+        queryClient.invalidateQueries({ queryKey: statsKeys.all }),
+      ]),
   });
 }
 

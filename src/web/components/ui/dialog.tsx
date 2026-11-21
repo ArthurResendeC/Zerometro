@@ -10,8 +10,12 @@ const DialogClose = DialogPrimitive.Close;
 function DialogContent({
   className,
   children,
+  showClose = true,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content>) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> & {
+  /** false: sem o X (ex.: enquanto algo que não pode parar está rodando). */
+  showClose?: boolean;
+}) {
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-background/70 bg-scanlines [animation-timing-function:steps(2)] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
@@ -24,10 +28,12 @@ function DialogContent({
         {...props}
       >
         {children}
-        <DialogPrimitive.Close className="absolute top-3 right-3 grid size-9 cursor-pointer place-items-center text-muted-foreground hover:bg-accent hover:text-foreground">
-          <CloseIcon />
-          <span className="sr-only">Fechar</span>
-        </DialogPrimitive.Close>
+        {showClose && (
+          <DialogPrimitive.Close className="absolute top-3 right-3 grid size-9 cursor-pointer place-items-center text-muted-foreground hover:bg-accent hover:text-foreground">
+            <CloseIcon />
+            <span className="sr-only">Fechar</span>
+          </DialogPrimitive.Close>
+        )}
       </DialogPrimitive.Content>
     </DialogPrimitive.Portal>
   );

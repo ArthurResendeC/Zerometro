@@ -100,10 +100,17 @@ export interface SteamAutoSync {
 /** Jogou nesses últimos dias: a importação sugere "Jogando"; senão, "Próximos". */
 export const STEAM_IMPORT_RECENT_DAYS = 30;
 
-/** Status sugerido para um jogo que vem da Steam. */
-export function suggestedImportStatus(lastPlayedAt: string | null, now: Date): GameStatus {
-  if (!lastPlayedAt) return "backlog";
-  const days = (now.getTime() - Date.parse(lastPlayedAt)) / 86_400_000;
+/**
+ * Status sugerido para um jogo que vem da Steam: "Jogando" se jogou nas últimas 2 semanas ou há
+ * até STEAM_IMPORT_RECENT_DAYS dias. Muitos perfis não mandam a data, só as 2 semanas.
+ */
+export function suggestedImportStatus(
+  game: { lastPlayedAt: string | null; recentMinutes: number },
+  now: Date,
+): GameStatus {
+  if (game.recentMinutes > 0) return "playing";
+  if (!game.lastPlayedAt) return "backlog";
+  const days = (now.getTime() - Date.parse(game.lastPlayedAt)) / 86_400_000;
   return days <= STEAM_IMPORT_RECENT_DAYS ? "playing" : "backlog";
 }
 
@@ -119,6 +126,8 @@ export interface SteamImportCandidate {
   releaseYear: number | null;
   /** Tempo total na Steam. */
   minutes: number;
+  /** Minutos nas últimas 2 semanas. */
+  recentMinutes: number;
   lastPlayedAt: string | null;
   suggestedStatus: GameStatus;
   /** Ficou de fora numa importação anterior (não vem marcado). */

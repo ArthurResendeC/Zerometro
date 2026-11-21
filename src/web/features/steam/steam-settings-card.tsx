@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { linkSteamProfileSchema, type SteamAutoSyncState, type SteamProfile } from "@shared/steam";
 import { ExternalLink } from "@/components/external-link";
-import { DownloadIcon } from "@/components/icons";
+import { DownloadIcon, PlusIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,10 +14,11 @@ import {
   useSyncSteamLibrary,
   useUnlinkSteamProfile,
 } from "@/lib/queries";
+import { SteamImportDialog } from "./steam-import-dialog";
 
 /**
- * Perfil da Steam nos Ajustes: conectar (URL ou SteamID64), sincronizar a biblioteca inteira e
- * desconectar. Some se a instância não tem a chave da Steam.
+ * Perfil da Steam nos Ajustes: conectar (URL ou SteamID64), sincronizar a biblioteca inteira,
+ * importar os jogos da conta que ainda não estão aqui e desconectar. Some se a instância não tem a chave da Steam.
  */
 export function SteamSettingsCard() {
   const { data } = useQuery(steamProfileQuery());
@@ -88,6 +89,7 @@ function LinkedProfile({
 }) {
   const sync = useSyncSteamLibrary();
   const unlink = useUnlinkSteamProfile();
+  const [importing, setImporting] = useState(false);
 
   return (
     <div className="space-y-4">
@@ -113,6 +115,9 @@ function LinkedProfile({
         <Button onClick={() => sync.mutate()} disabled={sync.isPending}>
           <DownloadIcon /> {sync.isPending ? "Sincronizando…" : "Sincronizar tudo"}
         </Button>
+        <Button variant="secondary" onClick={() => setImporting(true)}>
+          <PlusIcon /> Importar jogos
+        </Button>
         <Button variant="ghost" onClick={() => unlink.mutate()} disabled={unlink.isPending}>
           Desconectar
         </Button>
@@ -120,8 +125,10 @@ function LinkedProfile({
       <AutoSyncStatus auto={auto} />
       <p className="text-xs text-muted-foreground">
         "Sincronizar tudo" passa pelos jogos da biblioteca que estão na sua conta, um de cada vez.
-        Para um jogo só, use o botão na página dele.
+        Para um jogo só, use o botão na página dele. "Importar jogos" mostra os da sua conta que
+        ainda não estão aqui, para você escolher quais entram.
       </p>
+      <SteamImportDialog open={importing} onOpenChange={setImporting} />
     </div>
   );
 }

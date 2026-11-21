@@ -106,6 +106,7 @@ describe("createSteamUserApi", () => {
               appid: 504230,
               name: "Celeste",
               playtime_forever: 765,
+              playtime_2weeks: 30,
               rtime_last_played: 1_700_000_000,
             },
           ],
@@ -114,7 +115,13 @@ describe("createSteamUserApi", () => {
     );
 
     expect(await api.getOwnedGames(STEAM_ID, [504230, 440])).toEqual([
-      { appId: 504230, name: "Celeste", minutes: 765, lastPlayedAt: new Date(1_700_000_000_000) },
+      {
+        appId: 504230,
+        name: "Celeste",
+        minutes: 765,
+        recentMinutes: 30,
+        lastPlayedAt: new Date(1_700_000_000_000),
+      },
     ]);
     expect(urls[0]?.searchParams.get("include_appinfo")).toBe("1");
     expect(urls[0]?.searchParams.get("appids_filter[0]")).toBe("504230");

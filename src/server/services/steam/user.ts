@@ -38,6 +38,8 @@ export interface SteamOwnedGame {
   name: string | null;
   /** Tempo total na Steam, em minutos. */
   minutes: number;
+  /** Minutos nas últimas 2 semanas (vem mesmo quando a Steam não manda `lastPlayedAt`). */
+  recentMinutes: number;
   lastPlayedAt: Date | null;
 }
 
@@ -80,6 +82,7 @@ interface RawOwnedGames {
       appid: number;
       name?: string;
       playtime_forever?: number;
+      playtime_2weeks?: number;
       rtime_last_played?: number;
     }[];
   };
@@ -160,6 +163,7 @@ export function createSteamUserApi(options: SteamUserApiOptions): SteamUserApi {
         appId: g.appid,
         name: g.name?.trim() || null,
         minutes: g.playtime_forever ?? 0,
+        recentMinutes: g.playtime_2weeks ?? 0,
         lastPlayedAt: fromUnix(g.rtime_last_played),
       }));
     },

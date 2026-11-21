@@ -1,4 +1,9 @@
-import type { SteamAutoSync, SteamGameSync, SteamLibrarySync } from "@shared/steam";
+import type {
+  SteamAutoSync,
+  SteamGameSync,
+  SteamImportResult,
+  SteamLibrarySync,
+} from "@shared/steam";
 import { formatMinutes } from "@/lib/format";
 
 // Textos do resultado de uma sincronização com a Steam (toast).
@@ -66,4 +71,26 @@ export function autoSyncMessage(
     description:
       shown.join(", ") + (rest > 0 ? ` e mais ${rest} ${rest === 1 ? "jogo" : "jogos"}` : ""),
   };
+}
+
+export function importMessage(
+  result: SteamImportResult & { newUnlocks: number; interrupted: boolean },
+): { title: string; description?: string } {
+  const n = result.added.length;
+  const title =
+    n === 0
+      ? "Nenhum jogo importado"
+      : `${n} ${n === 1 ? "jogo importado" : "jogos importados"} da Steam`;
+  const description = [
+    n > 0 && !result.interrupted && unlocksText(result.newUnlocks),
+    result.interrupted &&
+      "As conquistas de alguns jogos ficaram para a próxima sincronização automática",
+    result.skipped.length > 0 &&
+      `${result.skipped.length} ${result.skipped.length === 1 ? "ficou" : "ficaram"} de fora (${[
+        ...new Set(result.skipped.map((s) => s.reason.toLowerCase())),
+      ].join("; ")})`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return description ? { title, description } : { title };
 }

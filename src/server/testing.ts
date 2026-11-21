@@ -256,7 +256,8 @@ export function createFakeSteamUser(
     /** Minutos por app, ou os minutos, quando jogou por último e o nome. Lido a cada chamada. */
     owned?: Record<
       number,
-      number | { minutes: number; lastPlayedAt: Date | null; name?: string | null }
+      | number
+      | { minutes: number; lastPlayedAt: Date | null; name?: string | null; recentMinutes?: number }
     >;
     unlocked?: Record<number, SteamUnlock[]>;
     private?: boolean;
@@ -267,11 +268,12 @@ export function createFakeSteamUser(
   const games = (): SteamOwnedGame[] =>
     Object.entries(options.owned ?? {}).map(([appId, game]) =>
       typeof game === "number"
-        ? { appId: Number(appId), name: null, minutes: game, lastPlayedAt: null }
+        ? { appId: Number(appId), name: null, minutes: game, recentMinutes: 0, lastPlayedAt: null }
         : {
             appId: Number(appId),
             name: game.name ?? null,
             minutes: game.minutes,
+            recentMinutes: game.recentMinutes ?? 0,
             lastPlayedAt: game.lastPlayedAt,
           },
     );

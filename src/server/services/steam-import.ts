@@ -80,6 +80,7 @@ export async function previewSteamImport(
     const current = byIgdb.get(match.igdbId);
     if (current && current.minutes >= game.minutes) continue;
     const lastPlayedAt = game.lastPlayedAt?.toISOString() ?? null;
+    const { recentMinutes } = game;
     byIgdb.set(match.igdbId, {
       appId: game.appId,
       igdbId: match.igdbId,
@@ -88,8 +89,9 @@ export async function previewSteamImport(
       coverImageId: match.coverImageId,
       releaseYear: match.releaseYear,
       minutes: game.minutes,
+      recentMinutes,
       lastPlayedAt,
-      suggestedStatus: suggestedImportStatus(lastPlayedAt, ctx.now),
+      suggestedStatus: suggestedImportStatus({ lastPlayedAt, recentMinutes }, ctx.now),
       ignored: ignored.has(game.appId),
     });
   }
