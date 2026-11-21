@@ -10,6 +10,7 @@ import { createGamePagesService } from "./services/game-pages";
 import { createIgdbFromEnv } from "./services/igdb";
 import { createRetroAchievementsFromEnv } from "./services/retroachievements";
 import { createSteamFromEnv } from "./services/steam";
+import { startSteamSyncJob } from "./services/steam-sync-job";
 import { createSteamUserFromEnv } from "./services/steam/user";
 import { PUBLIC_DIR, createPublicRoutes } from "./static";
 import index from "../web/index.html";
@@ -74,9 +75,17 @@ const server = Bun.serve({
 
 console.log(`Zerômetro rodando em ${server.url} (público: ${publicUrl})`);
 
+// Horas da Steam viram sessões no dia certo mesmo sem abrir o app.
+const stopSteamSync = startSteamSyncJob(db, clock, {
+  catalog: deps.achievements,
+  igdb,
+  steamUser: deps.steamUser,
+});
+
 // Deploy/restart: para de aceitar conexões e fecha o SQLite (checkpoint do WAL).
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
   process.once(signal, async () => {
+    stopSteamSync();
     await server.stop();
     db.$client.close();
     process.exit(0);

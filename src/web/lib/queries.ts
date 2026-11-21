@@ -1106,6 +1106,8 @@ export function useSyncSteamGame(gameId: number) {
       setAutoSyncState(queryClient, (auto) => auto && { ...auto, lastError: null });
       return Promise.all([
         setGameAchievements(queryClient, gameId, achievements),
+        // O jogado na Steam desde a última vez pode ter virado sessão.
+        queryClient.invalidateQueries({ queryKey: sessionKeys.all }),
         queryClient.invalidateQueries({ queryKey: statsKeys.all }),
       ]);
     },
@@ -1125,6 +1127,7 @@ export function useSyncSteamLibrary() {
       return Promise.all([
         queryClient.invalidateQueries({ queryKey: libraryKeys.all }),
         queryClient.invalidateQueries({ queryKey: achievementKeys.all }),
+        queryClient.invalidateQueries({ queryKey: sessionKeys.all }),
         queryClient.invalidateQueries({ queryKey: statsKeys.all }),
       ]);
     },
@@ -1214,6 +1217,7 @@ export function useAutoSyncSteam() {
       return Promise.all([
         queryClient.invalidateQueries({ queryKey: libraryKeys.all }),
         queryClient.invalidateQueries({ queryKey: achievementKeys.all }),
+        queryClient.invalidateQueries({ queryKey: sessionKeys.all }),
         queryClient.invalidateQueries({ queryKey: statsKeys.all }),
       ]);
     },

@@ -381,6 +381,11 @@ export function insertLibraryEntry(
       priorMinutes: entry.priorMinutes ?? 0,
       playtimeSource: entry.playtimeSource ?? "sessions",
       steamMinutes: entry.steamMinutes ?? null,
+      // O total que já vem é "antes": só o jogado daqui em diante vira sessão.
+      ...(entry.steamMinutes != null && {
+        steamCountedMinutes: entry.steamMinutes,
+        steamCountedAt: ctx.now.toISOString(),
+      }),
       ...dates,
     })
     .run();

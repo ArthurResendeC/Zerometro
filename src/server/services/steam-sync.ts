@@ -22,11 +22,13 @@ import type { ServiceContext } from "./context";
 import type { IgdbApi } from "./igdb";
 import { getLibraryItem, listLibrary } from "./library";
 import { getAutoSyncState, getSteamProfile, setAutoSyncState } from "./steam-account";
+import { countSteamPlaytime } from "./steam-playtime";
 import type { SteamOwnedGame, SteamUserApi } from "./steam/user";
 
 // Sincronização com a conta Steam: traz as conquistas desbloqueadas (com a data real) e o tempo
 // total de cada jogo. Só adiciona desbloqueios, nunca desmarca os manuais. O tempo da Steam fica
-// guardado à parte; ele só vale como "tempo jogado" se o jogo usar a Steam como fonte.
+// guardado à parte; ele só vale como "tempo jogado" se o jogo usar a Steam como fonte, e aí o
+// que foi jogado desde a última sincronização vira sessão (ver `steam-playtime.ts`).
 //
 // Manual (botão no jogo ou "Sincronizar tudo"): completa, na hora. Automática (ao abrir o app):
 // no máximo a cada STEAM_AUTO_SYNC_INTERVAL_MS e incremental, só nos jogos que mudaram.
@@ -105,6 +107,7 @@ const emptyResult = (item: { gameId: number; name: string }): SteamGameSync => (
   owned: false,
   steamMinutes: null,
   newUnlocks: 0,
+  sessionMinutes: 0,
   linkedSet: false,
   error: null,
 });
@@ -205,6 +208,7 @@ async function syncOne(
       .set({ steamMinutes: result.steamMinutes, steamSyncedAt: ctx.now.toISOString() })
       .where(and(eq(libraryEntries.userId, ctx.userId), eq(libraryEntries.gameId, item.gameId)))
       .run();
+    if (game) result.sessionMinutes = countSteamPlaytime(tx, ctx, item.gameId, game).minutes;
   });
   return result;
 }
@@ -235,7 +239,7 @@ export async function autoSyncSteam(
     const owned = new Map(account.map((g) => [g.appId, g]));
     // "Sempre manter meu tempo total de jogo privado": tudo 0 e sem data, não dá para comparar.
     const hidesPlaytime = account.every((g) => g.minutes === 0 && g.lastPlayedAt === null);
-    const unchanged: number[] = [];
+    const unchanged: { gameId: number; game: SteamOwnedGame }[] = [];
     for (const item of listLibrary(ctx)) {
       try {
         // oxlint-disable-next-line no-await-in-loop
@@ -244,7 +248,7 @@ export async function autoSyncSteam(
         // Fora da conta (ou fora da Steam): nada muda sozinho; o botão do jogo continua lá.
         if (!game) continue;
         if (!changedSinceSync(item, game, hidesPlaytime)) {
-          unchanged.push(item.gameId);
+          unchanged.push({ gameId: item.gameId, game });
           continue;
         }
         // oxlint-disable-next-line no-await-in-loop
@@ -254,15 +258,23 @@ export async function autoSyncSteam(
         games.push({ ...emptyResult(item), error: error.message });
       }
     }
-    // As horas desses foram conferidas agora, mesmo sem mudar.
+    // As horas desses foram conferidas agora, mesmo sem mudar (e a base das sessões avança).
     if (unchanged.length > 0) {
-      ctx.db
-        .update(libraryEntries)
-        .set({ steamSyncedAt: lastRunAt })
-        .where(
-          and(eq(libraryEntries.userId, ctx.userId), inArray(libraryEntries.gameId, unchanged)),
-        )
-        .run();
+      ctx.db.transaction((tx) => {
+        tx.update(libraryEntries)
+          .set({ steamSyncedAt: lastRunAt })
+          .where(
+            and(
+              eq(libraryEntries.userId, ctx.userId),
+              inArray(
+                libraryEntries.gameId,
+                unchanged.map((u) => u.gameId),
+              ),
+            ),
+          )
+          .run();
+        for (const { gameId, game } of unchanged) countSteamPlaytime(tx, ctx, gameId, game);
+      });
     }
   } catch (error) {
     const message =
@@ -308,6 +320,7 @@ function logSync(ctx: ServiceContext, games: SteamGameSync[], extra: { auto?: tr
       appId: g.appId,
       minutes: g.steamMinutes,
       newUnlocks: g.newUnlocks,
+      ...(g.sessionMinutes && { sessionMinutes: g.sessionMinutes }),
       ...(g.linkedSet && { linkedSet: true }),
       ...(g.error && { error: g.error }),
     })),

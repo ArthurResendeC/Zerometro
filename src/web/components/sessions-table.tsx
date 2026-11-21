@@ -25,6 +25,7 @@ const SOURCE_LABELS: Record<PlaySessionItem["source"], string | null> = {
   manual: null,
   timer: null,
   mcp: "IA",
+  steam: "Steam",
 };
 
 const localTime = (iso: string) => zonedParts(new Date(iso), DEFAULT_TIME_ZONE).time;

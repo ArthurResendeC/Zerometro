@@ -118,9 +118,10 @@ describe("/api/steam/import", () => {
     );
     const synced = (await sync.json()) as SteamLibrarySync;
     const byName = synced.games.toSorted((a, b) => a.name.localeCompare(b.name));
-    expect(byName.map((g) => [g.name, g.steamMinutes, g.newUnlocks])).toEqual([
-      ["Hollow Knight", 600, 0],
-      ["Persona 5 Royal", 3000, 1],
+    expect(byName.map((g) => [g.name, g.steamMinutes, g.newUnlocks, g.sessionMinutes])).toEqual([
+      // As horas da importação são "antes do Zerômetro": nenhuma sessão.
+      ["Hollow Knight", 600, 0, 0],
+      ["Persona 5 Royal", 3000, 1, 0],
     ]);
     // Só esses jogos: o Hades (que já estava) não foi tocado, e o relógio da automática não mudou.
     expect(synced.games.some((g) => g.name === "Hades")).toBe(false);

@@ -60,6 +60,11 @@ export interface SteamGameSync {
   steamMinutes: number | null;
   /** Desbloqueios novos; os que já estavam marcados (à mão ou não) ficam como estavam. */
   newUnlocks: number;
+  /**
+   * Minutos jogados na Steam desde a última sincronização que viraram sessões (e entram na
+   * ofensiva e nas estatísticas). Só nos jogos que usam a Steam como fonte do tempo.
+   */
+  sessionMinutes: number;
   /** A lista da Steam foi ligada agora (o jogo ainda não seguia nenhuma lista). */
   linkedSet: boolean;
   /** Falha só neste jogo (a sincronização dos outros continua). */

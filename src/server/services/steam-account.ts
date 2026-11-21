@@ -4,10 +4,14 @@ import {
   type SteamAutoSyncState,
   type SteamProfile,
 } from "../../shared/steam";
+import { like } from "drizzle-orm";
+import type { DbOrTx } from "../db/client";
+import { kv } from "../db/schema";
 import { ValidationError } from "../errors";
 import { logActivity } from "./activity";
 import type { ServiceContext, UserScope } from "./context";
 import { deleteKv, getKv, setKv } from "./kv";
+import { resetSteamBaselines } from "./steam-playtime";
 import type { SteamUserApi } from "./steam/user";
 
 // O perfil da Steam de cada usuário (no `kv`): de onde vêm as conquistas desbloqueadas e as
@@ -16,6 +20,17 @@ import type { SteamUserApi } from "./steam/user";
 const profileKey = (userId: string) => `steam:profile:${userId}`;
 const autoSyncKey = (userId: string) => `steam:auto:${userId}`;
 const ignoredKey = (userId: string) => `steam:import-ignored:${userId}`;
+
+/** Usuários com perfil da Steam ligado (para a sincronização de hora em hora). */
+export function steamLinkedUserIds(db: DbOrTx): string[] {
+  const prefix = profileKey("");
+  return db
+    .select({ key: kv.key })
+    .from(kv)
+    .where(like(kv.key, `${prefix}%`))
+    .all()
+    .map((row) => row.key.slice(prefix.length));
+}
 
 export function getSteamProfile({ db, userId }: UserScope): SteamProfile | null {
   const raw = getKv(db, profileKey(userId));
@@ -37,7 +52,10 @@ export async function linkSteamProfile(
   if (!ref) throw new ValidationError("Isso não parece um perfil da Steam");
   const player = await steamUser.resolveProfile(ref);
   const profile: SteamProfile = { ...player, linkedAt: ctx.now.toISOString() };
+  const previous = getSteamProfile(ctx);
   ctx.db.transaction((tx) => {
+    // Outra conta: as horas guardadas são da anterior, a próxima sincronização marca a base.
+    if (previous && previous.steamId !== profile.steamId) resetSteamBaselines(tx, ctx.userId);
     setKv(tx, profileKey(ctx.userId), JSON.stringify(profile));
     // Perfil novo: a próxima abertura do app já sincroniza, e nada da outra conta fica ignorado.
     deleteKv(tx, autoSyncKey(ctx.userId));

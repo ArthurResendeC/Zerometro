@@ -22,7 +22,7 @@ export const gameStatusLabels: Record<GameStatus, string> = {
   dropped: "Abandonado",
 };
 
-export const sessionSources = ["manual", "timer", "mcp"] as const;
+export const sessionSources = ["manual", "timer", "mcp", "steam"] as const;
 export const sessionSourceSchema = z.enum(sessionSources);
 export type SessionSource = z.infer<typeof sessionSourceSchema>;
 
