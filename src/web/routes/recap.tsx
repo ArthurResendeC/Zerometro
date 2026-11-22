@@ -7,7 +7,7 @@ import type { RecapPeriod } from "@shared/recap";
 import { ArrowLeftIcon, ArrowRightIcon, CloseIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { RecapStory } from "@/features/recap/recap-story";
-import { periodLabel } from "@/features/recap/recap-text";
+import { periodLabel } from "@shared/recap-text";
 import { recapQuery } from "@/lib/queries";
 
 /** Período na URL, em português (como os outros filtros). */

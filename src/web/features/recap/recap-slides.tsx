@@ -13,8 +13,8 @@ import {
   profileFacts,
   profileTitle,
   recapKicker,
-  type RecapSlideId,
-} from "./recap-text";
+} from "@shared/recap-text";
+import type { RecapSlideId } from "./recap-text";
 
 // Os slides do recap. Cada um ocupa a moldura 9:16 inteira; a cor de fundo vem de `slideThemes`
 // e todo o resto usa `currentColor`, então funciona nos temas claro e escuro.
