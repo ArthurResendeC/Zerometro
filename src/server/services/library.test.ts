@@ -114,6 +114,7 @@ describe("listLibrary", () => {
       minutesPlayed: 210,
       sessionsCount: 2,
       lastPlayedOn: "2026-11-18",
+      firstPlayedOn: "2026-11-17",
       progress: (210 * 60) / 315_000,
     });
     expect(items[0]?.progress).toBeNull(); // Undertale sem tempo para zerar
@@ -197,6 +198,7 @@ describe("tempo anterior ao Zerômetro", () => {
       priorMinutes: 900,
       sessionsCount: 0,
       lastPlayedOn: null,
+      firstPlayedOn: null,
       status: "paused",
     });
     expect(ctx.db.select().from(activityLog).all().at(-1)).toMatchObject({

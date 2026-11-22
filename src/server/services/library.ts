@@ -133,6 +133,7 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
       minutes: sql<number>`sum(${playSessions.minutes})`.as("minutes"),
       sessions: sql<number>`count(*)`.as("sessions"),
       lastPlayedOn: sql<string>`max(${playSessions.playedOn})`.as("last_played_on"),
+      firstPlayedOn: sql<string>`min(${playSessions.playedOn})`.as("first_played_on"),
     })
     .from(playSessions)
     // Só sessões encerradas do usuário (ignora o timer rodando).
@@ -214,6 +215,7 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
       minutes: sql<number>`coalesce(${totals.minutes}, 0)`,
       sessions: sql<number>`coalesce(${totals.sessions}, 0)`,
       lastPlayedOn: totals.lastPlayedOn,
+      firstPlayedOn: totals.firstPlayedOn,
       bestRank: done.bestRank,
       completions: done.count,
       firstCompletedOn: done.first,
@@ -242,7 +244,7 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
     .all();
 
   return rows.map((row) => {
-    const { game, entry, minutes, sessions, lastPlayedOn } = row;
+    const { game, entry, minutes, sessions, lastPlayedOn, firstPlayedOn } = row;
     const hasTtb =
       game.ttbMainSec !== null || game.ttbExtraSec !== null || game.ttbCompleteSec !== null;
     const timeToBeat = hasTtb
@@ -313,6 +315,7 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
       onSteam,
       sessionsCount: sessions,
       lastPlayedOn: lastPlayedOn ?? null,
+      firstPlayedOn: firstPlayedOn ?? null,
       progress: estimate.progress,
       progressTarget: estimate.target,
     };

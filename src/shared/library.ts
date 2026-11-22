@@ -60,6 +60,8 @@ export interface LibraryItem {
   onSteam: boolean | null;
   sessionsCount: number;
   lastPlayedOn: string | null;
+  /** Data da primeira sessão registrada (o "comecei a jogar" usa quando `startedAt` está vazio). */
+  firstPlayedOn: string | null;
   /** 0..1, estimado pelo tempo do IGDB rumo a `progressTarget`. null sem tempo e sem conclusão. */
   progress: number | null;
   /** Para onde o progresso aponta: história antes de zerar, depois extras e 100%. */
@@ -67,6 +69,60 @@ export interface LibraryItem {
 }
 
 export type StatusCounts = Record<GameStatus, number>;
+
+// ---------------------------------------------------------------------------
+// Ordenação (no cliente: a lista vem inteira e fica salva offline; o MCP usa a mesma regra)
+
+export const librarySorts = ["last_session", "started_at", "rating"] as const;
+export type LibrarySort = (typeof librarySorts)[number];
+export const librarySortSchema = z.enum(librarySorts);
+
+export const sortDirections = ["desc", "asc"] as const;
+export type SortDirection = (typeof sortDirections)[number];
+export const sortDirectionSchema = z.enum(sortDirections);
+
+export const librarySortLabels: Record<LibrarySort, string> = {
+  last_session: "Última sessão",
+  started_at: "Comecei a jogar",
+  rating: "Minha nota",
+};
+
+/** O valor que ordena o jogo no critério (null: não tem, vai para o fim). */
+export function sortValueOf(item: LibraryItem, sort: LibrarySort): string | number | null {
+  switch (sort) {
+    case "last_session":
+      return item.lastPlayedOn;
+    case "started_at":
+      return item.startedAt ?? item.firstPlayedOn;
+    case "rating":
+      return item.rating;
+  }
+}
+
+const byName = new Intl.Collator("pt-BR", { sensitivity: "base", numeric: true });
+
+/**
+ * Ordena pelo critério (desc: mais recente/maior nota primeiro). Quem não tem o valor fica sempre
+ * no fim, nas duas direções; empate vai pelo nome.
+ */
+export function sortLibraryItems<T extends LibraryItem>(
+  items: readonly T[],
+  sort: LibrarySort,
+  direction: SortDirection = "desc",
+): T[] {
+  const sign = direction === "desc" ? -1 : 1;
+  return items
+    .map((item) => ({ item, value: sortValueOf(item, sort) }))
+    .toSorted((a, b) => {
+      if (a.value !== b.value) {
+        if (a.value === null) return 1;
+        if (b.value === null) return -1;
+        return (a.value < b.value ? -1 : 1) * sign;
+      }
+      return byName.compare(a.item.name, b.item.name);
+    })
+    .map(({ item }) => item);
+}
 
 export interface UpdateLibraryEntryResult {
   item: LibraryItem;

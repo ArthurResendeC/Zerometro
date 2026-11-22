@@ -1,14 +1,32 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { gameStatuses, gameStatusLabels, gameStatusSchema } from "@shared/domain";
+import {
+  type LibrarySort,
+  librarySortLabels,
+  librarySorts,
+  sortDirectionSchema,
+  sortLibraryItems,
+} from "@shared/library";
 import { GameCard, GameGrid } from "@/components/game-card";
+import { ArrowDownIcon, ArrowUpIcon } from "@/components/icons";
 import { SearchInput } from "@/components/search-input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { libraryListQuery } from "@/lib/queries";
 import { cn } from "@/lib/utils";
+
+/** Critério de ordenação na URL, em português (como o resto dos filtros). */
+const sortParams = { ultima: "last_session", inicio: "started_at", nota: "rating" } as const;
+type SortParam = keyof typeof sortParams;
+const sortParamOf = Object.fromEntries(
+  Object.entries(sortParams).map(([param, sort]) => [sort, param]),
+) as Record<LibrarySort, SortParam>;
+const DEFAULT_SORT: LibrarySort = "last_session";
 
 // Filtros na URL: dá para favoritar/compartilhar e o "voltar" do navegador funciona.
 const searchSchema = z.object({
@@ -16,6 +34,13 @@ const searchSchema = z.object({
   /** Só pós-jogo (dentro de "Jogando"). */
   estado: z.literal("posjogo").optional().catch(undefined),
   q: z.string().trim().max(100).optional().catch(undefined),
+  /** Ordenação (sem: última sessão). A lista vem inteira; ordenar é no cliente. */
+  ordem: z
+    .enum(Object.keys(sortParams) as [SortParam, ...SortParam[]])
+    .optional()
+    .catch(undefined),
+  /** Direção (sem: desc, mais recente/maior nota primeiro). */
+  dir: sortDirectionSchema.optional().catch(undefined),
 });
 
 export const Route = createFileRoute("/biblioteca")({
@@ -39,6 +64,12 @@ function LibraryPage() {
   const navigate = Route.useNavigate();
   const { data, isFetching } = useQuery(libraryListQuery(toListQuery(search)));
   const postgameOnly = search.status === "playing" && search.estado === "posjogo";
+  const sort = search.ordem ? sortParams[search.ordem] : DEFAULT_SORT;
+  const direction = search.dir ?? "desc";
+  const items = useMemo(
+    () => (data ? sortLibraryItems(data.items, sort, direction) : []),
+    [data, sort, direction],
+  );
 
   const total = data ? Object.values(data.counts).reduce((a, b) => a + b, 0) : 0;
   const tabs = [
@@ -54,14 +85,54 @@ function LibraryPage() {
     <section className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="display-lg">Biblioteca</h1>
-        <SearchInput
-          value={search.q ?? ""}
-          onChange={(q) =>
-            navigate({ search: (prev) => ({ ...prev, q: q || undefined }), replace: true })
-          }
-          placeholder="Filtrar por nome"
-          className="w-full sm:w-64"
-        />
+        <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-2 sm:w-auto">
+          <SearchInput
+            value={search.q ?? ""}
+            onChange={(q) =>
+              navigate({ search: (prev) => ({ ...prev, q: q || undefined }), replace: true })
+            }
+            placeholder="Filtrar por nome"
+            className="w-full sm:w-64"
+          />
+          <div className="flex flex-1 items-center gap-1 sm:flex-none">
+            <NativeSelect
+              aria-label="Ordenar por"
+              value={sort}
+              onChange={(e) => {
+                const next = e.target.value as LibrarySort;
+                navigate({
+                  search: (prev) => ({
+                    ...prev,
+                    ordem: next === DEFAULT_SORT ? undefined : sortParamOf[next],
+                  }),
+                });
+              }}
+              className="min-w-0 flex-1 sm:w-48 sm:flex-none"
+            >
+              {librarySorts.map((option) => (
+                <option key={option} value={option}>
+                  {librarySortLabels[option]}
+                </option>
+              ))}
+            </NativeSelect>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label={
+                direction === "desc" ? "Ordem decrescente (inverter)" : "Ordem crescente (inverter)"
+              }
+              title={direction === "desc" ? "Decrescente" : "Crescente"}
+              onClick={() =>
+                navigate({
+                  search: (prev) => ({ ...prev, dir: direction === "desc" ? "asc" : undefined }),
+                })
+              }
+              className="mb-2 mr-1"
+            >
+              {direction === "desc" ? <ArrowDownIcon /> : <ArrowUpIcon />}
+            </Button>
+          </div>
+        </div>
       </div>
 
       <nav
@@ -113,13 +184,18 @@ function LibraryPage() {
 
       {!data ? (
         <GridSkeleton />
-      ) : data.items.length === 0 ? (
+      ) : items.length === 0 ? (
         <EmptyState filtered={Boolean(search.q || search.status || postgameOnly)} />
       ) : (
         <div className={cn(isFetching && "opacity-60")}>
           <GameGrid>
-            {data.items.map((item) => (
-              <GameCard key={item.gameId} item={item} showStatus={!search.status} />
+            {items.map((item) => (
+              <GameCard
+                key={item.gameId}
+                item={item}
+                showStatus={!search.status}
+                sortBadge={sort}
+              />
             ))}
           </GameGrid>
         </div>

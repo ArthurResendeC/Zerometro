@@ -1,9 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { progressTargetLabels } from "@shared/completions";
-import type { LibraryItem } from "@shared/library";
+import type { LibraryItem, LibrarySort } from "@shared/library";
 import { GameCover } from "@/components/game-cover";
-import { CompletionBadge, completionAddsInfo, StatusBadge } from "@/components/status-badge";
+import {
+  CompletionBadge,
+  completionAddsInfo,
+  SortBadge,
+  StatusBadge,
+} from "@/components/status-badge";
 import { XpBar } from "@/components/ui/progress";
 import { formatMinutes, formatPercent } from "@/lib/format";
 
@@ -11,10 +16,12 @@ interface GameCardProps {
   item: LibraryItem;
   /** Mostra o status sobre a capa (útil na aba "Todos"). */
   showStatus?: boolean;
+  /** Mostra no canto da capa o valor do critério que ordena a lista (data, nota). */
+  sortBadge?: LibrarySort;
 }
 
 /** Card de jogo em forma de cartucho: ranhuras no topo, capa como rótulo, progresso como barra de XP. */
-export function GameCard({ item, showStatus = false }: GameCardProps) {
+export function GameCard({ item, showStatus = false, sortBadge }: GameCardProps) {
   const played = item.minutesPlayed > 0;
   const finished = item.status === "finished";
   // Pós-jogo sempre aparece (está na aba "Jogando", mas já foi zerado).
@@ -33,9 +40,11 @@ export function GameCard({ item, showStatus = false }: GameCardProps) {
       <div className="relative m-1 bg-card px-2.5 pt-3.5 pb-2.5 pixel-frame transition-transform ease-[steps(2)] group-hover:-translate-y-1 group-hover:pixel-drop group-focus-visible:-translate-y-1 group-focus-visible:outline-[3px] group-focus-visible:outline-offset-[7px] group-focus-visible:outline-ring group-focus-visible:outline-solid before:absolute before:inset-x-6 before:top-1 before:h-1.5 before:bg-[repeating-linear-gradient(90deg,var(--border)_0_4px,transparent_4px_8px)]">
         <div className="relative">
           <GameCover name={item.name} imageId={item.coverImageId} />
-          {statusShown && (
-            <StatusBadge status={item.displayState} className="absolute top-1 left-1" />
-          )}
+          {/* Empilhados: lado a lado não cabem na capa estreita do celular. */}
+          <div className="absolute top-1 left-1 flex flex-col items-start">
+            {statusShown && <StatusBadge status={item.displayState} />}
+            {sortBadge && <SortBadge item={item} sort={sortBadge} />}
+          </div>
           {completionShown && (
             <CompletionBadge completion={completion} className="absolute bottom-1 left-1" />
           )}
