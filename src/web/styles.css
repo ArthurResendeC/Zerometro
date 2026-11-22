@@ -210,6 +210,16 @@
 
   --animate-blink: blink 1s steps(1) infinite;
   --animate-flicker: flicker 600ms steps(2) infinite;
+  /* Barra de progresso dos slides do recap (o tempo de cada slide). */
+  --animate-recap-fill: recap-fill 8s linear forwards;
+  @keyframes recap-fill {
+    from {
+      width: 0%;
+    }
+    to {
+      width: 100%;
+    }
+  }
   @keyframes blink {
     50% {
       opacity: 0;

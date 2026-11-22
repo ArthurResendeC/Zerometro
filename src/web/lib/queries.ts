@@ -9,6 +9,7 @@ import type {
   LinkAchievementSetInput,
 } from "@shared/achievements";
 import type { MarkCompletedInput } from "@shared/completions";
+import type { RecapPeriod } from "@shared/recap";
 import type {
   AddObjectiveInput,
   ObjectiveItem,
@@ -482,6 +483,14 @@ export const recordsQuery = (year?: number) =>
   queryOptions({
     queryKey: [...statsKeys.all, "records", year ?? "rolling"],
     queryFn: () => unwrap(api.stats.records.$get({ query: year ? { year: String(year) } : {} })),
+    placeholderData: keepPreviousData,
+  });
+
+/** Recap da semana ou do mês que contém `date` (sem data: o último período fechado). */
+export const recapQuery = (period: RecapPeriod, date?: string) =>
+  queryOptions({
+    queryKey: [...statsKeys.all, "recap", period, date ?? "last"],
+    queryFn: () => unwrap(api.stats.recap.$get({ query: date ? { period, date } : { period } })),
     placeholderData: keepPreviousData,
   });
 

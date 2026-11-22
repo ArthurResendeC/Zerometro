@@ -1,9 +1,10 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { genreLabel } from "@shared/genres";
 import type { PeriodBreakdown } from "@shared/stats";
 import { GameCover } from "@/components/game-cover";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { NativeSelect } from "@/components/ui/native-select";
 import { ActivityHeatmap } from "@/features/stats/activity-heatmap";
@@ -48,6 +49,11 @@ function StatsPage() {
         <p className="mt-2 text-muted-foreground">O que e quanto você jogou {period}.</p>
       </div>
 
+      {/* O m-1 do Card anularia a margem do space-y: a div leva a margem. */}
+      <div>
+        <RecapCard />
+      </div>
+
       {/* Filtro acima de tudo o que ele recorta. */}
       <NativeSelect
         aria-label="Período"
@@ -76,6 +82,30 @@ function StatsPage() {
 
       <RecordsSection records={records} />
     </div>
+  );
+}
+
+/** Atalho para o recap em slides do último período fechado. */
+function RecapCard() {
+  return (
+    <Card className="flex-row flex-wrap items-center justify-between gap-4">
+      <div>
+        <h2 className="display-xs text-muted-foreground">Recap</h2>
+        <p className="mt-1">Seus jogos, gêneros e destaques em slides, estilo retrospectiva.</p>
+      </div>
+      <div className="flex flex-wrap gap-3">
+        <Button asChild size="sm">
+          <Link to="/recap" search={{ periodo: "semana" }}>
+            Semana passada
+          </Link>
+        </Button>
+        <Button asChild size="sm" variant="outline">
+          <Link to="/recap" search={{ periodo: "mes" }}>
+            Mês passado
+          </Link>
+        </Button>
+      </div>
+    </Card>
   );
 }
 

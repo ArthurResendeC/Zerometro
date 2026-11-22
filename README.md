@@ -90,6 +90,7 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 - **Dados do IGDB:** busca de jogos com capa, plataformas, gêneros, ano e tempo para zerar
 - **Registro de sessões:** manual ("joguei 2h ontem") ou pelo **timer** ("Comecei a jogar" / "Parei"), que roda no servidor e não se perde ao fechar a aba
 - **Estatísticas:** 🔥 ofensiva atual e recorde (com mínimo diário configurável), hoje, média diária e semanal, gráfico das últimas 8 semanas e heatmap dos últimos 12 meses na tela inicial
+- **Recap da semana e do mês** em slides estilo stories (toque para avançar, segure para pausar): tempo jogado comparado ao período anterior, top 5 jogos e gêneros, estreias e jogos retomados, melhor dia e maior sessão, perfil de horário (noturno, matinal, fim de semana…), zerados e a conquista mais rara
 - **Página de estatísticas** (últimos 12 meses ou um ano): heatmap estilo GitHub, gêneros e jogos mais jogados, média por dia da semana, hora do dia (sessões de timer), duração das sessões, recordes (maior sessão, melhor dia e semana), zerados por mês (com replays e 100% à parte) e seu ritmo comparado ao tempo da história no IGDB
 - **Página de cada jogo**, na biblioteca ou não, com as abas **Sobre o jogo** (banner, notas da crítica e do público, tempos para zerar, sinopse, trailer, imagens, onde comprar, lançamento por plataforma, português do Brasil, classificação indicativa e jogos relacionados para ir de jogo em jogo), **Minhas sessões** (tempo jogado, progresso, conclusões, objetivos, sessões e detalhes) e **Conquistas**
 - **Descobrir na tela inicial:** listas do IGDB com os lançamentos bem avaliados, os jogos em alta e os próximos lançamentos, atualizadas uma vez por dia, com botão de adicionar (próximos ou desejos) e o status dos que já estão na biblioteca
@@ -122,6 +123,8 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 - [x] ~Backup do SQLite (Litestream para um bucket S3/R2)~
 - [x] ~PWA (instalar no computador e no celular)~
 - [x] ~Registrar sessões offline e sincronizar quando a conexão voltar~
+- [x] ~Recap da semana e do mês em slides~
+- [ ] Recap como imagem para compartilhar (stories 9:16 e 16:9)
 - [ ] Retrospectiva do ano
 - [ ] Alertas de lançamento da lista de desejos
 - [x] ~Sincronização de tempo jogado da Steam~
