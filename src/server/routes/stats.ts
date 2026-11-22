@@ -1,8 +1,10 @@
 import { createRouter, webContext } from "../lib/hono";
 import type { AppDeps } from "../app";
 import { getSettings } from "../services/settings";
+import { recapQuerySchema } from "../../shared/recap";
 import { statsPeriodSchema } from "../../shared/stats";
 import { validate } from "../lib/validate";
+import { getRecap } from "../services/recap";
 import { getHeatmap, getPeriodBreakdown, getRecords, getRhythm, getStats } from "../services/stats";
 
 export function createStatsRoutes(deps: AppDeps) {
@@ -32,5 +34,10 @@ export function createStatsRoutes(deps: AppDeps) {
       const ctx = webContext(deps, c);
       const { year } = c.req.valid("query");
       return c.json(getRecords(ctx, { today: ctx.today, year }));
+    })
+    .get("/recap", validate("query", recapQuerySchema), (c) => {
+      const ctx = webContext(deps, c);
+      const { period, date } = c.req.valid("query");
+      return c.json(getRecap(ctx, { today: ctx.today, timeZone: ctx.timeZone, period, date }));
     });
 }

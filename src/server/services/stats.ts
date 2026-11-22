@@ -126,7 +126,11 @@ function streakStats(
 // ---------------------------------------------------------------------------
 // Totais e médias
 
-function minutesByDay({ db, userId }: UserScope, from: string, to: string): Map<string, number> {
+export function minutesByDay(
+  { db, userId }: UserScope,
+  from: string,
+  to: string,
+): Map<string, number> {
   const rows = db
     .select({ day: playSessions.playedOn, minutes: sql<number>`sum(${playSessions.minutes})` })
     .from(playSessions)
@@ -181,7 +185,7 @@ function weekSeries(daily: Map<string, number>, firstWeek: string): WeekStats[] 
   });
 }
 
-function firstPlayedOn({ db, userId }: UserScope): string | null {
+export function firstPlayedOn({ db, userId }: UserScope): string | null {
   return (
     db
       .select({ day: sql<string | null>`min(${playSessions.playedOn})` })
@@ -289,7 +293,7 @@ export function getPeriodBreakdown(
   };
 }
 
-function genreStats({ db, userId }: UserScope, from: string, to: string): GenreStat[] {
+export function genreStats({ db, userId }: UserScope, from: string, to: string): GenreStat[] {
   return db.all<GenreStat>(sql`
     select genre.value as genre,
       sum(${playSessions.minutes}) as minutes,
@@ -318,7 +322,7 @@ function playedYears({ db, userId }: UserScope, currentYear: number): number[] {
 // Ritmo
 
 /** Dia da semana de uma data de calendário: 0 = segunda … 6 = domingo. */
-function weekdayOf(isoDate: string): number {
+export function weekdayOf(isoDate: string): number {
   return (new Date(`${isoDate}T00:00:00Z`).getUTCDay() + 6) % 7;
 }
 
@@ -376,7 +380,7 @@ interface SessionRow {
   endedAt: string | null;
 }
 
-function closedSessions({ db, userId }: UserScope, from: string, to: string): SessionRow[] {
+export function closedSessions({ db, userId }: UserScope, from: string, to: string): SessionRow[] {
   return db
     .select({
       playedOn: playSessions.playedOn,
@@ -480,7 +484,7 @@ export function getRecords(
  * Jogos com conclusão no período, a partir de todas as conclusões do usuário (as anteriores ao
  * período dizem o que é replay e o que é a primeira vez).
  */
-function finishedInPeriod(scope: UserScope, from: string, to: string) {
+export function finishedInPeriod(scope: UserScope, from: string, to: string) {
   const items = new Map(listLibrary(scope).map((item) => [item.gameId, item]));
   const rows = scope.db
     .select({
@@ -582,7 +586,7 @@ function nextMonth(month: string): string {
   return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
 }
 
-function longestSession(
+export function longestSession(
   { db, userId }: UserScope,
   from: string,
   to: string,

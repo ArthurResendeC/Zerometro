@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { Recap } from "../../shared/recap";
 import type { Settings } from "../../shared/settings";
 import type { Heatmap, PeriodBreakdown, Records, Rhythm, Stats } from "../../shared/stats";
 import { createTestApp } from "../testing";
@@ -74,5 +75,21 @@ describe("/api/settings e /api/stats", () => {
     const records = (await (await request("/api/stats/records?year=2026")).json()) as Records;
     expect(records).toMatchObject({ year: 2026, longestSession: null, finished: [] });
     expect(records.finishedByMonth).toHaveLength(11); // até novembro (hoje)
+  });
+
+  test("recap: semana passada por padrão, mês com data; período e data validados", async () => {
+    const { request } = await createTestApp();
+
+    const week = (await (await request("/api/stats/recap?period=week")).json()) as Recap;
+    expect(week).toMatchObject({ period: "week", from: "2026-11-09", to: "2026-11-15" });
+
+    const month = (await (
+      await request("/api/stats/recap?period=month&date=2026-11-19")
+    ).json()) as Recap;
+    expect(month).toMatchObject({ from: "2026-11-01", to: "2026-11-30", inProgress: true });
+
+    expect((await request("/api/stats/recap")).status).toBe(400);
+    expect((await request("/api/stats/recap?period=year")).status).toBe(400);
+    expect((await request("/api/stats/recap?period=week&date=2026-02-30")).status).toBe(400);
   });
 });
