@@ -32,6 +32,8 @@ export function RecapStory({ recap }: { recap: Recap }) {
       if (event.target instanceof HTMLElement && event.target.closest("input, select, textarea")) {
         return;
       }
+      // Diálogo aberto (ex.: compartilhar): as teclas são dele.
+      if (document.querySelector('[role="dialog"]')) return;
       if (event.key === "ArrowRight") go(1);
       else if (event.key === "ArrowLeft") go(-1);
       else if (event.key === " " && !(event.target instanceof HTMLButtonElement)) {

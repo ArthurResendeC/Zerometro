@@ -1,5 +1,6 @@
 // Helpers de teste compartilhados.
 import { DEFAULT_TIME_ZONE } from "../shared/dates";
+import { createRecapImageRenderer, type RecapImageRenderer } from "./services/recap-image";
 import type { FeedGame, FeedKey } from "../shared/feeds";
 import type { IgdbGamePage } from "../shared/game-page";
 import type { IgdbGameDetails } from "../shared/igdb";
@@ -375,6 +376,7 @@ export async function createTestApp(
     steam?: AchievementSourceApi;
     retroachievements?: RetroAchievementsApi;
     steamUser?: SteamUserApi;
+    recapImages?: RecapImageRenderer;
   } = {},
 ) {
   const db = overrides.db ?? createTestDb();
@@ -390,7 +392,11 @@ export async function createTestApp(
   const gamePages = createGamePagesService({ db, igdb, clock });
   const achievements = createTestCatalog(db, clock, overrides);
   const steamUser = overrides.steamUser ?? createFakeSteamUser();
-  const deps = { db, auth, igdb, feeds, gamePages, achievements, steamUser, clock };
+  // Sem rede nos testes: as capas não carregam e entram as iniciais.
+  const recapImages =
+    overrides.recapImages ??
+    createRecapImageRenderer({ fetch: async () => new Response(null, { status: 404 }) });
+  const deps = { db, auth, igdb, feeds, gamePages, achievements, steamUser, recapImages, clock };
   const app = createApp({ ...deps, logRequests: false });
   const root = createRootRoutes(deps);
   /** Mesmo roteamento do Bun.serve (index.ts), sem a SPA. */

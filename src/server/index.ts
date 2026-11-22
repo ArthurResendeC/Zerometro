@@ -1,4 +1,5 @@
 import { env } from "./env";
+import { createRecapImageRenderer } from "./services/recap-image";
 import { createApp } from "./app";
 import { createAuth, resolvePublicUrl, tokenProblem } from "./auth";
 import { db } from "./db";
@@ -52,6 +53,7 @@ const deps = {
     retroachievements: createRetroAchievementsFromEnv(env),
   }),
   steamUser: createSteamUserFromEnv(env),
+  recapImages: createRecapImageRenderer(),
   clock,
 };
 const app = createApp(deps);

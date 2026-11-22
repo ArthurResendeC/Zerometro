@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import type { RecapImageRenderer } from "./services/recap-image";
 import type { Auth } from "./auth";
 import type { AppEnv } from "./lib/hono";
 import { HTTPException } from "hono/http-exception";
@@ -38,6 +39,8 @@ export interface AppDeps {
   achievements: AchievementCatalog;
   /** Conta Steam de quem usa o app (perfil, desbloqueios e horas) para sincronizar. */
   steamUser: SteamUserApi;
+  /** Imagem do recap para compartilhar (busca as capas no IGDB). */
+  recapImages: RecapImageRenderer;
   /** Relógio e fuso do usuário; injetável para testes. */
   clock: Clock;
   /** Log de requisições (desligado nos testes). */

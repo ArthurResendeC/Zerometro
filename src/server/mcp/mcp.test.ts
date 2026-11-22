@@ -170,6 +170,7 @@ describe("tools", () => {
       "get_feeds",
       "get_game",
       "get_period_stats",
+      "get_recap",
       "get_stats",
       "list_achievements",
       "list_library",
@@ -219,6 +220,25 @@ describe("tools", () => {
     expect(period.data).toMatchObject({ totalMinutes: 45, playedDays: 1, sessions: 1 });
     expect(period.data.topGames[0]).toMatchObject({ name: "Persona 5 Royal", minutes: 45 });
     expect(period.data.weekdays).toHaveLength(7);
+
+    // Recap da semana atual (a sessão é de hoje), com a imagem junto.
+    const recap = await client.callTool({
+      name: "get_recap",
+      arguments: { period: "week", date: "2026-11-19", image: true, format: "wide" },
+    });
+    const [recapText, recapImage] = recap.content as {
+      type: string;
+      text?: string;
+      data?: string;
+    }[];
+    expect(JSON.parse(recapText!.text!)).toMatchObject({
+      period: "week",
+      from: "2026-11-16",
+      totalMinutes: 45,
+      inProgress: true,
+    });
+    expect(recapImage).toMatchObject({ type: "image", mimeType: "image/png" });
+    expect(Buffer.from(recapImage!.data!, "base64").readUInt32BE(16)).toBe(1920);
 
     const sessions = await callJson(client, "list_sessions", { game: 1 });
     expect(sessions.data.sessions).toHaveLength(1);

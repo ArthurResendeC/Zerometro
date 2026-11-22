@@ -92,4 +92,23 @@ describe("/api/settings e /api/stats", () => {
     expect((await request("/api/stats/recap?period=year")).status).toBe(400);
     expect((await request("/api/stats/recap?period=week&date=2026-02-30")).status).toBe(400);
   });
+
+  test("imagem do recap: PNG nos dois formatos; formato inválido é 400", async () => {
+    const { request } = await createTestApp();
+
+    const story = await request("/api/stats/recap/image?period=week");
+    expect(story.status).toBe(200);
+    expect(story.headers.get("content-type")).toBe("image/png");
+    expect(story.headers.get("content-disposition")).toBe(
+      'inline; filename="zerometro-recap-semana-2026-11-09-story.png"',
+    );
+    const png = new Uint8Array(await story.arrayBuffer());
+    expect(new DataView(png.buffer).getUint32(16)).toBe(1080);
+
+    const wide = await request("/api/stats/recap/image?period=month&format=wide");
+    expect(wide.status).toBe(200);
+    expect(new DataView(await wide.arrayBuffer()).getUint32(16)).toBe(1920);
+
+    expect((await request("/api/stats/recap/image?period=week&format=gif")).status).toBe(400);
+  });
 });

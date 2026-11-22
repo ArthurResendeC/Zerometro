@@ -1,7 +1,7 @@
 import { createRouter, webContext } from "../lib/hono";
 import type { AppDeps } from "../app";
 import { getSettings } from "../services/settings";
-import { recapQuerySchema } from "../../shared/recap";
+import { recapImageQuerySchema, recapQuerySchema } from "../../shared/recap";
 import { statsPeriodSchema } from "../../shared/stats";
 import { validate } from "../lib/validate";
 import { getRecap } from "../services/recap";
@@ -39,5 +39,18 @@ export function createStatsRoutes(deps: AppDeps) {
       const ctx = webContext(deps, c);
       const { period, date } = c.req.valid("query");
       return c.json(getRecap(ctx, { today: ctx.today, timeZone: ctx.timeZone, period, date }));
+    })
+    .get("/recap/image", validate("query", recapImageQuerySchema), async (c) => {
+      const ctx = webContext(deps, c);
+      const { period, date, format } = c.req.valid("query");
+      const recap = getRecap(ctx, { today: ctx.today, timeZone: ctx.timeZone, period, date });
+      const png = await deps.recapImages.render(recap, format);
+      const name = `zerometro-recap-${recap.period === "week" ? "semana" : "mes"}-${recap.from}-${format}.png`;
+      return c.body(png, 200, {
+        "Content-Type": "image/png",
+        "Content-Disposition": `inline; filename="${name}"`,
+        // Muda a cada sessão registrada: cache curto, só no aparelho.
+        "Cache-Control": "private, max-age=60",
+      });
     });
 }

@@ -1,12 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 import { isoDateSchema } from "@shared/dates";
 import type { RecapPeriod } from "@shared/recap";
-import { ArrowLeftIcon, ArrowRightIcon, CloseIcon } from "@/components/icons";
+import { ArrowLeftIcon, ArrowRightIcon, CloseIcon, UploadIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { RecapStory } from "@/features/recap/recap-story";
+import { ShareRecapDialog } from "@/features/recap/share-recap-dialog";
 import { periodLabel } from "@shared/recap-text";
 import { recapQuery } from "@/lib/queries";
 
@@ -42,6 +43,7 @@ function RecapPage() {
   const { data: recap } = useSuspenseQuery(recapQuery(periodParams[periodo], search.data));
   const navigate = Route.useNavigate();
   const goTo = (date: string | null) => date && navigate({ search: { periodo, data: date } });
+  const [sharing, setSharing] = useState(false);
   useCloseOnEscape();
 
   return (
@@ -63,11 +65,21 @@ function RecapPage() {
               </Button>
             ))}
           </fieldset>
-          <Button asChild variant="ghost" size="icon" aria-label="Fechar o recap">
-            <Link to="/estatisticas">
-              <CloseIcon />
-            </Link>
-          </Button>
+          <div className="flex items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Compartilhar como imagem"
+              onClick={() => setSharing(true)}
+            >
+              <UploadIcon />
+            </Button>
+            <Button asChild variant="ghost" size="icon" aria-label="Fechar o recap">
+              <Link to="/estatisticas">
+                <CloseIcon />
+              </Link>
+            </Button>
+          </div>
         </div>
 
         <div className="mt-1 flex items-center justify-center gap-1">
@@ -97,6 +109,7 @@ function RecapPage() {
       </header>
 
       <RecapStory key={`${recap.period}-${recap.from}`} recap={recap} />
+      <ShareRecapDialog recap={recap} open={sharing} onOpenChange={setSharing} />
     </div>
   );
 }
@@ -106,7 +119,10 @@ function useCloseOnEscape() {
   const navigate = useNavigate();
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") void navigate({ to: "/estatisticas" });
+      // Com um diálogo aberto, o Esc é dele (fecha o diálogo, não o recap).
+      if (event.key === "Escape" && !document.querySelector('[role="dialog"]')) {
+        void navigate({ to: "/estatisticas" });
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

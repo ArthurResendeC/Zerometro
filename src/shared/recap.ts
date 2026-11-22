@@ -15,6 +15,19 @@ export const recapQuerySchema = z.object({
 });
 export type RecapQuery = z.infer<typeof recapQuerySchema>;
 
+/** Imagem para compartilhar: stories (1080×1920) ou paisagem 16:9 (1920×1080). */
+export const recapImageFormats = ["story", "wide"] as const;
+export type RecapImageFormat = (typeof recapImageFormats)[number];
+
+export const recapImageSizes: Record<RecapImageFormat, { width: number; height: number }> = {
+  story: { width: 1080, height: 1920 },
+  wide: { width: 1920, height: 1080 },
+};
+
+export const recapImageQuerySchema = recapQuerySchema.extend({
+  format: z.enum(recapImageFormats).default("story"),
+});
+
 /** Primeiro e último dia (inclusos) da semana ou do mês que contém `date`. */
 export function recapRange(period: RecapPeriod, date: string): { from: string; to: string } {
   if (period === "week") {
