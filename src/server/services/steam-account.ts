@@ -21,7 +21,7 @@ const profileKey = (userId: string) => `steam:profile:${userId}`;
 const autoSyncKey = (userId: string) => `steam:auto:${userId}`;
 const ignoredKey = (userId: string) => `steam:import-ignored:${userId}`;
 
-/** Usuários com perfil da Steam ligado (para a sincronização de hora em hora). */
+/** Usuários com perfil da Steam ligado (para a sincronização de meia em meia hora). */
 export function steamLinkedUserIds(db: DbOrTx): string[] {
   const prefix = profileKey("");
   return db

@@ -214,20 +214,21 @@ async function syncOne(
 }
 
 /**
- * Rodada automática (ao abrir o app). Pula se não há perfil ou se rodou há menos de
- * STEAM_AUTO_SYNC_INTERVAL_MS. Uma chamada traz as horas da conta inteira; as conquistas só são
+ * Rodada automática (ao abrir o app e o job do servidor). Pula se não há perfil ou se rodou há
+ * menos de `minIntervalMs` (padrão STEAM_AUTO_SYNC_INTERVAL_MS). Uma chamada traz as horas da conta inteira; as conquistas só são
  * buscadas nos jogos que mudaram (ver `changedSinceSync`). Erros não estouram: ficam no estado.
  */
 export async function autoSyncSteam(
   ctx: ServiceContext,
   deps: SteamSyncDeps,
+  { minIntervalMs = STEAM_AUTO_SYNC_INTERVAL_MS }: { minIntervalMs?: number } = {},
 ): Promise<SteamAutoSync> {
   const previous = getAutoSyncState(ctx);
   const profile = deps.steamUser.enabled ? getSteamProfile(ctx) : null;
   const skipped: SteamAutoSync = { status: "skipped", games: [], newUnlocks: 0, state: previous };
   if (!profile) return skipped;
   const elapsed = previous ? ctx.now.getTime() - Date.parse(previous.lastRunAt) : Infinity;
-  if (elapsed >= 0 && elapsed < STEAM_AUTO_SYNC_INTERVAL_MS) return skipped;
+  if (elapsed >= 0 && elapsed < minIntervalMs) return skipped;
 
   // Gravado antes do primeiro await: outra aba ou aparelho que abrir agora já vê e pula.
   const lastRunAt = ctx.now.toISOString();

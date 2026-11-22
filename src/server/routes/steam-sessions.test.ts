@@ -57,6 +57,12 @@ async function setup(options: { source?: "steam" | "sessions"; owned?: Owned } =
 const summary = (sessions: PlaySessionItem[]) =>
   sessions.map((s) => [s.playedOn, s.minutes, s.source]).toSorted();
 
+const at = (min: number) => new Date(TEST_NOW.getTime() + min * 60_000);
+const times = (sessions: PlaySessionItem[]) =>
+  sessions
+    .map((s) => [s.playedOn, s.minutes, s.startedAt, s.endedAt])
+    .toSorted((a, b) => String(a[2]).localeCompare(String(b[2])));
+
 describe("horas da Steam viram sessões", () => {
   test("a primeira sincronização só marca a base; o que vier depois vira sessão", async () => {
     const { clock, owned, sync, sessions, libraryItem, request } = await setup();
@@ -85,6 +91,8 @@ describe("horas da Steam viram sessões", () => {
     owned[P5R] = { minutes: 3060, lastPlayedAt: hours(20) }; // 20/11 11h em SP
     await sync();
     expect(summary(await sessions())).toEqual([["2026-11-20", 60, "steam"]]);
+    // Base de mais de 3h atrás: não dá para estimar o horário.
+    expect(await sessions()).toMatchObject([{ startedAt: null, endedAt: null }]);
   });
 
   test("o timer e os registros do jogo desde a base são descontados", async () => {
@@ -184,12 +192,87 @@ describe("horas da Steam viram sessões", () => {
     });
   });
 
-  test("o job de hora em hora sincroniza quem tem perfil ligado", async () => {
+  test("o job de meia em meia hora sincroniza quem tem perfil ligado", async () => {
     const app = await setup();
     const { clock, owned, sessions, db, achievements, igdb, steamUser } = app;
     clock.set(hours(1));
     owned[P5R] = 3030;
     await runSteamSyncJob(db, clock, { catalog: achievements, igdb, steamUser });
     expect(summary(await sessions())).toEqual([["2026-11-19", 30, "steam"]]);
+  });
+
+  describe("sincronizações seguidas viram uma sessão só", () => {
+    test("jogando 3h seguidas, com sincronização a cada 30 min", async () => {
+      const { clock, owned, sync, sessions } = await setup();
+      let total = 3000;
+      for (const [minute, played] of [
+        [30, 20],
+        [60, 30],
+        [90, 30],
+        [120, 28],
+        [150, 30],
+        [180, 30],
+        [210, 12],
+      ] as const) {
+        clock.set(at(minute));
+        total += played;
+        owned[P5R] = total;
+        // oxlint-disable-next-line no-await-in-loop
+        await sync();
+      }
+      // 180 min, de 15:12 a 18:12 em SP (parou 12 min depois da sincronização das 18h).
+      expect(times(await sessions())).toEqual([
+        ["2026-11-19", 180, at(12).toISOString(), at(192).toISOString()],
+      ]);
+    });
+
+    test("parou e voltou depois: duas sessões", async () => {
+      const { clock, owned, sync, sessions } = await setup();
+      clock.set(at(30));
+      owned[P5R] = 3030; // jogando
+      await sync();
+      clock.set(at(60));
+      owned[P5R] = 3040; // parou 10 min depois
+      await sync();
+      clock.set(at(90));
+      await sync(); // nada
+      clock.set(at(120));
+      owned[P5R] = 3055; // voltou
+      await sync();
+      expect(times(await sessions())).toEqual([
+        ["2026-11-19", 40, at(0).toISOString(), at(40).toISOString()],
+        ["2026-11-19", 15, at(105).toISOString(), at(120).toISOString()],
+      ]);
+    });
+
+    test("passando da meia-noite fica no dia em que começou", async () => {
+      const { clock, owned, sync, sessions } = await setup();
+      // TEST_NOW = 15h em SP; 23h30 = +510 min.
+      clock.set(at(500));
+      await sync(); // a base avança
+      clock.set(at(540));
+      owned[P5R] = 3040;
+      await sync();
+      clock.set(at(570));
+      owned[P5R] = 3070;
+      await sync();
+      expect(summary(await sessions())).toEqual([["2026-11-19", 70, "steam"]]);
+    });
+
+    test("a sessão da Steam com horário pode ser editada como as do timer", async () => {
+      const { clock, owned, sync, sessions, request } = await setup();
+      clock.set(at(60));
+      owned[P5R] = 3060;
+      await sync();
+      const [session] = await sessions();
+      const edited = await request(
+        `/api/sessions/${session?.id}`,
+        json({ startTime: "14:50" }, "PATCH"),
+      );
+      expect(edited.status).toBe(200);
+      expect(times(await sessions())).toEqual([
+        ["2026-11-19", 60, at(-10).toISOString(), at(50).toISOString()],
+      ]);
+    });
   });
 });
