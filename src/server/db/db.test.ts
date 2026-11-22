@@ -355,7 +355,9 @@ describe("migration 0007: um dono só, sem as tabelas da Better Auth", () => {
       { user_id: "owner" },
       { user_id: null },
     ]);
-    expect(all("SELECT key, value FROM kv ORDER BY key")).toEqual([
+    expect(
+      all("SELECT key, value FROM kv WHERE key NOT LIKE 'data-migration:%' ORDER BY key"),
+    ).toEqual([
       { key: "igdb:token", value: "abc" },
       { key: "settings:owner", value: '{"meu":1}' },
     ]);
@@ -371,5 +373,79 @@ describe("migration 0007: um dono só, sem as tabelas da Better Auth", () => {
     expect(db.$client.query("SELECT id FROM user WHERE id = 'owner'").all()).toEqual([
       { id: "owner" },
     ]);
+  });
+});
+
+describe("migration de dados: reagrupar as sessões da Steam", () => {
+  test("uma sessão por sincronização vira uma por jogatina, com horário", async () => {
+    const old = await migratedUntil(10);
+    const sql = (statement: string) => old.$client.run(statement);
+    sql(
+      `INSERT INTO games (id, igdb_id, name) VALUES (75, 75, 'Phantom Blade Zero'), (1, 1, 'Hades')`,
+    );
+    sql(`INSERT INTO library_entries (user_id, game_id, status) VALUES
+      ('owner', 75, 'playing'), ('owner', 1, 'playing')`);
+    // As sessões reais (uma por hora, do job) + uma jogada para trás e uma manual, que ficam.
+    const steam: [number, string, number, string][] = [
+      [11, "2026-11-21", 1, "2026-11-21T07:46:27.225Z"],
+      [12, "2026-11-21", 30, "2026-11-21T08:46:27.440Z"],
+      [13, "2026-11-21", 42, "2026-11-21T09:03:37.044Z"],
+      [17, "2026-11-21", 30, "2026-11-21T22:46:27.348Z"],
+      [18, "2026-11-21", 60, "2026-11-21T23:46:27.420Z"],
+      [19, "2026-11-21", 60, "2026-11-22T00:46:27.378Z"],
+      [20, "2026-11-21", 60, "2026-11-22T01:46:27.428Z"],
+      [21, "2026-11-21", 10, "2026-11-22T02:46:27.412Z"],
+      [22, "2026-11-22", 30, "2026-11-22T03:46:27.574Z"],
+      [23, "2026-11-22", 60, "2026-11-22T04:46:27.687Z"],
+      [24, "2026-11-22", 60, "2026-11-22T05:46:27.726Z"],
+      [25, "2026-11-22", 56, "2026-11-22T06:46:27.566Z"],
+      [26, "2026-11-22", 22, "2026-11-22T07:40:39.244Z"],
+      [30, "2026-11-10", 1440, "2026-11-12T10:00:00.000Z"],
+    ];
+    for (const [id, day, minutes, createdAt] of steam) {
+      sql(`INSERT INTO play_sessions (id, user_id, game_id, played_on, minutes, source, created_at)
+        VALUES (${id}, 'owner', 75, '${day}', ${minutes}, 'steam', '${createdAt}')`);
+    }
+    sql(`INSERT INTO play_sessions (id, user_id, game_id, played_on, minutes, source)
+      VALUES (40, 'owner', 1, '2026-11-21', 30, 'manual')`);
+
+    runMigrations(old);
+
+    const rows = () =>
+      old.$client
+        .query("SELECT id, played_on, minutes, started_at, ended_at FROM play_sessions ORDER BY id")
+        .all();
+    expect(rows()).toEqual([
+      {
+        id: 11,
+        played_on: "2026-11-21",
+        minutes: 73,
+        started_at: "2026-11-21T07:50:37.044Z",
+        ended_at: "2026-11-21T09:03:37.044Z",
+      },
+      {
+        id: 17,
+        played_on: "2026-11-21",
+        minutes: 220,
+        started_at: "2026-11-21T22:16:27.428Z",
+        ended_at: "2026-11-22T01:56:27.428Z",
+      },
+      {
+        id: 22,
+        played_on: "2026-11-22",
+        minutes: 228,
+        started_at: "2026-11-22T03:20:27.566Z",
+        ended_at: "2026-11-22T07:08:27.566Z",
+      },
+      { id: 30, played_on: "2026-11-10", minutes: 1440, started_at: null, ended_at: null },
+      { id: 40, played_on: "2026-11-21", minutes: 30, started_at: null, ended_at: null },
+    ]);
+
+    // Roda uma vez só.
+    sql(`INSERT INTO play_sessions (id, user_id, game_id, played_on, minutes, source, created_at)
+      VALUES (50, 'owner', 75, '2026-11-22', 5, 'steam', '2026-11-22T08:00:00.000Z')`);
+    runMigrations(old);
+    expect(rows()).toHaveLength(6);
+    expect(rows().at(-1)).toMatchObject({ id: 50, started_at: null });
   });
 });

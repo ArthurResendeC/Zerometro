@@ -3,6 +3,8 @@ import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import { DEFAULT_TIME_ZONE } from "../../shared/dates";
+import { runDataMigrations } from "./data-migrations";
 import * as schema from "./schema";
 
 export const MIGRATIONS_FOLDER = join(import.meta.dir, "migrations");
@@ -25,8 +27,17 @@ export type Db = ReturnType<typeof createDb>;
 export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 export type DbOrTx = Db | Tx;
 
-export function runMigrations(db: Db, migrationsFolder: string = MIGRATIONS_FOLDER) {
+/**
+ * Migrations do Drizzle e, com a pasta do projeto (schema atual), as migrations de dados em TS.
+ * `timeZone` é o do usuário (para os dias das sessões).
+ */
+export function runMigrations(
+  db: Db,
+  migrationsFolder: string = MIGRATIONS_FOLDER,
+  timeZone: string = DEFAULT_TIME_ZONE,
+) {
   migrate(db, { migrationsFolder });
+  if (migrationsFolder === MIGRATIONS_FOLDER) runDataMigrations(db, timeZone);
 }
 
 /** Banco em memória já migrado, para testes. */

@@ -2,7 +2,7 @@ import { env } from "./env";
 import { createApp } from "./app";
 import { createAuth, resolvePublicUrl, tokenProblem } from "./auth";
 import { db } from "./db";
-import { runMigrations } from "./db/client";
+import { MIGRATIONS_FOLDER, runMigrations } from "./db/client";
 import { createRootRoutes } from "./mcp/routes";
 import { createAchievementCatalog } from "./services/achievement-catalog";
 import { createFeedsService } from "./services/feeds";
@@ -33,7 +33,7 @@ try {
 
 // Migrations no boot: na Railway o volume do SQLite só é montado quando o container sobe
 // (não no build nem no pre-deploy). Uma réplica só, então não há corrida.
-runMigrations(db);
+runMigrations(db, MIGRATIONS_FOLDER, env.TZ);
 
 const auth = createAuth({ token: env.ZEROMETRO_TOKEN!, publicUrl });
 
