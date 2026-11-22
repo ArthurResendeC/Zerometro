@@ -213,6 +213,8 @@ function SessionForm({ editing, initialGameId, onDone }: SessionFormProps) {
             </form.Field>
           </div>
           <p className="text-xs text-muted-foreground">
+            {editing?.source === "steam" &&
+              "Horário estimado pelas sincronizações com a Steam; ajuste se lembrar do real. "}
             Fim antes do início conta como o dia seguinte (passou da meia-noite).
           </p>
         </div>

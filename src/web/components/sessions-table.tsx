@@ -38,12 +38,20 @@ const columns = column.columns([
   column.accessor("playedOn", {
     header: "Dia",
     cell: (info) => {
-      const { startedAt, endedAt } = info.row.original;
+      const { startedAt, endedAt, source } = info.row.original;
       return (
         <span className="flex flex-col whitespace-nowrap">
           {formatDate(info.getValue())}
           {startedAt && endedAt && (
-            <span className="text-xs text-muted-foreground tabular-nums">
+            <span
+              className="text-xs text-muted-foreground tabular-nums"
+              title={
+                source === "steam"
+                  ? "Horário aproximado (pelas sincronizações com a Steam)"
+                  : undefined
+              }
+            >
+              {source === "steam" && "≈"}
               {localTime(startedAt)}–{localTime(endedAt)}
             </span>
           )}
