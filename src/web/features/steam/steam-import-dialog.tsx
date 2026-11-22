@@ -23,7 +23,7 @@ import {
   steamImportPreviewQuery,
   useImportSteamGames,
 } from "@/lib/queries";
-import { cn } from "@/lib/utils";
+import { cn, normalizeForSearch } from "@/lib/utils";
 
 /**
  * "Importar da Steam": os jogos da conta que ainda não estão na biblioteca. Vêm marcados os que
@@ -139,12 +139,6 @@ function initialSelection(preview: SteamImportPreview): Map<number, GameStatus> 
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-const normalize = (text: string) =>
-  text
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase();
-
 function ImportForm({
   preview,
   onSubmit,
@@ -158,11 +152,11 @@ function ImportForm({
 
   const { candidates, unmatched, inLibrary, hidesPlaytime } = preview;
   const ignoredCount = candidates.filter((c) => c.ignored).length;
-  const term = normalize(query.trim());
+  const term = normalizeForSearch(query.trim());
   const visible = candidates.filter(
     (c) =>
       (showIgnored || !c.ignored || selection.has(c.appId)) &&
-      (!term || normalize(`${c.name} ${c.steamName ?? ""}`).includes(term)),
+      (!term || normalizeForSearch(`${c.name} ${c.steamName ?? ""}`).includes(term)),
   );
 
   const update = (change: (next: Map<number, GameStatus>) => void) =>

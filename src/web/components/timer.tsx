@@ -49,7 +49,7 @@ import type { VariantProps } from "class-variance-authority";
  * Timer ativo + cronômetro corrigido pelo relógio do servidor. É o "efetivo": o do servidor com
  * as ações feitas offline (fila) aplicadas por cima, inclusive um timer que ainda não chegou lá.
  */
-function useActiveTimer() {
+export function useActiveTimer() {
   const { data } = useQuery(timerQuery());
   const items = useUserOutbox(currentUserId(useQueryClient()));
   const active = effectiveTimer(data?.active ?? null, items, DEFAULT_TIME_ZONE);

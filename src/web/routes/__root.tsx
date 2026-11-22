@@ -6,8 +6,9 @@ import {
   redirect,
   useLocation,
 } from "@tanstack/react-router";
-import { ChartIcon, ListIcon, PlusIcon, SettingsIcon, TimerIcon } from "@/components/icons";
+import { ChartIcon, ListIcon, SettingsIcon, TimerIcon } from "@/components/icons";
 import { LogSessionDialog } from "@/components/log-session-dialog";
+import { StartSessionButton } from "@/components/start-session-dialog";
 import { TimerBar } from "@/components/timer";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
@@ -116,18 +117,7 @@ function SignedInLayout({ userId }: { userId: string }) {
             >
               <SettingsIcon className="size-4" />
             </Link>
-            <Button
-              asChild
-              size="sm"
-              variant="outline"
-              aria-label="Adicionar jogo"
-              className="max-sm:mr-2 max-xl:px-2.5"
-            >
-              <Link to="/adicionar">
-                <PlusIcon />
-                <span className="hidden xl:inline">Adicionar jogo</span>
-              </Link>
-            </Button>
+            <StartSessionButton className="max-sm:mr-2 max-xl:px-2.5" />
             <Button
               size="sm"
               onClick={() => openLogSession()}

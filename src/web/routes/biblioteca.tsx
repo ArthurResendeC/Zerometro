@@ -11,7 +11,7 @@ import {
   sortLibraryItems,
 } from "@shared/library";
 import { GameCard, GameGrid } from "@/components/game-card";
-import { ArrowDownIcon, ArrowUpIcon } from "@/components/icons";
+import { ArrowDownIcon, ArrowUpIcon, PlusIcon } from "@/components/icons";
 import { SearchInput } from "@/components/search-input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -84,7 +84,15 @@ function LibraryPage() {
   return (
     <section className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="display-lg">Biblioteca</h1>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <h1 className="display-lg">Biblioteca</h1>
+          {/* O cabeçalho do app tem o "Jogar"; adicionar jogos fica aqui, junto da biblioteca. */}
+          <Button asChild size="sm" variant="outline">
+            <Link to="/adicionar">
+              <PlusIcon /> Adicionar jogo
+            </Link>
+          </Button>
+        </div>
         <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-2 sm:w-auto">
           <SearchInput
             value={search.q ?? ""}

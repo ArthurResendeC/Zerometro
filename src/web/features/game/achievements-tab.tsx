@@ -60,7 +60,7 @@ import {
   useSyncSteamGame,
   useUnlinkAchievementSet,
 } from "@/lib/queries";
-import { cn } from "@/lib/utils";
+import { cn, normalizeForSearch } from "@/lib/utils";
 import { CompleteDialog } from "./completions-section";
 
 // Aba "Conquistas" da página do jogo: as listas da Steam e do RetroAchievements que o jogo
@@ -339,20 +339,14 @@ function Toolbar({ filter, onFilter, search, onSearch, sort, onSort }: ToolbarPr
   );
 }
 
-const normalize = (text: string) =>
-  text
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase();
-
 function visible(set: AchievementSetItem, filter: Filter, search: string, sort: Sort) {
-  const term = normalize(search.trim());
+  const term = normalizeForSearch(search.trim());
   const list = set.achievements.filter((a) => {
     if (filter === "missing" && a.unlockedAt) return false;
     if (filter === "unlocked" && !a.unlockedAt) return false;
     // Secretas ainda trancadas não entram na busca pelo texto (seria spoiler).
     if (term && !(a.hidden && !a.unlockedAt)) {
-      return normalize(`${a.title} ${a.description ?? ""}`).includes(term);
+      return normalizeForSearch(`${a.title} ${a.description ?? ""}`).includes(term);
     }
     return !term;
   });
