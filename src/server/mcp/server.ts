@@ -18,7 +18,13 @@ import {
 } from "../../shared/domain";
 import { feedKeys, feedTitles } from "../../shared/feeds";
 import { genreLabel } from "../../shared/genres";
-import { type LibraryItem, priorMinutesSchema } from "../../shared/library";
+import {
+  type LibraryItem,
+  librarySortSchema,
+  priorMinutesSchema,
+  sortDirectionSchema,
+  sortLibraryItems,
+} from "../../shared/library";
 import {
   addObjectiveSchema,
   MAX_OBJECTIVE_TARGET,
@@ -165,6 +171,7 @@ function gameSummary(item: LibraryItem) {
     startedAt: item.startedAt,
     finishedAt: item.finishedAt,
     lastPlayedOn: item.lastPlayedOn,
+    firstPlayedOn: item.firstPlayedOn,
   };
 }
 
@@ -237,7 +244,7 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     {
       title: "Listar biblioteca",
       description:
-        'Lista os jogos da biblioteca do usuário, com status, conclusões (zerado, 100%), tempo jogado e progresso estimado. Filtre por status (playing = jogando, finished = zerado e parado, backlog = próximos, wishlist = desejos, paused, dropped), por display_state "postgame" (jogando um jogo já zerado) e/ou parte do nome.',
+        'Lista os jogos da biblioteca do usuário, com status, conclusões (zerado, 100%), tempo jogado e progresso estimado. Filtre por status (playing = jogando, finished = zerado e parado, backlog = próximos, wishlist = desejos, paused, dropped), por display_state "postgame" (jogando um jogo já zerado) e/ou parte do nome. Ordene com sort: last_session (última sessão), started_at (quando começou a jogar; sem data de início, a primeira sessão) ou rating (nota do usuário); quem não tem o valor fica no fim.',
       inputSchema: z.object({
         status: gameStatusSchema.optional(),
         display_state: z
@@ -245,15 +252,20 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
           .optional()
           .describe("Só os jogos em pós-jogo (jogando e já zerados)"),
         query: z.string().trim().max(100).optional().describe("Parte do nome"),
+        sort: librarySortSchema
+          .optional()
+          .describe("Critério de ordenação (sem: jogados recentemente primeiro)"),
+        order: sortDirectionSchema
+          .optional()
+          .describe("desc (padrão): mais recente/maior nota primeiro; asc: o contrário"),
       }),
       annotations: readOnly,
     },
-    ({ status, display_state, query }) =>
-      run(() => ({
-        games: listLibrary(ctx(), { status, displayState: display_state, q: query }).map(
-          gameSummary,
-        ),
-      })),
+    ({ status, display_state, query, sort, order }) =>
+      run(() => {
+        const items = listLibrary(ctx(), { status, displayState: display_state, q: query });
+        return { games: (sort ? sortLibraryItems(items, sort, order) : items).map(gameSummary) };
+      }),
   );
 
   server.registerTool(

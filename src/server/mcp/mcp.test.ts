@@ -43,6 +43,8 @@ const json = (body: unknown) => ({
   body: JSON.stringify(body),
 });
 
+const ids = (res: { data: { games: { gameId: number }[] } }) => res.data.games.map((g) => g.gameId);
+
 async function discover(app: TestApp) {
   const prm = (await (await app.fetchRoot("/.well-known/oauth-protected-resource/mcp")).json()) as {
     resource: string;
@@ -185,6 +187,14 @@ describe("tools", () => {
 
     const playing = await callJson(client, "list_library", { status: "playing" });
     expect(playing.data.games.map((g: { name: string }) => g.name)).toEqual(["Persona 5 Royal"]);
+
+    // Por nota: a maior primeiro; sem nota no fim, nas duas direções.
+    await t.request("/api/library/1", { ...json({ rating: 7 }), method: "PATCH" });
+    await t.request("/api/library/3", { ...json({ rating: 9 }), method: "PATCH" });
+    expect(ids(await callJson(client, "list_library", { sort: "rating" }))).toEqual([3, 1, 2]);
+    expect(ids(await callJson(client, "list_library", { sort: "rating", order: "asc" }))).toEqual([
+      1, 3, 2,
+    ]);
 
     const game = await callJson(client, "get_game", { game: "persona" });
     expect(game.data).toMatchObject({ name: "Persona 5 Royal", minutesPlayed: 45 });
