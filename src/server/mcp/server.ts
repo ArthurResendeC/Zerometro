@@ -32,6 +32,7 @@ import {
   type ObjectiveWriteResult,
 } from "../../shared/objectives";
 import { recapImageFormats, recapPeriods } from "../../shared/recap";
+import { recapSlideIds, recapSlides } from "../../shared/recap-slides";
 import { profileTitle } from "../../shared/recap-text";
 import { sessionLengthBuckets } from "../../shared/stats";
 import { type LogSessionResult, noteSchema } from "../../shared/sessions";
@@ -72,6 +73,7 @@ import { getSettings } from "../services/settings";
 import { importSteamGames, previewSteamImport } from "../services/steam-import";
 import { syncSteamGame, syncSteamLibrary } from "../services/steam-sync";
 import { getRecap } from "../services/recap";
+import { renderRecapImage } from "../services/recap-image";
 import { getHeatmap, getPeriodBreakdown, getRecords, getRhythm, getStats } from "../services/stats";
 import { getActiveSession, startTimer, stopTimer } from "../services/timer";
 
@@ -397,7 +399,7 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     {
       title: "Recap da semana ou do mês",
       description:
-        "Resumo estilo retrospectiva de uma semana (segunda a domingo) ou de um mês: total jogado comparado ao período anterior (previousMinutes), minutos por dia, top 5 jogos e gêneros, estreias (primeira vez jogando) e retornos (voltou depois de 30+ dias), melhor dia, maior sessão, zerados, conquistas (com a mais rara) e o perfil de horário. Sem data, o último período fechado (semana passada ou mês passado). Com image: true, também devolve a imagem PNG para compartilhar (stories 9:16 ou paisagem 16:9).",
+        "Resumo estilo retrospectiva de uma semana (segunda a domingo) ou de um mês: total jogado comparado ao período anterior (previousMinutes), minutos por dia, top 5 jogos e gêneros, estreias (primeira vez jogando) e retornos (voltou depois de 30+ dias), melhor dia, maior sessão, zerados, conquistas (com a mais rara) e o perfil de horário. Sem data, o último período fechado (semana passada ou mês passado). Com image: true, também devolve a imagem PNG para compartilhar: a geral (stories 9:16 ou paisagem 16:9) ou, com slide, a de um slide do recap (stories).",
       inputSchema: z.object({
         period: z.enum(recapPeriods).describe("week (segunda a domingo) ou month"),
         date: isoDateSchema
@@ -408,10 +410,16 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
           .enum(recapImageFormats)
           .optional()
           .describe("Formato da imagem: story (9:16, padrão) ou wide (16:9)"),
+        slide: z
+          .enum(recapSlideIds)
+          .optional()
+          .describe(
+            "Imagem de um slide só (sempre 9:16): intro, games, genres, discoveries, moments, profile, trophies, summary ou empty. Só os que têm dados no período existem",
+          ),
       }),
       annotations: readOnly,
     },
-    async ({ period, date, image, format }) => {
+    async ({ period, date, image, format, slide }) => {
       const scope = ctx();
       const recap = getRecap(scope, { today: scope.today, timeZone: scope.timeZone, period, date });
       const result = json({
@@ -420,7 +428,22 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
         profile: { ...recap.profile, title: profileTitle(recap.profile) },
       });
       if (!image) return result;
-      const png = await deps.recapImages.render(recap, format ?? "story");
+      const slides = recapSlides(recap);
+      if (slide && !slides.includes(slide)) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text" as const,
+              text: `O slide "${slide}" não existe no recap desse período. Slides disponíveis: ${slides.join(", ")}.`,
+            },
+          ],
+        };
+      }
+      const png = await renderRecapImage(deps.recapImages, recap, {
+        format: format ?? "story",
+        slide,
+      });
       return {
         content: [
           ...result.content,

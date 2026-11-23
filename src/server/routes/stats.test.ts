@@ -111,4 +111,20 @@ describe("/api/settings e /api/stats", () => {
 
     expect((await request("/api/stats/recap/image?period=week&format=gif")).status).toBe(400);
   });
+
+  test("imagem de um slide: stories; slide sem dados no período é 404", async () => {
+    const { request } = await createTestApp();
+
+    // Semana passada sem sessões: o recap só tem o slide vazio.
+    const empty = await request("/api/stats/recap/image?period=week&slide=empty&format=wide");
+    expect(empty.status).toBe(200);
+    expect(empty.headers.get("content-disposition")).toBe(
+      'inline; filename="zerometro-recap-semana-2026-11-09-empty.png"',
+    );
+    const png = new DataView(await empty.arrayBuffer());
+    expect([png.getUint32(16), png.getUint32(20)]).toEqual([1080, 1920]);
+
+    expect((await request("/api/stats/recap/image?period=week&slide=games")).status).toBe(404);
+    expect((await request("/api/stats/recap/image?period=week&slide=capa")).status).toBe(400);
+  });
 });

@@ -1,14 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Recap } from "@shared/recap";
-import { ArrowLeftIcon, ArrowRightIcon, PauseIcon, PlayIcon } from "@/components/icons";
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  DownloadIcon,
+  PauseIcon,
+  PlayIcon,
+} from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { RecapSlide, slideThemes, slideTitles } from "./recap-slides";
-import { recapSlides } from "./recap-text";
+import { ShareRecapDialog } from "./share-recap-dialog";
+import { type RecapSlideId, recapSlides } from "@shared/recap-slides";
 
 // Slides no estilo stories: barras de progresso no topo, toque à esquerda volta e à direita
 // avança, segurar pausa. Cada slide dura o tempo da animação `recap-fill` (8s) e o fim dela
 // avança. Com movimento reduzido, a animação não roda (styles.css), então nada avança sozinho.
+// O botão de imagem embaixo gera a imagem só do slide atual (o do topo da página é o recap geral).
 
 /** Toque mais curto que isso navega; mais longo só pausou. */
 const TAP_MS = 300;
@@ -18,6 +26,9 @@ export function RecapStory({ recap }: { recap: Recap }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [held, setHeld] = useState(false);
+  /** Slide aberto no diálogo de imagem; enquanto ele está aberto, o story fica parado. */
+  const [sharing, setSharing] = useState<RecapSlideId | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const press = useRef<number | null>(null);
   const last = slides.length - 1;
   const current = slides[Math.min(index, last)]!;
@@ -45,7 +56,7 @@ export function RecapStory({ recap }: { recap: Recap }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [go]);
 
-  const running = !paused && !held;
+  const running = !paused && !held && !shareOpen;
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col items-center px-4 pt-3 pb-4">
@@ -135,6 +146,18 @@ export function RecapStory({ recap }: { recap: Recap }) {
             <span className="max-sm:hidden">{slideTitles[current]} · </span>
             {index + 1}/{slides.length}
           </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Imagem do slide ${slideTitles[current]}`}
+            title="Imagem deste slide"
+            onClick={() => {
+              setSharing(current);
+              setShareOpen(true);
+            }}
+          >
+            <DownloadIcon />
+          </Button>
         </div>
         <Button
           variant="outline"
@@ -146,6 +169,16 @@ export function RecapStory({ recap }: { recap: Recap }) {
           <ArrowRightIcon />
         </Button>
       </div>
+
+      {/* O slide fica guardado ao fechar, para a animação de saída não trocar a prévia. */}
+      {sharing && (
+        <ShareRecapDialog
+          recap={recap}
+          slide={sharing}
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+        />
+      )}
     </div>
   );
 }

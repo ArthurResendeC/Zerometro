@@ -1,10 +1,11 @@
 import { createRouter, webContext } from "../lib/hono";
 import type { AppDeps } from "../app";
 import { getSettings } from "../services/settings";
-import { recapImageQuerySchema, recapQuerySchema } from "../../shared/recap";
+import { recapImageFileName, recapImageQuerySchema, recapQuerySchema } from "../../shared/recap";
 import { statsPeriodSchema } from "../../shared/stats";
 import { validate } from "../lib/validate";
 import { getRecap } from "../services/recap";
+import { renderRecapImage } from "../services/recap-image";
 import { getHeatmap, getPeriodBreakdown, getRecords, getRhythm, getStats } from "../services/stats";
 
 export function createStatsRoutes(deps: AppDeps) {
@@ -42,10 +43,10 @@ export function createStatsRoutes(deps: AppDeps) {
     })
     .get("/recap/image", validate("query", recapImageQuerySchema), async (c) => {
       const ctx = webContext(deps, c);
-      const { period, date, format } = c.req.valid("query");
+      const { period, date, format, slide } = c.req.valid("query");
       const recap = getRecap(ctx, { today: ctx.today, timeZone: ctx.timeZone, period, date });
-      const png = await deps.recapImages.render(recap, format);
-      const name = `zerometro-recap-${recap.period === "week" ? "semana" : "mes"}-${recap.from}-${format}.png`;
+      const png = await renderRecapImage(deps.recapImages, recap, { format, slide });
+      const name = recapImageFileName(recap, slide ?? format);
       return c.body(png, 200, {
         "Content-Type": "image/png",
         "Content-Disposition": `inline; filename="${name}"`,

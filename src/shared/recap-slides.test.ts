@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { Recap } from "@shared/recap";
-import { recapSlides } from "./recap-text";
+import type { Recap } from "./recap";
+import { recapSlides } from "./recap-slides";
 
 const game = {
   gameId: 1,

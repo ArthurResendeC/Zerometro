@@ -1,18 +1,20 @@
-import type { Recap } from "@shared/recap";
-import { profileTitle } from "@shared/recap-text";
+import type { Recap } from "./recap";
+import { profileTitle } from "./recap-text";
 
-// Quais slides do recap aparecem. Puro (sem React), para testar com `bun test`.
+// Quais slides do recap aparecem. Usado pelos slides (web) e pela imagem de cada slide (servidor).
 
-export type RecapSlideId =
-  | "intro"
-  | "games"
-  | "genres"
-  | "discoveries"
-  | "moments"
-  | "profile"
-  | "trophies"
-  | "summary"
-  | "empty";
+export const recapSlideIds = [
+  "intro",
+  "games",
+  "genres",
+  "discoveries",
+  "moments",
+  "profile",
+  "trophies",
+  "summary",
+  "empty",
+] as const;
+export type RecapSlideId = (typeof recapSlideIds)[number];
 
 /** Os slides que têm o que mostrar, na ordem. Sem nada no período, só o slide vazio. */
 export function recapSlides(recap: Recap): RecapSlideId[] {

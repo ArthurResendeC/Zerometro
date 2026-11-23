@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { addDays, isoDateSchema, startOfWeek } from "./dates";
+import { type RecapSlideId, recapSlideIds } from "./recap-slides";
 import type { FinishedGame, GenreStat, Records, TopGame } from "./stats";
 
 // Recap da semana (segunda a domingo) ou do mês, no estilo "retrospectiva": a página de slides e,
@@ -26,7 +27,17 @@ export const recapImageSizes: Record<RecapImageFormat, { width: number; height: 
 
 export const recapImageQuerySchema = recapQuerySchema.extend({
   format: z.enum(recapImageFormats).default("story"),
+  /** Só um slide (sempre em stories); sem ele, a imagem geral. */
+  slide: z.enum(recapSlideIds).optional(),
 });
+
+/** "zerometro-recap-semana-2026-11-09-story.png"; `variant` é o formato ou o slide. */
+export function recapImageFileName(
+  recap: { period: RecapPeriod; from: string },
+  variant: RecapImageFormat | RecapSlideId,
+): string {
+  return `zerometro-recap-${recap.period === "week" ? "semana" : "mes"}-${recap.from}-${variant}.png`;
+}
 
 /** Primeiro e último dia (inclusos) da semana ou do mês que contém `date`. */
 export function recapRange(period: RecapPeriod, date: string): { from: string; to: string } {

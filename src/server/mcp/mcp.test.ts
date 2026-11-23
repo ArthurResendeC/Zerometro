@@ -240,6 +240,19 @@ describe("tools", () => {
     expect(recapImage).toMatchObject({ type: "image", mimeType: "image/png" });
     expect(Buffer.from(recapImage!.data!, "base64").readUInt32BE(16)).toBe(1920);
 
+    // Um slide só (sempre stories); um slide que não está no recap (o vazio, com sessão) é erro.
+    const slide = await client.callTool({
+      name: "get_recap",
+      arguments: { period: "week", date: "2026-11-19", image: true, slide: "games" },
+    });
+    const slideImage = (slide.content as { data?: string }[])[1];
+    expect(Buffer.from(slideImage!.data!, "base64").readUInt32BE(16)).toBe(1080);
+    const noSlide = await client.callTool({
+      name: "get_recap",
+      arguments: { period: "week", date: "2026-11-19", image: true, slide: "empty" },
+    });
+    expect(noSlide.isError).toBe(true);
+
     const sessions = await callJson(client, "list_sessions", { game: 1 });
     expect(sessions.data.sessions).toHaveLength(1);
 

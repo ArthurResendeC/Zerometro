@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { Recap } from "../../../shared/recap";
-import { createRecapImageRenderer } from ".";
+import { recapSlideIds, recapSlides } from "../../../shared/recap-slides";
+import { NotFoundError } from "../../errors";
+import { createRecapImageRenderer, renderRecapImage } from ".";
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
@@ -98,5 +100,73 @@ describe("imagem do recap", () => {
     const empty = recap({ totalMinutes: 0, topGames: [], topGenres: [], playedDays: 0 });
     expect(pngSize(await renderer.render(empty, "story"))).toEqual({ width: 1080, height: 1920 });
     expect(pngSize(await renderer.render(empty, "wide"))).toEqual({ width: 1920, height: 1080 });
+  });
+
+  test("cada slide vira uma imagem de stories, com as capas e o ícone da conquista", async () => {
+    const fetched: string[] = [];
+    const renderer = createRecapImageRenderer({
+      fetch: async (url) => {
+        fetched.push(url);
+        return new Response(TINY_PNG, { headers: { "content-type": "image/png" } });
+      },
+    });
+    const [p5, zelda, celeste] = recap().topGames;
+    const full = recap({
+      newGames: [zelda!],
+      returningGames: [{ ...celeste!, daysAway: 40 }],
+      longestSession: {
+        minutes: 140,
+        playedOn: "2026-11-12",
+        gameId: 1,
+        igdbId: 1,
+        name: p5!.name,
+      },
+      finished: [
+        {
+          gameId: 1,
+          igdbId: 1,
+          name: p5!.name,
+          coverImageId: "co1",
+          completedOn: "2026-11-15",
+          type: "main",
+          completions: 1,
+          replays: 0,
+          minutesPlayed: 315,
+          storyMinutes: null,
+          rating: null,
+        },
+      ],
+      achievements: {
+        unlocked: 3,
+        games: 1,
+        rarest: {
+          title: "Farewell",
+          iconUrl: "https://cdn.steam.example/icon.jpg",
+          rarity: 1.4,
+          gameId: 3,
+          igdbId: 3,
+          gameName: "Celeste",
+          unlockedOn: "2026-11-14",
+        },
+      },
+    });
+    // Com tudo preenchido, todos os slides (menos o vazio) aparecem.
+    expect(recapSlides(full)).toEqual(recapSlideIds.filter((id) => id !== "empty"));
+
+    const pngs = await Promise.all(recapSlides(full).map((id) => renderer.renderSlide(full, id)));
+    for (const png of pngs) expect(pngSize(png)).toEqual({ width: 1080, height: 1920 });
+    const empty = recap({ totalMinutes: 0, topGames: [], topGenres: [], playedDays: 0 });
+    expect(pngSize(await renderer.renderSlide(empty, "empty"))).toEqual({
+      width: 1080,
+      height: 1920,
+    });
+    expect(fetched).toContain("https://cdn.steam.example/icon.jpg");
+  });
+
+  test("slide que não aparece no recap do período não vira imagem", async () => {
+    const renderer = createRecapImageRenderer({ fetch: async () => new Response(null) });
+    expect(() =>
+      renderRecapImage(renderer, recap(), { format: "story", slide: "discoveries" }),
+    ).toThrow(NotFoundError);
   });
 });

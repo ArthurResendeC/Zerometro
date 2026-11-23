@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { queryOptions, useQuery } from "@tanstack/react-query";
-import type { Recap, RecapImageFormat } from "@shared/recap";
+import { type Recap, type RecapImageFormat, recapImageFileName } from "@shared/recap";
+import type { RecapSlideId } from "@shared/recap-slides";
 import { DownloadIcon, UploadIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,35 +14,33 @@ import {
 } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { slideTitles } from "./recap-slides";
 
-// Imagem do recap para compartilhar: o servidor gera o PNG (stories ou paisagem), a prévia
-// mostra exatamente o arquivo que vai sair, e o botão usa a folha de compartilhar do celular
-// (Web Share com arquivo) ou baixa o arquivo quando ela não existe (desktop).
+// Imagem do recap para compartilhar: o servidor gera o PNG (o recap geral em stories ou paisagem,
+// ou um slide só, em stories), a prévia mostra exatamente o arquivo que vai sair, e o botão usa a
+// folha de compartilhar do celular (Web Share com arquivo) ou baixa o arquivo quando ela não
+// existe (desktop).
 
 const formats: { value: RecapImageFormat; label: string; hint: string }[] = [
   { value: "story", label: "Stories", hint: "9:16" },
   { value: "wide", label: "Paisagem", hint: "16:9" },
 ];
 
-function fileName(recap: Recap, format: RecapImageFormat): string {
-  const period = recap.period === "week" ? "semana" : "mes";
-  return `zerometro-recap-${period}-${recap.from}-${format}.png`;
-}
-
 /**
  * O PNG do recap. Fora da chave "stats" de propósito: tudo sob ela vai para o cache offline
  * (IndexedDB), e um File não é JSON. A URL de objeto vive enquanto a página estiver aberta.
  */
-function recapImageQuery(recap: Recap, format: RecapImageFormat) {
+function recapImageQuery(recap: Recap, format: RecapImageFormat, slide?: RecapSlideId) {
   return queryOptions({
-    queryKey: ["recap-image", recap.period, recap.from, format],
+    queryKey: ["recap-image", recap.period, recap.from, slide ?? format],
     queryFn: async ({ signal }) => {
       const href = api.stats.recap.image.$path({
-        query: { period: recap.period, date: recap.from, format },
+        query: { period: recap.period, date: recap.from, ...(slide ? { slide } : { format }) },
       });
       const res = await fetch(href, { signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const file = new File([await res.blob()], fileName(recap, format), { type: "image/png" });
+      const name = recapImageFileName(recap, slide ?? format);
+      const file = new File([await res.blob()], name, { type: "image/png" });
       return { file, url: URL.createObjectURL(file) };
     },
     staleTime: 60_000,
@@ -65,43 +64,51 @@ function canShareFile(file: File): boolean {
   }
 }
 
+/** Sem `slide`, o recap geral (com escolha de formato); com ele, só aquele slide, em stories. */
 export function ShareRecapDialog({
   recap,
+  slide,
   open,
   onOpenChange,
 }: {
   recap: Recap;
+  slide?: RecapSlideId;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const [format, setFormat] = useState<RecapImageFormat>("story");
-  const image = useQuery({ ...recapImageQuery(recap, format), enabled: open });
+  const [chosenFormat, setFormat] = useState<RecapImageFormat>("story");
+  const format = slide ? "story" : chosenFormat;
+  const image = useQuery({ ...recapImageQuery(recap, format, slide), enabled: open });
   const shareable = image.data !== undefined && canShareFile(image.data.file);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Compartilhar recap</DialogTitle>
+          <DialogTitle>{slide ? `Slide: ${slideTitles[slide]}` : "Compartilhar recap"}</DialogTitle>
           <DialogDescription>
-            Uma imagem com o resumo, para os stories ou para posts e conversas.
+            {slide
+              ? "Este slide como imagem, no formato dos stories."
+              : "Uma imagem com o resumo, para os stories ou para posts e conversas."}
           </DialogDescription>
         </DialogHeader>
 
-        <fieldset className="flex flex-wrap gap-3">
-          <legend className="sr-only">Formato</legend>
-          {formats.map((f) => (
-            <Button
-              key={f.value}
-              size="sm"
-              variant={f.value === format ? "default" : "outline"}
-              aria-pressed={f.value === format}
-              onClick={() => setFormat(f.value)}
-            >
-              {f.label} <span className="opacity-70 max-sm:hidden">{f.hint}</span>
-            </Button>
-          ))}
-        </fieldset>
+        {!slide && (
+          <fieldset className="flex flex-wrap gap-3">
+            <legend className="sr-only">Formato</legend>
+            {formats.map((f) => (
+              <Button
+                key={f.value}
+                size="sm"
+                variant={f.value === format ? "default" : "outline"}
+                aria-pressed={f.value === format}
+                onClick={() => setFormat(f.value)}
+              >
+                {f.label} <span className="opacity-70 max-sm:hidden">{f.hint}</span>
+              </Button>
+            ))}
+          </fieldset>
+        )}
 
         <div
           className={cn(
@@ -114,7 +121,11 @@ export function ShareRecapDialog({
           {image.data && (
             <img
               src={image.data.url}
-              alt="Prévia da imagem do recap"
+              alt={
+                slide
+                  ? `Prévia da imagem do slide ${slideTitles[slide]}`
+                  : "Prévia da imagem do recap"
+              }
               className="size-full object-contain shadow-[0_0_0_2px_var(--pixel-shadow)]"
             />
           )}

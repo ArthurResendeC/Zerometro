@@ -1,286 +1,139 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Resvg } from "@resvg/resvg-wasm";
 import satori from "satori";
 import { formatMinutes } from "../../../shared/format";
 import { genreLabel } from "../../../shared/genres";
 import { coverUrl } from "../../../shared/igdb";
 import { type Recap, type RecapImageFormat, recapImageSizes } from "../../../shared/recap";
+import { type RecapSlideId, recapSlides } from "../../../shared/recap-slides";
+import { NotFoundError } from "../../errors";
+import { periodLabel, plural, profileTitle, recapKicker } from "../../../shared/recap-text";
+import { loadRecapAssets } from "./assets";
 import {
-  comparison,
-  periodLabel,
-  plural,
-  profileTitle,
-  recapKicker,
-} from "../../../shared/recap-text";
-import { loadRecapAssets, PIXEL_FONT, TEXT_FONT } from "./assets";
+  BigTime,
+  C,
+  Cover,
+  type Covers,
+  DailyBars,
+  ellipsis,
+  flex,
+  Label,
+  type LayoutProps,
+  Logo,
+  pixel,
+  Root,
+  text,
+  Trend,
+} from "./parts";
+import { SlideLayout } from "./slides";
 
-// Imagem do recap para compartilhar (stories 9:16 ou paisagem 16:9), no visual do app (paleta
-// escura do cartucho NES). O Satori monta o SVG a partir do JSX (só flexbox, e toda div com mais
-// de um filho precisa de display: flex) e o resvg (wasm) converte em PNG. As capas são baixadas
-// aqui e embutidas como data URI: o SVG não busca nada sozinho.
+// Imagens do recap para compartilhar, no visual do app (paleta escura do cartucho NES): a geral
+// (stories 9:16 ou paisagem 16:9) e a de cada slide (stories). O Satori monta o SVG a partir do
+// JSX e o resvg (wasm) converte em PNG. As capas e o ícone da conquista são baixados aqui e
+// embutidos como data URI: o SVG não busca nada sozinho.
 
 type FetchFn = (input: string, init?: RequestInit) => Promise<Response>;
 
 export interface RecapImageRenderer {
+  /** A imagem geral do recap. */
   render(recap: Recap, format: RecapImageFormat): Promise<Uint8Array<ArrayBuffer>>;
+  /** Um slide do recap, em stories (9:16). */
+  renderSlide(recap: Recap, slide: RecapSlideId): Promise<Uint8Array<ArrayBuffer>>;
 }
 
 interface RendererOptions {
   fetch?: FetchFn;
-  /** Por capa; sem resposta a tempo, entra o quadro com as iniciais. */
+  /** Por imagem; sem resposta a tempo, entra o quadro com as iniciais. */
   timeoutMs?: number;
 }
 
-/** Capas guardadas em memória (são poucas e não mudam). */
-const MAX_CACHED_COVERS = 200;
+/** Imagens guardadas em memória (são poucas e não mudam). */
+const MAX_CACHED_IMAGES = 200;
+
+async function toPng(node: ReactNode, width: number, height: number) {
+  const fonts = await loadRecapAssets();
+  const svg = await satori(node, { width, height, fonts });
+  // Cópia com um ArrayBuffer próprio (o que o Response/Hono aceita).
+  return new Uint8Array(new Resvg(svg, { fitTo: { mode: "original" } }).render().asPng());
+}
 
 export function createRecapImageRenderer({
   fetch = globalThis.fetch,
   timeoutMs = 5000,
 }: RendererOptions = {}): RecapImageRenderer {
-  const covers = new Map<string, string>();
+  const cache = new Map<string, string>();
 
-  async function loadCover(imageId: string): Promise<string | null> {
-    const cached = covers.get(imageId);
+  async function loadImage(url: string): Promise<string | null> {
+    const cached = cache.get(url);
     if (cached) return cached;
     try {
-      const res = await fetch(coverUrl(imageId, "cover_big"), {
-        signal: AbortSignal.timeout(timeoutMs),
-      });
+      const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
       const type = res.headers.get("content-type") ?? "";
       if (!res.ok || !/^image\/(jpeg|png)/.test(type)) return null;
       const data = `data:${type.split(";")[0]};base64,${Buffer.from(await res.arrayBuffer()).toString("base64")}`;
-      if (covers.size >= MAX_CACHED_COVERS) covers.delete(covers.keys().next().value!);
-      covers.set(imageId, data);
+      if (cache.size >= MAX_CACHED_IMAGES) cache.delete(cache.keys().next().value!);
+      cache.set(url, data);
       return data;
     } catch {
       return null;
     }
   }
 
+  /** As capas dos jogos, por image id do IGDB (null = não veio: entra o quadro com as iniciais). */
+  async function loadCovers(games: { coverImageId: string | null }[]): Promise<Covers> {
+    const ids = [...new Set(games.map((g) => g.coverImageId).filter((id) => id !== null))];
+    const loaded = await Promise.all(
+      ids.map(async (id) => [id, await loadImage(coverUrl(id, "cover_big"))] as const),
+    );
+    return new Map(loaded);
+  }
+
   return {
     async render(recap, format) {
-      const fonts = await loadRecapAssets();
-      const ids = [
-        ...new Set(recap.topGames.map((g) => g.coverImageId).filter((id) => id !== null)),
-      ];
-      const loaded = await Promise.all(ids.map(async (id) => [id, await loadCover(id)] as const));
-      const images = new Map(loaded);
+      const covers = await loadCovers(recap.topGames);
       const { width, height } = recapImageSizes[format];
       const Layout = format === "story" ? StoryLayout : WideLayout;
-      const svg = await satori(<Layout recap={recap} covers={images} />, { width, height, fonts });
-      // Cópia com um ArrayBuffer próprio (o que o Response/Hono aceita).
-      return new Uint8Array(new Resvg(svg, { fitTo: { mode: "original" } }).render().asPng());
+      return toPng(<Layout recap={recap} covers={covers} />, width, height);
+    },
+
+    async renderSlide(recap, slide) {
+      const [covers, icon] = await Promise.all([
+        loadCovers([
+          ...recap.topGames,
+          ...recap.newGames,
+          ...recap.returningGames,
+          ...recap.finished,
+        ]),
+        recap.achievements.rarest?.iconUrl
+          ? loadImage(recap.achievements.rarest.iconUrl)
+          : Promise.resolve(null),
+      ]);
+      const { width, height } = recapImageSizes.story;
+      return toPng(
+        <SlideLayout id={slide} recap={recap} covers={covers} achievementIcon={icon} />,
+        width,
+        height,
+      );
     },
   };
 }
 
+/** A imagem pedida: a de um slide (que precisa existir nesse recap) ou a geral, no formato. */
+export function renderRecapImage(
+  renderer: RecapImageRenderer,
+  recap: Recap,
+  { format, slide }: { format: RecapImageFormat; slide?: RecapSlideId },
+): Promise<Uint8Array<ArrayBuffer>> {
+  if (!slide) return renderer.render(recap, format);
+  // Um slide sem dados no período não aparece no recap: também não vira imagem.
+  if (!recapSlides(recap).includes(slide)) {
+    throw new NotFoundError(`O slide "${slide}" não existe no recap desse período`);
+  }
+  return renderer.renderSlide(recap, slide);
+}
+
 // ---------------------------------------------------------------------------
-// Paleta e peças
-
-const C = {
-  bg: "#0f0e17",
-  card: "#1c1a29",
-  fg: "#f4ecdc",
-  muted: "#a39cb8",
-  primary: "#ff7a1a",
-  track: "#2b2840",
-  border: "#7a7396",
-  up: "#6bd66b",
-  down: "#ff5d6c",
-  yellow: "#ffd23f",
-} as const;
-
-type Covers = Map<string, string | null>;
-interface LayoutProps {
-  recap: Recap;
-  covers: Covers;
-}
-
-const flex = (style: CSSProperties = {}): CSSProperties => ({ display: "flex", ...style });
-const pixel = (size: number, color: string = C.fg): CSSProperties => ({
-  fontFamily: PIXEL_FONT,
-  fontSize: size,
-  lineHeight: 1.25,
-  color,
-});
-const text = (size: number, color: string = C.fg): CSSProperties => ({
-  fontFamily: TEXT_FONT,
-  fontSize: size,
-  lineHeight: 1.05,
-  color,
-});
-const ellipsis: CSSProperties = {
-  overflow: "hidden",
-  whiteSpace: "nowrap",
-  textOverflow: "ellipsis",
-};
-
-function Root({ children, style }: { children: ReactNode; style?: CSSProperties }) {
-  return (
-    <div
-      style={flex({
-        width: "100%",
-        height: "100%",
-        // Sem isso, borda e padding somam à largura e o conteúdo sai da imagem.
-        boxSizing: "border-box",
-        flexDirection: "column",
-        backgroundColor: C.bg,
-        // Moldura do app: borda grossa e cantos retos.
-        border: `12px solid ${C.border}`,
-        ...style,
-      })}
-    >
-      {children}
-    </div>
-  );
-}
-
-function Logo({ size }: { size: number }) {
-  return (
-    <div style={flex({ alignItems: "center", justifyContent: "space-between", width: "100%" })}>
-      <div style={flex(pixel(size))}>
-        Zer<span style={{ color: C.primary }}>ô</span>metro
-      </div>
-      <div
-        style={flex({
-          ...pixel(size * 0.6, C.primary),
-          border: `4px solid ${C.primary}`,
-          padding: `${size * 0.3}px ${size * 0.45}px`,
-        })}
-      >
-        RECAP
-      </div>
-    </div>
-  );
-}
-
-function Label({
-  children,
-  size,
-  style,
-}: {
-  children: ReactNode;
-  size: number;
-  style?: CSSProperties;
-}) {
-  return (
-    <div
-      style={flex({
-        ...pixel(size, C.muted),
-        textTransform: "uppercase",
-        letterSpacing: 1,
-        ...style,
-      })}
-    >
-      {children}
-    </div>
-  );
-}
-
-/** "46h 5min": horas grandes, minutos menores. */
-function BigTime({ minutes, size }: { minutes: number; size: number }) {
-  const h = Math.floor(minutes / 60);
-  const m = Math.round(minutes % 60);
-  return (
-    <div style={flex({ alignItems: "baseline" })}>
-      {h > 0 && <span style={pixel(size, C.primary)}>{h}h</span>}
-      {(m > 0 || h === 0) && (
-        <span
-          style={{
-            ...pixel(h > 0 ? size * 0.45 : size, C.primary),
-            marginLeft: h > 0 ? size * 0.2 : 0,
-          }}
-        >
-          {m}min
-        </span>
-      )}
-    </div>
-  );
-}
-
-function Trend({ recap, size }: { recap: Recap; size: number }) {
-  const { trend, text: line } = comparison(recap.period, recap.totalMinutes, recap.previousMinutes);
-  const color = trend === "up" ? C.up : trend === "down" ? C.down : C.muted;
-  const s = size * 0.5;
-  return (
-    <div style={flex({ alignItems: "center", ...text(size) })}>
-      <svg width={s} height={s} viewBox="0 0 24 24" style={{ marginRight: size * 0.3 }}>
-        {trend === "up" && <polygon points="0,22 12,2 24,22" fill={color} />}
-        {trend === "down" && <polygon points="0,2 24,2 12,22" fill={color} />}
-        {trend === "same" && <rect x="2" y="8" width="20" height="8" fill={color} />}
-      </svg>
-      {line}
-      {recap.inProgress && (
-        <span style={{ color: C.muted, marginLeft: size * 0.3 }}>(parcial)</span>
-      )}
-    </div>
-  );
-}
-
-function DailyBars({ recap, height, gap }: { recap: Recap; height: number; gap: number }) {
-  const max = Math.max(...recap.daily.map((d) => d.minutes), 1);
-  return (
-    <div style={flex({ alignItems: "flex-end", height, width: "100%" })}>
-      {recap.daily.map((day, i) => (
-        <div
-          key={day.date}
-          style={{
-            flexGrow: 1,
-            flexBasis: 0,
-            marginLeft: i === 0 ? 0 : gap,
-            height: day.minutes > 0 ? Math.max(6, (day.minutes / max) * height) : 6,
-            backgroundColor:
-              day.minutes > 0 ? C.primary : day.date > recap.today ? C.card : C.track,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
-function Cover({
-  covers,
-  imageId,
-  name,
-  width,
-}: {
-  covers: Covers;
-  imageId: string | null;
-  name: string;
-  width: number;
-}) {
-  const height = Math.round((width * 4) / 3);
-  const src = imageId ? covers.get(imageId) : null;
-  const frame: CSSProperties = { width, height, border: `4px solid ${C.fg}`, flexShrink: 0 };
-  if (src)
-    return (
-      <img
-        alt={name}
-        src={src}
-        width={width}
-        height={height}
-        style={{ ...frame, objectFit: "cover" }}
-      />
-    );
-  return (
-    <div
-      style={flex({
-        ...frame,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: C.track,
-      })}
-    >
-      <span style={pixel(Math.max(12, width / 5), C.muted)}>{initials(name)}</span>
-    </div>
-  );
-}
-
-function initials(name: string): string {
-  const [first = "?", second] = name.match(/[\p{L}\p{N}]+/gu) ?? [];
-  return (second ? first.charAt(0) + second.charAt(0) : first.slice(0, 2)).toUpperCase();
-}
+// Peças da imagem geral
 
 function Tile({
   label,
