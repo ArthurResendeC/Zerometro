@@ -179,6 +179,7 @@ describe("tools", () => {
       "list_sessions",
       "list_steam_import",
       "search_igdb",
+      "suggest_next",
     ]);
     // Só as que apagam conclusões e objetivos (e elas pedem confirm: true).
     const destructive = tools.filter((tool) => tool.annotations?.destructiveHint);
@@ -230,6 +231,16 @@ describe("tools", () => {
       expect.objectContaining({ name: "Atlus", games: 2, finished: 1 }),
     ]);
     expect(profile.data.series[0].topGames).toEqual(["Persona 5 Royal", "Pokémon Red"]);
+
+    // O que jogar: só o Persona está em andamento; o próximo vem depois, o zerado não entra.
+    const suggested = await callJson(client, "suggest_next", { available: "short" });
+    expect(suggested.data.suggestions.map((g: { name: string }) => g.name)).toEqual([
+      "Persona 5 Royal",
+      "Pokémon Blue",
+    ]);
+    const picked = await callJson(client, "suggest_next", { random: true });
+    expect(picked.data).toMatchObject({ poolSize: 2 });
+    expect((await callJson(client, "suggest_next", { mood: "coop" })).data.suggestions).toEqual([]);
 
     // Recap da semana atual (a sessão é de hoje), com a imagem junto.
     const recap = await client.callTool({

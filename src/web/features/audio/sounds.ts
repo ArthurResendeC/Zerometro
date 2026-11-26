@@ -13,6 +13,8 @@ export const soundLabels: Record<SoundName, string> = {
   "game-finished": "Jogo zerado",
   "streak-milestone": "Marco da ofensiva",
   "goal-reached": "Meta do ano batida",
+  "roulette-tick": "Roleta girando",
+  "roulette-win": "Roleta escolheu",
 };
 
 export const soundNames = Object.keys(soundLabels) as SoundName[];

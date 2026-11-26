@@ -10,6 +10,8 @@ export const soundPriority: readonly SoundName[] = [
   "streak-milestone",
   "session-stop",
   "session-start",
+  "roulette-win",
+  "roulette-tick",
 ];
 
 /** Escolhe o som mais importante entre os eventos de uma ação (valores falsy são ignorados). */

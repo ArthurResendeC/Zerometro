@@ -39,6 +39,13 @@ import {
   sortProfileRows,
 } from "../../shared/profile";
 import { recapImageFormats, recapPeriods } from "../../shared/recap";
+import {
+  availableTimeSchema,
+  moodSchema,
+  pickSuggestion,
+  type Suggestion,
+  suggestGames,
+} from "../../shared/suggest";
 import { recapSlideIds, recapSlides } from "../../shared/recap-slides";
 import { profileTitle } from "../../shared/recap-text";
 import { sessionLengthBuckets } from "../../shared/stats";
@@ -186,6 +193,21 @@ function gameSummary(item: LibraryItem) {
     lastPlayedOn: item.lastPlayedOn,
     firstPlayedOn: item.firstPlayedOn,
     /** "Onde parei": a nota da última sessão que tem nota, com o dia (null se nenhuma tem). */
+    lastNote: item.lastNote && { note: item.lastNote.note, playedOn: item.lastNote.playedOn },
+  };
+}
+
+/** Uma sugestão do "o que jogar agora?", com os motivos. */
+function suggestionSummary({ item, reasons, remainingMinutes }: Suggestion) {
+  return {
+    gameId: item.gameId,
+    name: item.name,
+    status: item.status,
+    statusLabel: gameStatusLabels[item.status],
+    platformPlayed: item.platformPlayed,
+    reasons,
+    remainingMinutes,
+    progressPercent: item.progress === null ? null : Math.round(item.progress * 100),
     lastNote: item.lastNote && { note: item.lastNote.note, playedOn: item.lastNote.playedOn },
   };
 }
@@ -449,6 +471,46 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
           gameModes: top("gameModes", gameModeLabel),
           platforms: top("platforms"),
         };
+      }),
+  );
+
+  server.registerTool(
+    "suggest_next",
+    {
+      title: "O que jogar agora?",
+      description:
+        'Sugere o que jogar agora entre os jogos em andamento, os próximos e os pausados, pelo tempo disponível e pelo clima, com os motivos ("dá para zerar hoje: faltam ~40min", "você parou em: Palácio 3"). Ex.: "tenho meia hora, o que eu jogo?" (available: "short"), "quero algo leve" (mood: "leve"), "o que jogo com meu amigo?" (mood: "coop", só jogos com coop). Com random: true, sorteia um (as melhores saem mais). Para começar, chame start_session com o jogo escolhido.',
+      inputSchema: z.object({
+        available: availableTimeSchema
+          .optional()
+          .describe("short = ~30 min; medium = 1–2h; long = a tarde toda"),
+        mood: moodSchema
+          .optional()
+          .describe("curto, leve, historia, desafio ou coop (coop filtra; os outros pontuam)"),
+        platform: z
+          .string()
+          .trim()
+          .min(1)
+          .optional()
+          .describe('Só jogos dessa plataforma, como na biblioteca (ex.: "PC", "Switch")'),
+        random: z.boolean().optional().describe("Sorteia 1 entre as 8 melhores"),
+      }),
+      annotations: readOnly,
+    },
+    ({ available, mood, platform, random }) =>
+      run(() => {
+        const scope = ctx();
+        const { top, pool } = suggestGames(listLibrary(scope), {
+          available,
+          mood,
+          platform,
+          today: scope.today,
+        });
+        if (random) {
+          const picked = pickSuggestion(pool);
+          return { picked: picked && suggestionSummary(picked), poolSize: pool.length };
+        }
+        return { suggestions: top.map(suggestionSummary) };
       }),
   );
 

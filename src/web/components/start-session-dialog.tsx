@@ -3,7 +3,8 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { type LibraryItem, sortLibraryItems } from "@shared/library";
 import { GameCover } from "@/components/game-cover";
-import { PlayIcon, PlusIcon, SearchIcon } from "@/components/icons";
+import { ListIcon, PlayIcon, PlusIcon, SearchIcon, StarIcon } from "@/components/icons";
+import { type SegmentedOption, SegmentedToggle } from "@/components/segmented-toggle";
 import { StatusBadge } from "@/components/status-badge";
 import { useActiveTimer } from "@/components/timer";
 import { Button } from "@/components/ui/button";
@@ -16,12 +17,24 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { formatDate } from "@/lib/format";
+import { SuggestPanel } from "@/features/suggest/suggest-panel";
 import { libraryListQuery, useStartTimer } from "@/lib/queries";
 import { cn, normalizeForSearch } from "@/lib/utils";
 
-/** Botão "Jogar" do cabeçalho: escolhe um jogo da biblioteca e liga o timer dele. */
+type PickerTab = "escolher" | "sugerir";
+
+const tabOptions: SegmentedOption<PickerTab>[] = [
+  { value: "escolher", label: "Escolher", Icon: ListIcon },
+  { value: "sugerir", label: "Me sugere", Icon: StarIcon },
+];
+
+/**
+ * Botão "Jogar" do cabeçalho: escolhe um jogo da biblioteca (ou pede uma sugestão pelo tempo e
+ * pelo clima) e liga o timer dele.
+ */
 export function StartSessionButton({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<PickerTab>("escolher");
 
   return (
     <>
@@ -39,10 +52,22 @@ export function StartSessionButton({ className }: { className?: string }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Começar a jogar</DialogTitle>
-            <DialogDescription>Escolha o jogo e o timer começa a contar.</DialogDescription>
+            <DialogDescription>
+              {tab === "escolher"
+                ? "Escolha o jogo e o timer começa a contar."
+                : "Diga quanto tempo você tem e o clima: o Zerômetro sugere (ou sorteia)."}
+            </DialogDescription>
           </DialogHeader>
+          <SegmentedToggle
+            legend="Como escolher"
+            options={tabOptions}
+            value={tab}
+            onChange={setTab}
+            className="justify-self-start"
+          />
           {/* Desmonta ao fechar: a busca sempre abre vazia. */}
-          {open && <GamePicker onDone={() => setOpen(false)} />}
+          {open && tab === "escolher" && <GamePicker onDone={() => setOpen(false)} />}
+          {open && tab === "sugerir" && <SuggestTab onDone={() => setOpen(false)} />}
         </DialogContent>
       </Dialog>
     </>
@@ -58,10 +83,38 @@ function pickerOrder(items: readonly LibraryItem[]): LibraryItem[] {
   ];
 }
 
-function GamePicker({ onDone }: { onDone: () => void }) {
-  const library = useQuery(libraryListQuery());
+/** Liga o timer do jogo escolhido e fecha o diálogo. */
+function usePlay(onDone: () => void) {
   const { active } = useActiveTimer();
   const start = useStartTimer();
+  const play = (gameId: number) => {
+    // Já está rodando: nada a fazer além de fechar.
+    if (active?.gameId !== gameId) {
+      // A escolha aqui é explícita (o aviso diz que troca), então não pergunta de novo.
+      start.mutate({ gameId, ...(active && { replaceActive: true }) });
+    }
+    onDone();
+  };
+  return { play, active, isPending: start.isPending };
+}
+
+function SuggestTab({ onDone }: { onDone: () => void }) {
+  const { play, active, isPending } = usePlay(onDone);
+  return (
+    <div className="grid min-w-0 gap-3">
+      <SuggestPanel onPlay={play} disabled={isPending} />
+      {active && (
+        <p className="text-xs text-muted-foreground">
+          O timer de {active.gameName} está ligado: jogar outro encerra e salva essa sessão.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function GamePicker({ onDone }: { onDone: () => void }) {
+  const library = useQuery(libraryListQuery());
+  const { play: playGame, active, isPending } = usePlay(onDone);
   const [query, setQuery] = useState("");
 
   const items = library.data?.items ?? [];
@@ -70,14 +123,7 @@ function GamePicker({ onDone }: { onDone: () => void }) {
     (i) => !term || normalizeForSearch(i.name).includes(term),
   );
 
-  const play = (item: LibraryItem) => {
-    // Já está rodando: nada a fazer além de fechar.
-    if (active?.gameId !== item.gameId) {
-      // A escolha aqui é explícita (o aviso abaixo diz que troca), então não pergunta de novo.
-      start.mutate({ gameId: item.gameId, ...(active && { replaceActive: true }) });
-    }
-    onDone();
-  };
+  const play = (item: LibraryItem) => playGame(item.gameId);
 
   if (library.isPending) return <p className="text-muted-foreground">Carregando…</p>;
 
@@ -128,7 +174,7 @@ function GamePicker({ onDone }: { onDone: () => void }) {
                 <button
                   type="button"
                   onClick={() => play(item)}
-                  disabled={start.isPending}
+                  disabled={isPending}
                   className={cn(
                     "group flex w-full cursor-pointer items-center gap-3 p-2 text-left hover:bg-accent focus-visible:bg-accent focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-default",
                     running && "bg-accent",

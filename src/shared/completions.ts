@@ -59,7 +59,7 @@ export type MarkCompletedInput = z.infer<typeof markCompletedSchema>;
 // ---------------------------------------------------------------------------
 // Progresso estimado com alvo dinâmico
 
-const ttbByType: Record<CompletionType, keyof TimeToBeat> = {
+export const ttbByType: Record<CompletionType, keyof TimeToBeat> = {
   main: "mainSec",
   extras: "extraSec",
   full: "completeSec",
