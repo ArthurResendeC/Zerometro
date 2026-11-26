@@ -9,6 +9,10 @@ export interface BarListItem {
   key: string | number;
   label: ReactNode;
   minutes: number;
+  /** Tamanho da barra, quando não é pelos minutos (ex.: nº de zerados, nota média). */
+  value?: number;
+  /** Texto do valor à direita (padrão: os minutos formatados). */
+  display?: ReactNode;
   /** Texto secundário ao lado do nome (ex.: "3 jogos"). */
   hint?: ReactNode;
   /** Algo antes do nome (ex.: a capa). */
@@ -23,8 +27,10 @@ interface BarListProps {
   color?: string;
 }
 
+const valueOf = (item: BarListItem) => item.value ?? item.minutes;
+
 export function BarList({ items, color = "var(--chart-2)" }: BarListProps) {
-  const max = Math.max(...items.map((i) => i.minutes), 1);
+  const max = Math.max(...items.map(valueOf), 1);
   return (
     <ol className="space-y-3">
       {items.map((item) => {
@@ -40,13 +46,13 @@ export function BarList({ items, color = "var(--chart-2)" }: BarListProps) {
                   )}
                 </span>
                 <span className="shrink-0 text-muted-foreground tabular-nums">
-                  {formatMinutes(item.minutes)}
+                  {item.display ?? formatMinutes(item.minutes)}
                 </span>
               </div>
               <div className="h-2 bg-muted" aria-hidden>
                 <div
                   className="h-full"
-                  style={{ width: `${(item.minutes / max) * 100}%`, background: color }}
+                  style={{ width: `${(valueOf(item) / max) * 100}%`, background: color }}
                 />
               </div>
             </div>

@@ -170,6 +170,7 @@ describe("tools", () => {
       "get_feeds",
       "get_game",
       "get_period_stats",
+      "get_profile",
       "get_recap",
       "get_stats",
       "list_achievements",
@@ -220,6 +221,15 @@ describe("tools", () => {
     expect(period.data).toMatchObject({ totalMinutes: 45, playedDays: 1, sessions: 1 });
     expect(period.data.topGames[0]).toMatchObject({ name: "Persona 5 Royal", minutes: 45 });
     expect(period.data.weekdays).toHaveLength(7);
+
+    // Perfil: entram o Persona (45 min) e o Pokémon Red (zerado, sem tempo); o próximo, não. O
+    // fake credita a todos a mesma dev (Atlus) e a mesma série (Persona).
+    const profile = await callJson(client, "get_profile", {});
+    expect(profile.data).toMatchObject({ sort: "minutes", gamesCounted: 2, totalHours: 0.8 });
+    expect(profile.data.developers).toEqual([
+      expect.objectContaining({ name: "Atlus", games: 2, finished: 1 }),
+    ]);
+    expect(profile.data.series[0].topGames).toEqual(["Persona 5 Royal", "Pokémon Red"]);
 
     // Recap da semana atual (a sessão é de hoje), com a imagem junto.
     const recap = await client.callTool({

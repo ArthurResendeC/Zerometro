@@ -67,6 +67,7 @@ export const ListIcon = pixelIcon(
   "ListIcon",
 );
 export const ChartIcon = pixelIcon(r(0, 4, 2, 4) + r(3, 1, 2, 7) + r(6, 3, 2, 5), "ChartIcon");
+export const UserIcon = pixelIcon(r(2, 0, 4, 3) + r(1, 4, 6, 1) + r(0, 5, 8, 3), "UserIcon");
 export const StarIcon = pixelIcon(
   r(3, 0, 2, 2) + r(0, 2, 8, 2) + r(1, 4, 6, 1) + r(2, 5, 4, 1) + r(1, 6, 2, 2) + r(5, 6, 2, 2),
   "StarIcon",

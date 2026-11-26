@@ -6,7 +6,7 @@ import {
   redirect,
   useLocation,
 } from "@tanstack/react-router";
-import { ChartIcon, ListIcon, SettingsIcon, TimerIcon } from "@/components/icons";
+import { ChartIcon, ListIcon, SettingsIcon, TimerIcon, UserIcon } from "@/components/icons";
 import { LogSessionDialog } from "@/components/log-session-dialog";
 import { StartSessionButton } from "@/components/start-session-dialog";
 import { TimerBar } from "@/components/timer";
@@ -103,6 +103,15 @@ function SignedInLayout({ userId }: { userId: string }) {
           >
             <ChartIcon className="lg:hidden" />
             <span className="max-lg:hidden">Estatísticas</span>
+          </Link>
+          <Link
+            to="/perfil"
+            className={navLinkClass}
+            activeProps={{ className: "text-foreground" }}
+            aria-label="Perfil de gamer"
+          >
+            <UserIcon className="lg:hidden" />
+            <span className="max-lg:hidden">Perfil</span>
           </Link>
           <div className="ml-auto flex items-center">
             <PendingIndicator

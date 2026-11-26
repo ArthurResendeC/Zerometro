@@ -18,6 +18,7 @@ import {
 } from "../../shared/domain";
 import { feedKeys, feedTitles } from "../../shared/feeds";
 import { genreLabel } from "../../shared/genres";
+import { gameModeLabel, perspectiveLabel, themeLabel } from "../../shared/game-labels";
 import {
   type LibraryItem,
   librarySortSchema,
@@ -31,6 +32,12 @@ import {
   type ObjectiveItem,
   type ObjectiveWriteResult,
 } from "../../shared/objectives";
+import {
+  MIN_RATED_GAMES,
+  type ProfileSection,
+  profileSortSchema,
+  sortProfileRows,
+} from "../../shared/profile";
 import { recapImageFormats, recapPeriods } from "../../shared/recap";
 import { recapSlideIds, recapSlides } from "../../shared/recap-slides";
 import { profileTitle } from "../../shared/recap-text";
@@ -72,6 +79,7 @@ import { listSessions, logSession } from "../services/sessions";
 import { getSettings } from "../services/settings";
 import { importSteamGames, previewSteamImport } from "../services/steam-import";
 import { syncSteamGame, syncSteamLibrary } from "../services/steam-sync";
+import { getProfile } from "../services/profile";
 import { getRecap } from "../services/recap";
 import { renderRecapImage } from "../services/recap-image";
 import { getHeatmap, getPeriodBreakdown, getRecords, getRhythm, getStats } from "../services/stats";
@@ -390,6 +398,54 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
           finished: records.finished,
           finishedByMonth: records.finishedByMonth.filter((m) => m.count > 0),
           paceRatio: records.paceRatio,
+        };
+      }),
+  );
+
+  server.registerTool(
+    "get_profile",
+    {
+      title: "Perfil de gamer",
+      description:
+        'O "meu gosto" calculado pela biblioteca inteira (sem recorte de período): desenvolvedoras e publishers favoritas (rankings separados; publishers são as creditadas no IGDB, inclusive regionais), séries (collections do IGDB), franquias, gêneros, temas, perspectivas, modos de jogo e plataformas em que joguei. Cada linha traz horas, jogos, zerados, nota média e os jogos mais jogados. Ex.: "qual minha publisher favorita?", "que série eu mais joguei?", "de que dev eu gosto mais?" (sort: "rating"). Só entram jogos com tempo jogado ou conclusão.',
+      inputSchema: z.object({
+        sort: profileSortSchema
+          .default("minutes")
+          .describe(
+            `minutes = mais horas; finished = mais zerados; rating = maior nota média (só com ${MIN_RATED_GAMES}+ jogos com nota)`,
+          ),
+        limit: z.number().int().min(1).max(30).default(5).describe("Linhas por ranking"),
+      }),
+      annotations: readOnly,
+    },
+    ({ sort, limit }) =>
+      run(() => {
+        const profile = getProfile(ctx());
+        const top = (section: ProfileSection, label: (name: string) => string = (n) => n) =>
+          sortProfileRows(profile[section], sort)
+            .slice(0, limit)
+            .map((row) => ({
+              name: label(row.name),
+              hours: Math.round((row.minutes / 60) * 10) / 10,
+              games: row.games,
+              finished: row.finished,
+              avgRating: row.avgRating,
+              ratedGames: row.ratedGames,
+              topGames: row.topGames.map((g) => g.name),
+            }));
+        return {
+          sort,
+          gamesCounted: profile.gamesCounted,
+          totalHours: Math.round((profile.totalMinutes / 60) * 10) / 10,
+          developers: top("developers"),
+          publishers: top("publishers"),
+          series: top("series"),
+          franchises: top("franchises"),
+          genres: top("genres", genreLabel),
+          themes: top("themes", themeLabel),
+          perspectives: top("perspectives", perspectiveLabel),
+          gameModes: top("gameModes", gameModeLabel),
+          platforms: top("platforms"),
         };
       }),
   );

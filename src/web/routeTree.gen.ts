@@ -15,6 +15,7 @@ import { Route as AjustesRouteImport } from "./routes/ajustes"
 import { Route as BibliotecaRouteImport } from "./routes/biblioteca"
 import { Route as EntrarRouteImport } from "./routes/entrar"
 import { Route as EstatisticasRouteImport } from "./routes/estatisticas"
+import { Route as PerfilRouteImport } from "./routes/perfil"
 import { Route as RecapRouteImport } from "./routes/recap"
 import { Route as JogoIgdbIdRouteImport } from "./routes/jogo.$igdbId"
 import { Route as JogosGameIdRouteImport } from "./routes/jogos.$gameId"
@@ -49,6 +50,11 @@ const EstatisticasRoute = EstatisticasRouteImport.update({
   path: "/estatisticas",
   getParentRoute: () => rootRouteImport,
 } as any)
+const PerfilRoute = PerfilRouteImport.update({
+  id: "/perfil",
+  path: "/perfil",
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RecapRoute = RecapRouteImport.update({
   id: "/recap",
   path: "/recap",
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   "/biblioteca": typeof BibliotecaRoute
   "/entrar": typeof EntrarRoute
   "/estatisticas": typeof EstatisticasRoute
+  "/perfil": typeof PerfilRoute
   "/recap": typeof RecapRoute
   "/jogo/$igdbId": typeof JogoIgdbIdRoute
   "/jogos/$gameId": typeof JogosGameIdRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByTo {
   "/biblioteca": typeof BibliotecaRoute
   "/entrar": typeof EntrarRoute
   "/estatisticas": typeof EstatisticasRoute
+  "/perfil": typeof PerfilRoute
   "/recap": typeof RecapRoute
   "/jogo/$igdbId": typeof JogoIgdbIdRoute
   "/jogos/$gameId": typeof JogosGameIdRoute
@@ -95,6 +103,7 @@ export interface FileRoutesById {
   "/biblioteca": typeof BibliotecaRoute
   "/entrar": typeof EntrarRoute
   "/estatisticas": typeof EstatisticasRoute
+  "/perfil": typeof PerfilRoute
   "/recap": typeof RecapRoute
   "/jogo/$igdbId": typeof JogoIgdbIdRoute
   "/jogos/$gameId": typeof JogosGameIdRoute
@@ -108,6 +117,7 @@ export interface FileRouteTypes {
     | "/biblioteca"
     | "/entrar"
     | "/estatisticas"
+    | "/perfil"
     | "/recap"
     | "/jogo/$igdbId"
     | "/jogos/$gameId"
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | "/biblioteca"
     | "/entrar"
     | "/estatisticas"
+    | "/perfil"
     | "/recap"
     | "/jogo/$igdbId"
     | "/jogos/$gameId"
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | "/biblioteca"
     | "/entrar"
     | "/estatisticas"
+    | "/perfil"
     | "/recap"
     | "/jogo/$igdbId"
     | "/jogos/$gameId"
@@ -142,6 +154,7 @@ export interface RootRouteChildren {
   BibliotecaRoute: typeof BibliotecaRoute
   EntrarRoute: typeof EntrarRoute
   EstatisticasRoute: typeof EstatisticasRoute
+  PerfilRoute: typeof PerfilRoute
   RecapRoute: typeof RecapRoute
   JogoIgdbIdRoute: typeof JogoIgdbIdRoute
   JogosGameIdRoute: typeof JogosGameIdRoute
@@ -191,6 +204,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof EstatisticasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    "/perfil": {
+      id: "/perfil"
+      path: "/perfil"
+      fullPath: "/perfil"
+      preLoaderRoute: typeof PerfilRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     "/recap": {
       id: "/recap"
       path: "/recap"
@@ -222,6 +242,7 @@ const rootRouteChildren: RootRouteChildren = {
   BibliotecaRoute: BibliotecaRoute,
   EntrarRoute: EntrarRoute,
   EstatisticasRoute: EstatisticasRoute,
+  PerfilRoute: PerfilRoute,
   RecapRoute: RecapRoute,
   JogoIgdbIdRoute: JogoIgdbIdRoute,
   JogosGameIdRoute: JogosGameIdRoute,

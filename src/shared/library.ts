@@ -22,6 +22,9 @@ export interface LibraryItem {
   coverImageId: string | null;
   platforms: string[];
   genres: string[];
+  themes: string[];
+  gameModes: string[];
+  perspectives: string[];
   releaseYear: number | null;
   timeToBeat: TimeToBeat | null;
   status: GameStatus;

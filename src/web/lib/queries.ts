@@ -472,6 +472,13 @@ export const breakdownQuery = (year?: number) =>
     placeholderData: keepPreviousData,
   });
 
+/** Perfil de gamer: fica com as estatísticas, para ser invalidado junto quando os jogos mudam. */
+export const profileQuery = () =>
+  queryOptions({
+    queryKey: [...statsKeys.all, "profile"],
+    queryFn: () => unwrap(api.profile.$get()),
+  });
+
 export const rhythmQuery = (year?: number) =>
   queryOptions({
     queryKey: [...statsKeys.all, "rhythm", year ?? "rolling"],

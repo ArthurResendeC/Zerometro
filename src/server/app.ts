@@ -17,6 +17,7 @@ import { createObjectiveRoutes } from "./routes/objectives";
 import { createSessionRoutes } from "./routes/sessions";
 import { createSettingsRoutes } from "./routes/settings";
 import { createStatsRoutes } from "./routes/stats";
+import { createProfileRoutes } from "./routes/profile";
 import { createSteamRoutes } from "./routes/steam";
 import { createTimerRoutes } from "./routes/timer";
 import type { AchievementCatalog } from "./services/achievement-catalog";
@@ -82,6 +83,7 @@ export function createApp(deps: AppDeps) {
       .route("/completions", createCompletionRoutes(deps))
       .route("/objectives", createObjectiveRoutes(deps))
       .route("/stats", createStatsRoutes(deps))
+      .route("/profile", createProfileRoutes(deps))
       .route("/settings", createSettingsRoutes(deps))
       .route("/steam", createSteamRoutes(deps))
       .route("/timer", createTimerRoutes(deps))

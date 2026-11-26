@@ -55,6 +55,10 @@ const shots: Shot[] = [
     capture: async (page) => single(await page.shoot("/estatisticas", DESKTOP, { fullPage: true })),
   },
   {
+    name: "perfil",
+    capture: async (page) => single(await page.shoot("/perfil", DESKTOP, { fullPage: true })),
+  },
+  {
     name: "jogo-sobre",
     // Até as miniaturas dos vídeos.
     capture: async (page) =>
