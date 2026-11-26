@@ -241,6 +241,20 @@ export function updateSession(
   });
 }
 
+/**
+ * "Onde parei" depois de parar: grava (ou apaga, com "") a nota da última sessão encerrada do
+ * jogo. NotFoundError se o jogo não tem sessão.
+ */
+export function noteLastSession(
+  ctx: ServiceContext,
+  gameId: number,
+  note: string,
+): PlaySessionItem {
+  const [last] = listSessions(ctx, { gameId, limit: 1 });
+  if (!last) throw new NotFoundError("Esse jogo ainda não tem sessão para anotar");
+  return updateSession(ctx, last.id, { note });
+}
+
 interface SessionTimeChanges {
   playedOn?: string;
   minutes?: number;

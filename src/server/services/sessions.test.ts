@@ -5,7 +5,13 @@ import { NotFoundError, ValidationError } from "../errors";
 import { createFakeIgdb, createTestContext, fakeIgdbGame, TEST_TODAY } from "../testing";
 import type { ServiceContext } from "./context";
 import { addToLibrary, getLibraryItem, updateLibraryEntry } from "./library";
-import { deleteSession, listSessions, logSession, updateSession } from "./sessions";
+import {
+  deleteSession,
+  listSessions,
+  logSession,
+  noteLastSession,
+  updateSession,
+} from "./sessions";
 
 const igdb = createFakeIgdb([
   fakeIgdbGame(),
@@ -221,5 +227,30 @@ describe("updateSession / deleteSession", () => {
     expect(deleteSession(ctx, session.id).id).toBe(session.id);
     expect(listSessions(ctx)).toHaveLength(0);
     expect(() => deleteSession(ctx, session.id)).toThrow(NotFoundError);
+  });
+});
+
+describe("noteLastSession", () => {
+  test("anota a última sessão do jogo; nota vazia apaga", () => {
+    logSession(ctx, { gameId: persona, minutes: 60, playedOn: addDays(TEST_TODAY, -2) });
+    const last = logSession(ctx, { gameId: persona, minutes: 30 }).session;
+    logSession(ctx, { gameId: undertale, minutes: 20 });
+
+    expect(noteLastSession(ctx, persona, "parei no Palácio 3")).toMatchObject({
+      id: last.id,
+      note: "parei no Palácio 3",
+    });
+    expect(getLibraryItem(ctx, persona).lastNote?.note).toBe("parei no Palácio 3");
+
+    noteLastSession(ctx, persona, "");
+    expect(getLibraryItem(ctx, persona).lastNote).toBeNull();
+  });
+
+  test("jogo sem sessão: NotFoundError", async () => {
+    const { gameId } = await addToLibrary(ctx, createFakeIgdb([fakeIgdbGame({ igdbId: 5 })]), {
+      igdbId: 5,
+      status: "backlog",
+    });
+    expect(() => noteLastSession(ctx, gameId, "x")).toThrow(NotFoundError);
   });
 });

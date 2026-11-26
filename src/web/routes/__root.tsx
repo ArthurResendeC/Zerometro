@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-router";
 import { ChartIcon, ListIcon, SettingsIcon, TimerIcon, UserIcon } from "@/components/icons";
 import { LogSessionDialog } from "@/components/log-session-dialog";
+import { SessionNoteDialog } from "@/components/session-note-dialog";
 import { StartSessionButton } from "@/components/start-session-dialog";
 import { TimerBar } from "@/components/timer";
 import { Button } from "@/components/ui/button";
@@ -145,6 +146,7 @@ function SignedInLayout({ userId }: { userId: string }) {
         <Outlet />
       </main>
       <LogSessionDialog />
+      <SessionNoteDialog />
       <Toaster position="bottom-right" />
       <InstallAppToast />
     </div>

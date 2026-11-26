@@ -141,6 +141,29 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
     .groupBy(playSessions.gameId)
     .as("totals");
 
+  // "Onde parei": a última sessão encerrada com nota de cada jogo (na ordem de `listSessions`).
+  // Uma sessão sem nota depois dela (ex.: da Steam) não apaga a nota.
+  const rankedNotes = db
+    .select({
+      gameId: playSessions.gameId,
+      sessionId: sql<number>`${playSessions.id}`.as("note_session_id"),
+      note: sql<string>`${playSessions.note}`.as("last_note"),
+      playedOn: sql<string>`${playSessions.playedOn}`.as("note_played_on"),
+      rank: sql<number>`row_number() over (
+        partition by ${playSessions.gameId}
+        order by ${playSessions.playedOn} desc, ${playSessions.startedAt} desc, ${playSessions.id} desc
+      )`.as("note_rank"),
+    })
+    .from(playSessions)
+    .where(
+      and(
+        eq(playSessions.userId, userId),
+        isNotNull(playSessions.minutes),
+        sql`trim(coalesce(${playSessions.note}, '')) <> ''`,
+      ),
+    )
+    .as("ranked_notes");
+
   const done = db
     .select({
       gameId: completions.gameId,
@@ -216,6 +239,9 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
       sessions: sql<number>`coalesce(${totals.sessions}, 0)`,
       lastPlayedOn: totals.lastPlayedOn,
       firstPlayedOn: totals.firstPlayedOn,
+      noteSessionId: rankedNotes.sessionId,
+      lastNote: rankedNotes.note,
+      notePlayedOn: rankedNotes.playedOn,
       bestRank: done.bestRank,
       completions: done.count,
       firstCompletedOn: done.first,
@@ -230,6 +256,7 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
     .from(libraryEntries)
     .innerJoin(games, eq(games.id, libraryEntries.gameId))
     .leftJoin(totals, eq(totals.gameId, games.id))
+    .leftJoin(rankedNotes, and(eq(rankedNotes.gameId, games.id), eq(rankedNotes.rank, 1)))
     .leftJoin(done, eq(done.gameId, games.id))
     .leftJoin(goals, eq(goals.gameId, games.id))
     .leftJoin(trophies, eq(trophies.gameId, games.id))
@@ -318,6 +345,10 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
       onSteam,
       sessionsCount: sessions,
       lastPlayedOn: lastPlayedOn ?? null,
+      lastNote:
+        row.noteSessionId !== null && row.lastNote !== null && row.notePlayedOn !== null
+          ? { sessionId: row.noteSessionId, note: row.lastNote, playedOn: row.notePlayedOn }
+          : null,
       firstPlayedOn: firstPlayedOn ?? null,
       progress: estimate.progress,
       progressTarget: estimate.target,

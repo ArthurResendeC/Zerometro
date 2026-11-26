@@ -75,7 +75,7 @@ import {
   setObjectiveDone,
   updateObjective,
 } from "../services/objectives";
-import { listSessions, logSession } from "../services/sessions";
+import { listSessions, logSession, noteLastSession } from "../services/sessions";
 import { getSettings } from "../services/settings";
 import { importSteamGames, previewSteamImport } from "../services/steam-import";
 import { syncSteamGame, syncSteamLibrary } from "../services/steam-sync";
@@ -185,6 +185,8 @@ function gameSummary(item: LibraryItem) {
     finishedAt: item.finishedAt,
     lastPlayedOn: item.lastPlayedOn,
     firstPlayedOn: item.firstPlayedOn,
+    /** "Onde parei": a nota da última sessão que tem nota, com o dia (null se nenhuma tem). */
+    lastNote: item.lastNote && { note: item.lastNote.note, playedOn: item.lastNote.playedOn },
   };
 }
 
@@ -286,7 +288,7 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     {
       title: "Detalhes de um jogo",
       description:
-        "Detalhes de um jogo da biblioteca: status, conclusões (história, extras, 100%, com datas e ids), objetivos (com ids e progresso), tempos para zerar (IGDB), total jogado, progresso, nota, anotações e as últimas sessões. Aceita id ou nome; se o nome for ambíguo, devolve as opções.",
+        'Detalhes de um jogo da biblioteca: status, "onde parei" (lastNote: a nota da última sessão anotada, com o dia; use para lembrar o usuário de onde ele parou), conclusões (história, extras, 100%, com datas e ids), objetivos (com ids e progresso), tempos para zerar (IGDB), total jogado, progresso, nota, anotações e as últimas sessões. Aceita id ou nome; se o nome for ambíguo, devolve as opções.',
       inputSchema: z.object({ game: gameRefSchema }),
       annotations: readOnly,
     },
@@ -593,7 +595,7 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     {
       title: "Parei de jogar",
       description:
-        'Desliga o timer rodando e registra a sessão no dia em que começou ("parei"). Se o usuário esqueceu o timer ligado, passe endTime com o horário local em que parou (HH:MM; se for antes do início, é no dia seguinte). Menos de 1 minuto sem endTime é descartado. Erro se nenhum timer estiver rodando.',
+        'Desliga o timer rodando e registra a sessão no dia em que começou ("parei"). Se o usuário esqueceu o timer ligado, passe endTime com o horário local em que parou (HH:MM; se for antes do início, é no dia seguinte). Menos de 1 minuto sem endTime é descartado. Erro se nenhum timer estiver rodando. Se o usuário disser onde parou ("parei, tô no Palácio 3"), passe em note: vira o "onde parei" do jogo.',
       inputSchema: z.object({
         endTime: localTimeSchema.optional().describe("Horário local em que parou (HH:MM)"),
         note: noteSchema.optional().describe("Anotação curta sobre a sessão"),
@@ -604,6 +606,27 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
       run(() => {
         const result = stopTimer(ctx(), { endTime, note });
         return result.discarded ? result : { discarded: false, ...sessionLogged(result) };
+      }),
+  );
+
+  server.registerTool(
+    "set_session_note",
+    {
+      title: "Anotar onde parei",
+      description:
+        'Grava a nota da última sessão encerrada de um jogo, o "onde parei" que aparece no card e na página do jogo ("anota que parei no Palácio 3"). Use depois de stop_session sem nota ou para corrigir a nota. Nota vazia apaga. Erro se o jogo não tem sessão.',
+      inputSchema: z.object({
+        game: gameRefSchema,
+        note: noteSchema.describe('Onde parou, curto (ex.: "Palácio 3, antes do chefe")'),
+      }),
+      annotations: { ...write, idempotentHint: true },
+    },
+    ({ game, note }) =>
+      run(() => {
+        const scope = ctx();
+        const { gameId } = resolveLibraryGame(scope, game);
+        const { id, playedOn, minutes, note: saved } = noteLastSession(scope, gameId, note);
+        return { sessionId: id, playedOn, minutes, note: saved };
       }),
   );
 

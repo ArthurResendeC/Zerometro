@@ -27,9 +27,11 @@ interface GameHeroProps {
   game: HeroGame;
   /** Selos antes das plataformas (ex.: o status na biblioteca). */
   badges?: ReactNode;
+  /** Abaixo dos selos (ex.: "onde parei"). */
+  children?: ReactNode;
 }
 
-export function GameHero({ game, badges }: GameHeroProps) {
+export function GameHero({ game, badges, children }: GameHeroProps) {
   const studios = creditLine(game.developers ?? [], game.publishers ?? []);
   const meta = [game.releaseYear, ...game.genres.map(genreLabel)].filter(Boolean).join(" · ");
 
@@ -57,6 +59,7 @@ export function GameHero({ game, badges }: GameHeroProps) {
             </Badge>
           ))}
         </div>
+        {children && <div className="pt-2">{children}</div>}
       </div>
     </header>
   );

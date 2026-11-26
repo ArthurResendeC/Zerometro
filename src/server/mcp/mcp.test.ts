@@ -315,6 +315,17 @@ describe("tools", () => {
     });
     expect((await callJson(client, "stop_session")).isError).toBe(true);
 
+    // "Onde parei": a nota do stop aparece no jogo, e set_session_note troca depois.
+    const undertale = await callJson(client, "get_game", { game: "undertale" });
+    expect(undertale.data.lastNote).toMatchObject({ note: "Ruínas" });
+    const noted = await callJson(client, "set_session_note", {
+      game: "undertale",
+      note: "Snowdin, antes do Papyrus",
+    });
+    expect(noted.data).toMatchObject({ minutes: 50, note: "Snowdin, antes do Papyrus" });
+    const listed = await callJson(client, "list_library", { query: "undertale" });
+    expect(listed.data.games[0].lastNote.note).toBe("Snowdin, antes do Papyrus");
+
     // Sessão sem timer: fonte "mcp", soma no dia e no jogo.
     const logged = await callJson(client, "log_session", { game: "persona", minutes: 90 });
     expect(logged.data).toMatchObject({

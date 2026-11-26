@@ -124,4 +124,18 @@ describe("/api/library", () => {
     const removed = await request(`/api/completions/${body.completion.id}`, { method: "DELETE" });
     expect(await removed.json()).toMatchObject({ item: { completion: null } });
   });
+
+  test("onde parei: anota a última sessão e aparece no item", async () => {
+    const { request } = await createTestApp();
+    await request("/api/library", json({ igdbId: 114283, status: "playing" }));
+
+    const noSession = await request("/api/library/1/last-note", json({ note: "x" }, "PUT"));
+    expect(noSession.status).toBe(404);
+
+    await request("/api/sessions", json({ gameId: 1, minutes: 30 }));
+    const noted = await request("/api/library/1/last-note", json({ note: " Palácio 3 " }, "PUT"));
+    expect(noted.status).toBe(200);
+    const { item } = (await (await request("/api/library/1")).json()) as { item: LibraryItem };
+    expect(item.lastNote).toMatchObject({ note: "Palácio 3" });
+  });
 });

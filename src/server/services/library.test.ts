@@ -136,6 +136,33 @@ describe("listLibrary", () => {
   });
 });
 
+describe("onde parei (lastNote)", () => {
+  test("a nota da última sessão com nota; sessão depois sem nota não apaga", async () => {
+    const { gameId } = await addToLibrary(ctx, igdb, { igdbId: 114283, status: "playing" });
+    const { gameId: other } = await addToLibrary(ctx, igdb, { igdbId: 12517, status: "playing" });
+    const session = (playedOn: string, note: string | null, game = gameId) =>
+      ctx.db
+        .insert(playSessions)
+        .values({ userId: ctx.userId, gameId: game, playedOn, minutes: 30, note })
+        .returning({ id: playSessions.id })
+        .get().id;
+
+    session("2026-11-10", "começo do Palácio 1");
+    const palace3 = session("2026-11-15", "parei no Palácio 3");
+    session("2026-11-18", null); // ex.: sessão da Steam
+    session("2026-11-18", "   ", other); // só espaços: não conta
+
+    const items = listLibrary(ctx);
+    expect(items.find((i) => i.gameId === gameId)?.lastNote).toEqual({
+      sessionId: palace3,
+      note: "parei no Palácio 3",
+      playedOn: "2026-11-15",
+    });
+    expect(items.find((i) => i.gameId === other)?.lastNote).toBeNull();
+    expect(getLibraryItem(ctx, gameId).lastNote?.note).toBe("parei no Palácio 3");
+  });
+});
+
 describe("updateLibraryEntry", () => {
   test("zerar com nota e depois voltar a jogar limpa a data de término", async () => {
     const { gameId } = await addToLibrary(ctx, igdb, { igdbId: 114283, status: "playing" });

@@ -47,6 +47,7 @@ import { DEFAULT_TIME_ZONE, nextOccurrence, todayIn, zonedParts } from "@shared/
 import { reachedStreakMilestone } from "@/features/audio/sound-events";
 import type { SoundName } from "@/features/audio/sounds";
 import { useSound } from "@/features/audio/use-sound";
+import { useSessionNoteDialog } from "@/stores/session-note-dialog";
 import {
   autoSyncMessage,
   gameSyncMessage,
@@ -265,7 +266,8 @@ function sessionSavedSounds(result: LogSessionResult): SoundName[] {
   ];
 }
 
-function toastSessionSaved(result: LogSessionResult) {
+/** Com `noteAction`, o toast oferece "Anotar onde parei" (no "Parei" do timer). */
+function toastSessionSaved(result: LogSessionResult, { noteAction = false } = {}) {
   const { session, dayTotalMinutes, statusChangedTo } = result;
   toast.success(`${formatMinutes(session.minutes)} de ${session.gameName} registrados`, {
     description: [
@@ -274,6 +276,19 @@ function toastSessionSaved(result: LogSessionResult) {
     ]
       .filter(Boolean)
       .join(" · "),
+    // Mais tempo na tela para dar tempo de clicar.
+    ...(noteAction && {
+      duration: 10_000,
+      action: {
+        label: "Onde parei?",
+        onClick: () =>
+          useSessionNoteDialog.getState().openFor({
+            sessionId: session.id,
+            gameName: session.gameName,
+            note: session.note ?? "",
+          }),
+      },
+    }),
   });
 }
 
@@ -350,14 +365,35 @@ export function useLogSession() {
   });
 }
 
-export function useUpdateSession() {
+export function useUpdateSession({ successMessage = "Sessão atualizada" } = {}) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, patch }: { id: number; patch: UpdateSessionInput }) =>
       (await unwrap(api.sessions[":id"].$patch({ param: { id: String(id) }, json: patch })))
         .session,
     onSuccess: () => {
-      toast.success("Sessão atualizada");
+      toast.success(successMessage);
+      return invalidateGameData(queryClient);
+    },
+    onError,
+  });
+}
+
+/** "Onde parei" na última sessão de um jogo (sem saber o id da sessão). */
+export function useNoteLastSession({ successMessage = "Sessão atualizada" } = {}) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ gameId, note }: { gameId: number; note: string }) =>
+      (
+        await unwrap(
+          api.library[":gameId"]["last-note"].$put({
+            param: { gameId: String(gameId) },
+            json: { note },
+          }),
+        )
+      ).session,
+    onSuccess: () => {
+      toast.success(successMessage);
       return invalidateGameData(queryClient);
     },
     onError,
@@ -638,7 +674,7 @@ export function useStartTimer() {
 
 function toastStopped(result: StopTimerResult) {
   if (result.discarded) toast.info(`Menos de 1 minuto de ${result.gameName}: sessão descartada`);
-  else toastSessionSaved(result);
+  else toastSessionSaved(result, { noteAction: true });
 }
 
 type StopOutcome =

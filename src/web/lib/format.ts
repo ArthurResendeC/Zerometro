@@ -75,3 +75,15 @@ export function formatCountdown(days: number): string {
   if (days === 1) return "Sai amanhã";
   return `Faltam ${formatCount(days)} dias`;
 }
+
+/** Quanto tempo atrás foi um dia: "hoje", "ontem", "há 3 dias", "há 2 semanas", "há 3 meses". */
+export function formatDaysAgo(isoDate: string, today: string): string {
+  const days = daysBetween(isoDate, today);
+  if (days <= 0) return "hoje";
+  if (days === 1) return "ontem";
+  if (days < 14) return `há ${days} dias`;
+  if (days < 60) return `há ${Math.floor(days / 7)} semanas`;
+  if (days < 365) return `há ${Math.floor(days / 30)} meses`;
+  const years = Math.floor(days / 365);
+  return years === 1 ? "há 1 ano" : `há ${years} anos`;
+}

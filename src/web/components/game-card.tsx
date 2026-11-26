@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { progressTargetLabels } from "@shared/completions";
 import type { LibraryItem, LibrarySort } from "@shared/library";
 import { GameCover } from "@/components/game-cover";
+import { LastNoteLine } from "@/components/last-note";
 import {
   CompletionBadge,
   completionAddsInfo,
@@ -66,6 +67,7 @@ export function GameCard({ item, showStatus = false, sortBadge }: GameCardProps)
             />
           </div>
         )}
+        <LastNoteLine item={item} />
       </div>
     </Link>
   );

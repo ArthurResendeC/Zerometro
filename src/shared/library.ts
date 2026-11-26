@@ -63,12 +63,21 @@ export interface LibraryItem {
   onSteam: boolean | null;
   sessionsCount: number;
   lastPlayedOn: string | null;
+  /** "Onde parei": a nota da última sessão encerrada que tem nota (null se nenhuma tem). */
+  lastNote: LastSessionNote | null;
   /** Data da primeira sessão registrada (o "comecei a jogar" usa quando `startedAt` está vazio). */
   firstPlayedOn: string | null;
   /** 0..1, estimado pelo tempo do IGDB rumo a `progressTarget`. null sem tempo e sem conclusão. */
   progress: number | null;
   /** Para onde o progresso aponta: história antes de zerar, depois extras e 100%. */
   progressTarget: CompletionType;
+}
+
+export interface LastSessionNote {
+  sessionId: number;
+  note: string;
+  /** Dia da sessão (YYYY-MM-DD). */
+  playedOn: string;
 }
 
 export type StatusCounts = Record<GameStatus, number>;

@@ -10,6 +10,7 @@ import {
 import { markCompletedSchema } from "../../shared/completions";
 import { addObjectiveSchema, reorderObjectivesSchema } from "../../shared/objectives";
 import { igdbIdSchema } from "../../shared/igdb";
+import { lastSessionNoteSchema } from "../../shared/sessions";
 import {
   addToLibrarySchema,
   gameIdParamSchema,
@@ -30,6 +31,7 @@ import {
 } from "../services/achievements";
 import { listCompletions, markCompleted } from "../services/completions";
 import { addObjective, listObjectives, reorderObjectives } from "../services/objectives";
+import { noteLastSession } from "../services/sessions";
 import { syncSteamGame } from "../services/steam-sync";
 import {
   addToLibrary,
@@ -178,6 +180,17 @@ export function createLibraryRoutes(deps: AppDeps) {
           return c.json(
             setAchievementUnlocked(ctx, deps.achievements, gameId, achievementId, input),
           );
+        },
+      )
+      // "Onde parei" sem saber o id da sessão: anota a última sessão do jogo.
+      .put(
+        "/:gameId/last-note",
+        validate("param", gameIdParamSchema),
+        validate("json", lastSessionNoteSchema),
+        (c) => {
+          const { gameId } = c.req.valid("param");
+          const { note } = c.req.valid("json");
+          return c.json({ session: noteLastSession(webContext(deps, c), gameId, note) });
         },
       )
       .post("/:gameId/achievements/refresh", validate("param", gameIdParamSchema), async (c) => {

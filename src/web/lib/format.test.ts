@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { daysBetween, formatCount, formatCountdown, formatReleaseDate } from "./format";
+import {
+  daysBetween,
+  formatCount,
+  formatCountdown,
+  formatDaysAgo,
+  formatReleaseDate,
+} from "./format";
 
 describe("formatReleaseDate", () => {
   test("usa a precisão que o IGDB conhece", () => {
@@ -24,5 +30,17 @@ describe("contagem regressiva", () => {
     expect(formatCountdown(96)).toBe("Faltam 96 dias");
     expect(formatCountdown(1200)).toBe("Faltam 1.200 dias");
     expect(formatCount(2351)).toBe("2.351");
+  });
+});
+
+describe("formatDaysAgo", () => {
+  test("hoje, ontem, dias, semanas, meses e anos", () => {
+    const today = "2026-11-26";
+    expect(formatDaysAgo("2026-11-26", today)).toBe("hoje");
+    expect(formatDaysAgo("2026-11-25", today)).toBe("ontem");
+    expect(formatDaysAgo("2026-11-23", today)).toBe("há 3 dias");
+    expect(formatDaysAgo("2026-11-12", today)).toBe("há 2 semanas");
+    expect(formatDaysAgo("2026-08-20", today)).toBe("há 3 meses");
+    expect(formatDaysAgo("2025-11-01", today)).toBe("há 1 ano");
   });
 });

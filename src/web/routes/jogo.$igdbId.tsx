@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AboutTab } from "@/features/game/about-tab";
 import { AchievementsTab } from "@/features/game/achievements-tab";
 import { GameHero, type HeroGame } from "@/features/game/game-hero";
+import { LastNoteBlock } from "@/components/last-note";
 import { MySessions } from "@/features/game/my-sessions";
 import { type GameTab, gameTabs, TabToggle } from "@/features/game/tab-toggle";
 import { useNow } from "@/hooks/use-now";
@@ -107,7 +108,9 @@ function GamePage() {
             </>
           )
         }
-      />
+      >
+        {item && <LastNoteBlock item={item} />}
+      </GameHero>
 
       {tab === "sessoes" && item ? (
         <MySessions item={item} />

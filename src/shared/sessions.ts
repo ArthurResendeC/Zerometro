@@ -51,6 +51,9 @@ const minutesSchema = z
 
 export const noteSchema = z.string().trim().max(500);
 
+/** "Onde parei" da última sessão de um jogo (vazio apaga). */
+export const lastSessionNoteSchema = z.object({ note: noteSchema });
+
 export const sessionIdParamSchema = z.object({ id: z.coerce.number().int().positive() });
 
 export const logSessionSchema = z.object({

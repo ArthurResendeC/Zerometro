@@ -282,6 +282,19 @@ db.transaction((tx) => {
     tx.insert(libraryEntries).values(entry).run();
   }
 
+  // "Onde parei": a nota da última sessão de alguns jogos em andamento.
+  const lastNotes: Partial<Record<GameKey, string>> = {
+    eldenRing: "Castelo Tempestade, antes da Margit",
+    persona5: "Palácio 3, na sala do cofre",
+    bg3: "Ato 2, Torres da Lua",
+    stardew: "Primavera do ano 2, falta o galinheiro",
+  };
+  for (const [game, note] of Object.entries(lastNotes) as [GameKey, string][]) {
+    const last = sessions
+      .filter((session) => session.game === game)
+      .reduce((a, b) => (b.playedOn >= a.playedOn ? b : a));
+    last.note = note;
+  }
   for (const { game, ...session } of sessions) {
     tx.insert(playSessions)
       .values({ ...session, userId: OWNER_ID, gameId: gameIds.get(game)! })
