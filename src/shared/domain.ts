@@ -31,6 +31,10 @@ export const activityActorSchema = z.enum(activityActors);
 export type ActivityActor = z.infer<typeof activityActorSchema>;
 
 export const ttbSources = ["igdb", "hltb"] as const;
+
+/** Tipos de série do IGDB: `collection` é a série de verdade; `franchise`, mais ampla. */
+export const seriesKinds = ["collection", "franchise"] as const;
+export type SeriesKind = (typeof seriesKinds)[number];
 export type TtbSource = (typeof ttbSources)[number];
 
 /** Até onde cheguei num jogo, do menor para o maior: história, história + extras, 100%. */

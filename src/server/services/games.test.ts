@@ -1,8 +1,16 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+import { eq } from "drizzle-orm";
 import { createTestDb, type Db } from "../db/client";
+import { companies, gameCompanies, gameSeries, series } from "../db/schema";
 import { NotFoundError } from "../errors";
 import { createFakeIgdb, fakeIgdbGame } from "../testing";
-import { ensureGame, findGameByIgdbId, syncGameFromIgdb } from "./games";
+import {
+  ensureGame,
+  findGameByIgdbId,
+  IGDB_META_VERSION,
+  saveGame,
+  syncGameFromIgdb,
+} from "./games";
 
 let db: Db;
 
@@ -59,5 +67,68 @@ describe("ensureGame", () => {
 
     expect(second.id).toBe(first.id);
     expect(igdb.calls.getGame).toEqual([114283]);
+  });
+});
+
+/** Empresas e séries ligadas ao jogo, por nome. */
+const linksOf = (gameId: number) => ({
+  companies: db
+    .select({
+      name: companies.name,
+      developer: gameCompanies.developer,
+      publisher: gameCompanies.publisher,
+    })
+    .from(gameCompanies)
+    .innerJoin(companies, eq(companies.id, gameCompanies.companyId))
+    .where(eq(gameCompanies.gameId, gameId))
+    .orderBy(companies.name)
+    .all(),
+  series: db
+    .select({ kind: series.kind, name: series.name })
+    .from(gameSeries)
+    .innerJoin(series, eq(series.id, gameSeries.seriesId))
+    .where(eq(gameSeries.gameId, gameId))
+    .orderBy(series.kind)
+    .all(),
+});
+
+describe("saveGame: empresas e séries", () => {
+  test("grava temas, modos, empresas e séries", () => {
+    const game = saveGame(db, fakeIgdbGame());
+
+    expect(game).toMatchObject({
+      themes: ["Fantasy", "Drama"],
+      gameModes: ["Single player"],
+      perspectives: ["Third person"],
+      metaVersion: IGDB_META_VERSION,
+    });
+    expect(linksOf(game.id)).toEqual({
+      companies: [
+        { name: "Atlus", developer: true, publisher: true },
+        { name: "Sega", developer: false, publisher: true },
+      ],
+      series: [
+        { kind: "collection", name: "Persona" },
+        { kind: "franchise", name: "Megami Tensei" },
+      ],
+    });
+  });
+
+  test("atualizar troca os links sem duplicar empresas compartilhadas", () => {
+    saveGame(db, fakeIgdbGame());
+    saveGame(db, fakeIgdbGame({ igdbId: 1, name: "Persona 4 Golden", franchises: [] }));
+    const updated = saveGame(
+      db,
+      fakeIgdbGame({
+        companies: [{ igdbId: 112, name: "SEGA", developer: false, publisher: true }],
+      }),
+    );
+
+    expect(linksOf(updated.id).companies).toEqual([
+      { name: "SEGA", developer: false, publisher: true },
+    ]);
+    // A empresa é a mesma linha para os dois jogos (o nome novo vale para todos).
+    expect(db.select().from(companies).all()).toHaveLength(2);
+    expect(db.select().from(series).all()).toHaveLength(2);
   });
 });

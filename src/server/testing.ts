@@ -3,7 +3,7 @@ import { DEFAULT_TIME_ZONE } from "../shared/dates";
 import { createRecapImageRenderer, type RecapImageRenderer } from "./services/recap-image";
 import type { FeedGame, FeedKey } from "../shared/feeds";
 import type { IgdbGamePage } from "../shared/game-page";
-import type { IgdbGameDetails } from "../shared/igdb";
+import { type IgdbGameDetails, toGameSummary } from "../shared/igdb";
 import { createApp } from "./app";
 import { createRootRoutes } from "./mcp/routes";
 import { createAuth, OWNER_ID, SESSION_COOKIE } from "./auth";
@@ -31,14 +31,22 @@ export function fakeIgdbGame(overrides: Partial<IgdbGameDetails> = {}): IgdbGame
     gameType: "Versão expandida",
     timeToBeat: { mainSec: 315_000, extraSec: 424_580, completeSec: 799_200 },
     steamAppId: 1687950,
+    themes: ["Fantasy", "Drama"],
+    gameModes: ["Single player"],
+    perspectives: ["Third person"],
+    companies: [
+      { igdbId: 1128, name: "Atlus", developer: true, publisher: true },
+      { igdbId: 112, name: "Sega", developer: false, publisher: true },
+    ],
+    collections: [{ igdbId: 456, name: "Persona" }],
+    franchises: [{ igdbId: 789, name: "Megami Tensei" }],
     ...overrides,
   };
 }
 
 export function fakeFeedGame(overrides: Partial<FeedGame> = {}): FeedGame {
-  const { timeToBeat: _ttb, steamAppId: _steam, ...summary } = fakeIgdbGame();
   return {
-    ...summary,
+    ...toGameSummary(fakeIgdbGame()),
     criticRating: 92,
     criticRatingCount: 40,
     hypes: 120,
@@ -109,10 +117,7 @@ export function createFakeIgdb(
       return catalog
         .filter((g) => g.name.toLowerCase().includes(needle))
         .slice(0, limit)
-        .map((game) => {
-          const { timeToBeat: _ttb, steamAppId: _steam, ...summary } = game;
-          return summary;
-        });
+        .map(toGameSummary);
     },
     async getGame(igdbId) {
       calls.getGame.push(igdbId);

@@ -1,0 +1,284 @@
+[
+  {
+    "igdbId": 1802,
+    "themes": ["Fantasy", "Science fiction", "Open world"],
+    "gameModes": ["Single player"],
+    "perspectives": ["Bird view / Isometric"],
+    "companies": [
+      { "igdbId": 11740, "name": "Bird Studio", "developer": true, "publisher": false },
+      { "igdbId": 250, "name": "Square", "developer": true, "publisher": true }
+    ],
+    "collections": [{ "igdbId": 345, "name": "Chrono" }],
+    "franchises": [{ "igdbId": 1844, "name": "Chrono" }]
+  },
+  {
+    "igdbId": 1942,
+    "themes": ["Action", "Fantasy", "Open world"],
+    "gameModes": ["Single player"],
+    "perspectives": ["Third person"],
+    "companies": [
+      { "igdbId": 50, "name": "WB Games", "developer": false, "publisher": true },
+      { "igdbId": 3119, "name": "cdp.pl", "developer": false, "publisher": true },
+      { "igdbId": 1217, "name": "Spike Chunsoft", "developer": false, "publisher": true },
+      {
+        "igdbId": 248,
+        "name": "Bandai Namco Entertainment",
+        "developer": false,
+        "publisher": true
+      },
+      { "igdbId": 908, "name": "CD Projekt RED", "developer": true, "publisher": false }
+    ],
+    "collections": [{ "igdbId": 62, "name": "The Witcher" }],
+    "franchises": [{ "igdbId": 452, "name": "The Witcher" }]
+  },
+  {
+    "igdbId": 11737,
+    "themes": ["Action", "Science fiction", "Open world", "Mystery"],
+    "gameModes": ["Single player"],
+    "perspectives": ["First person"],
+    "companies": [
+      { "igdbId": 11662, "name": "Annapurna Interactive", "developer": false, "publisher": true },
+      { "igdbId": 6209, "name": "Mobius Digital", "developer": true, "publisher": false },
+      { "igdbId": 31592, "name": "Limited Run Games", "developer": false, "publisher": true }
+    ],
+    "collections": [{ "igdbId": 6980, "name": "Outer Wilds" }],
+    "franchises": []
+  },
+  {
+    "igdbId": 14593,
+    "themes": ["Action", "Fantasy"],
+    "gameModes": ["Single player"],
+    "perspectives": ["Side view"],
+    "companies": [{ "igdbId": 7263, "name": "Team Cherry", "developer": true, "publisher": true }],
+    "collections": [{ "igdbId": 5702, "name": "Hollow Knight" }],
+    "franchises": []
+  },
+  {
+    "igdbId": 17000,
+    "themes": ["Fantasy", "Business", "Sandbox", "Romance"],
+    "gameModes": ["Single player", "Multiplayer", "Co-operative"],
+    "perspectives": ["Bird view / Isometric"],
+    "companies": [
+      { "igdbId": 1418, "name": "Chucklefish Games", "developer": false, "publisher": true },
+      { "igdbId": 8452, "name": "ConcernedApe", "developer": true, "publisher": true },
+      { "igdbId": 445, "name": "505 Games", "developer": false, "publisher": true }
+    ],
+    "collections": [],
+    "franchises": []
+  },
+  {
+    "igdbId": 19564,
+    "themes": ["Action", "Science fiction", "Survival", "Stealth", "Open world"],
+    "gameModes": ["Single player"],
+    "perspectives": ["Third person"],
+    "companies": [
+      {
+        "igdbId": 10100,
+        "name": "Sony Interactive Entertainment",
+        "developer": false,
+        "publisher": true
+      },
+      { "igdbId": 170, "name": "Kojima Productions", "developer": true, "publisher": false },
+      { "igdbId": 445, "name": "505 Games", "developer": false, "publisher": true }
+    ],
+    "collections": [{ "igdbId": 10104, "name": "Death Stranding" }],
+    "franchises": [{ "igdbId": 6445, "name": "Death Stranding" }]
+  },
+  {
+    "igdbId": 25076,
+    "themes": ["Action", "Drama", "Open world"],
+    "gameModes": ["Single player", "Multiplayer", "Co-operative"],
+    "perspectives": ["First person", "Third person"],
+    "companies": [
+      { "igdbId": 139, "name": "Take-Two Interactive", "developer": false, "publisher": true },
+      { "igdbId": 29, "name": "Rockstar Games", "developer": true, "publisher": true }
+    ],
+    "collections": [
+      { "igdbId": 2100, "name": "Red Dead Redemption" },
+      { "igdbId": 366, "name": "Red Dead" }
+    ],
+    "franchises": []
+  },
+  {
+    "igdbId": 26226,
+    "themes": ["Action", "Fantasy"],
+    "gameModes": ["Single player"],
+    "perspectives": ["Side view"],
+    "companies": [
+      { "igdbId": 33387, "name": "Extremely OK Games", "developer": true, "publisher": false },
+      { "igdbId": 5542, "name": "Maddy Makes Games", "developer": false, "publisher": true }
+    ],
+    "collections": [{ "igdbId": 3109, "name": "Celeste" }],
+    "franchises": []
+  },
+  {
+    "igdbId": 26472,
+    "themes": ["Thriller", "Drama", "Mystery"],
+    "gameModes": ["Single player"],
+    "perspectives": ["Bird view / Isometric", "Text"],
+    "companies": [{ "igdbId": 15094, "name": "ZA/UM", "developer": true, "publisher": true }],
+    "collections": [],
+    "franchises": []
+  },
+  {
+    "igdbId": 37136,
+    "themes": ["Action", "Science fiction"],
+    "gameModes": ["Single player"],
+    "perspectives": ["First person"],
+    "companies": [
+      {
+        "igdbId": 65520,
+        "name": "Nintendo EPD Production Group No. 6",
+        "developer": true,
+        "publisher": false
+      },
+      { "igdbId": 766, "name": "Retro Studios", "developer": true, "publisher": false },
+      { "igdbId": 70, "name": "Nintendo", "developer": false, "publisher": true }
+    ],
+    "collections": [
+      { "igdbId": 6240, "name": "Metroid Prime" },
+      { "igdbId": 243, "name": "Metroid" }
+    ],
+    "franchises": [{ "igdbId": 756, "name": "Metroid" }]
+  },
+  {
+    "igdbId": 52189,
+    "themes": ["Action", "Comedy", "Sandbox", "Open world"],
+    "gameModes": ["Single player", "Multiplayer", "Co-operative"],
+    "perspectives": ["First person", "Third person"],
+    "companies": [
+      { "igdbId": 29, "name": "Rockstar Games", "developer": true, "publisher": true },
+      { "igdbId": 139, "name": "Take-Two Interactive", "developer": false, "publisher": true },
+      { "igdbId": 365, "name": "Rockstar North", "developer": true, "publisher": false }
+    ],
+    "collections": [{ "igdbId": 847, "name": "Grand Theft Auto" }],
+    "franchises": [{ "igdbId": 493, "name": "Grand Theft Auto" }]
+  },
+  {
+    "igdbId": 76882,
+    "themes": ["Action", "Fantasy", "Historical", "Stealth"],
+    "gameModes": ["Single player"],
+    "perspectives": ["Third person"],
+    "companies": [
+      { "igdbId": 66, "name": "Activision", "developer": false, "publisher": true },
+      { "igdbId": 1012, "name": "FromSoftware", "developer": true, "publisher": false }
+    ],
+    "collections": [],
+    "franchises": []
+  },
+  {
+    "igdbId": 113112,
+    "themes": ["Action", "Fantasy", "Drama"],
+    "gameModes": ["Single player"],
+    "perspectives": ["Bird view / Isometric"],
+    "companies": [
+      { "igdbId": 928, "name": "Supergiant Games", "developer": true, "publisher": true },
+      { "igdbId": 27224, "name": "Netflix", "developer": false, "publisher": true }
+    ],
+    "collections": [{ "igdbId": 8454, "name": "Hades" }],
+    "franchises": []
+  },
+  {
+    "igdbId": 114283,
+    "themes": ["Fantasy", "Comedy", "Drama", "Mystery"],
+    "gameModes": ["Single player"],
+    "perspectives": ["Third person"],
+    "companies": [
+      { "igdbId": 9969, "name": "P Studio", "developer": true, "publisher": false },
+      { "igdbId": 112, "name": "Sega", "developer": false, "publisher": true },
+      { "igdbId": 818, "name": "Atlus", "developer": false, "publisher": true }
+    ],
+    "collections": [
+      { "igdbId": 552, "name": "Persona" },
+      { "igdbId": 9216, "name": "Persona 5" }
+    ],
+    "franchises": [
+      { "igdbId": 592, "name": "Megami Tensei" },
+      { "igdbId": 538, "name": "Shin Megami Tensei" },
+      { "igdbId": 552, "name": "Persona" }
+    ]
+  },
+  {
+    "igdbId": 115289,
+    "themes": ["Action", "Fantasy"],
+    "gameModes": ["Single player"],
+    "perspectives": ["Side view"],
+    "companies": [{ "igdbId": 7263, "name": "Team Cherry", "developer": true, "publisher": true }],
+    "collections": [{ "igdbId": 5702, "name": "Hollow Knight" }],
+    "franchises": [{ "igdbId": 8542, "name": "Hollow Knight" }]
+  },
+  {
+    "igdbId": 119133,
+    "themes": ["Action", "Fantasy", "Open world"],
+    "gameModes": ["Single player", "Multiplayer", "Co-operative"],
+    "perspectives": ["Third person"],
+    "companies": [
+      {
+        "igdbId": 248,
+        "name": "Bandai Namco Entertainment",
+        "developer": false,
+        "publisher": true
+      },
+      { "igdbId": 1012, "name": "FromSoftware", "developer": true, "publisher": true }
+    ],
+    "collections": [{ "igdbId": 10964, "name": "Elden Ring" }],
+    "franchises": [{ "igdbId": 8190, "name": "Elden Ring" }]
+  },
+  {
+    "igdbId": 119171,
+    "themes": ["Action", "Fantasy"],
+    "gameModes": ["Single player", "Multiplayer", "Co-operative", "Split screen"],
+    "perspectives": ["Bird view / Isometric"],
+    "companies": [
+      { "igdbId": 510, "name": "Larian Studios", "developer": true, "publisher": true }
+    ],
+    "collections": [{ "igdbId": 7, "name": "Baldur's Gate" }],
+    "franchises": [
+      { "igdbId": 43, "name": "Dungeons & Dragons" },
+      { "igdbId": 6951, "name": "Forgotten Realms" }
+    ]
+  },
+  {
+    "igdbId": 119388,
+    "themes": ["Action", "Fantasy", "Science fiction", "Sandbox", "Open world"],
+    "gameModes": ["Single player"],
+    "perspectives": ["Third person"],
+    "companies": [
+      {
+        "igdbId": 45209,
+        "name": "Nintendo EPD Production Group No. 3",
+        "developer": true,
+        "publisher": false
+      },
+      { "igdbId": 70, "name": "Nintendo", "developer": false, "publisher": true }
+    ],
+    "collections": [
+      { "igdbId": 8988, "name": "The Legend of Zelda: Breath of the Wild" },
+      { "igdbId": 106, "name": "The Legend of Zelda" }
+    ],
+    "franchises": [{ "igdbId": 596, "name": "The Legend of Zelda" }]
+  },
+  {
+    "igdbId": 228525,
+    "themes": ["Action", "Fantasy"],
+    "gameModes": ["Single player"],
+    "perspectives": ["Bird view / Isometric"],
+    "companies": [
+      { "igdbId": 928, "name": "Supergiant Games", "developer": true, "publisher": true }
+    ],
+    "collections": [{ "igdbId": 8454, "name": "Hades" }],
+    "franchises": []
+  },
+  {
+    "igdbId": 305152,
+    "themes": ["Action", "Fantasy"],
+    "gameModes": ["Single player"],
+    "perspectives": ["Third person"],
+    "companies": [
+      { "igdbId": 55283, "name": "Sandfall Interactive", "developer": true, "publisher": false },
+      { "igdbId": 37893, "name": "Kepler Interactive", "developer": false, "publisher": true }
+    ],
+    "collections": [],
+    "franchises": []
+  }
+]

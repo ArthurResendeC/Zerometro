@@ -9,6 +9,7 @@ import { createAchievementCatalog } from "./services/achievement-catalog";
 import { createFeedsService } from "./services/feeds";
 import { createGamePagesService } from "./services/game-pages";
 import { createIgdbFromEnv } from "./services/igdb";
+import { startIgdbBackfill } from "./services/igdb-backfill-job";
 import { createRetroAchievementsFromEnv } from "./services/retroachievements";
 import { createSteamFromEnv } from "./services/steam";
 import { startSteamSyncJob } from "./services/steam-sync-job";
@@ -84,10 +85,14 @@ const stopSteamSync = startSteamSyncJob(db, clock, {
   steamUser: deps.steamUser,
 });
 
+// Jogos gravados antes de um campo novo do IGDB (temas, empresas, séries) são buscados de novo.
+const stopIgdbBackfill = startIgdbBackfill(db, igdb);
+
 // Deploy/restart: para de aceitar conexões e fecha o SQLite (checkpoint do WAL).
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
   process.once(signal, async () => {
     stopSteamSync();
+    stopIgdbBackfill();
     await server.stop();
     db.$client.close();
     process.exit(0);

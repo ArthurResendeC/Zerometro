@@ -158,6 +158,50 @@ describe("getGames", () => {
     ]);
   });
 
+  test("traz temas, modos, perspectivas, empresas e séries", async () => {
+    const { client, queries } = fakeClient({
+      games: [
+        {
+          id: 305152,
+          name: "Clair Obscur: Expedition 33",
+          themes: [{ name: "Fantasy" }, { name: "Drama" }],
+          game_modes: [{ name: "Single player" }],
+          player_perspectives: [{ name: "Third person" }],
+          involved_companies: [
+            { company: { id: 1, name: "Sandfall Interactive" }, developer: true, publisher: false },
+            { company: { id: 2, name: "Kepler Interactive" }, developer: false, publisher: true },
+            // A mesma empresa duas vezes vira uma linha só; port/apoio fica de fora.
+            { company: { id: 1, name: "Sandfall Interactive" }, developer: false, publisher: true },
+            { company: { id: 3, name: "Estúdio de port" }, developer: false, publisher: false },
+          ],
+          collections: [{ id: 10, name: "Clair Obscur" }],
+          franchises: [{ id: 20, name: "Clair Obscur" }],
+        },
+      ],
+    });
+
+    const [game] = await createIgdbApi(client).getGames([305152]);
+
+    expect(queries[0]!.body).toContain("involved_companies.company.name");
+    expect(game).toMatchObject({
+      themes: ["Fantasy", "Drama"],
+      gameModes: ["Single player"],
+      perspectives: ["Third person"],
+      companies: [
+        { igdbId: 1, name: "Sandfall Interactive", developer: true, publisher: true },
+        { igdbId: 2, name: "Kepler Interactive", developer: false, publisher: true },
+      ],
+      collections: [{ igdbId: 10, name: "Clair Obscur" }],
+      franchises: [{ igdbId: 20, name: "Clair Obscur" }],
+    });
+  });
+
+  test("a busca não pede os metadados pesados", async () => {
+    const { client, queries } = fakeClient({});
+    await createIgdbApi(client).searchGames("zelda");
+    expect(queries[0]!.body).not.toContain("involved_companies");
+  });
+
   test("lista vazia não consulta", async () => {
     const { client, queries } = fakeClient({});
     expect(await createIgdbApi(client).getGames([])).toEqual([]);

@@ -12,7 +12,13 @@ import type {
   RelatedGame,
 } from "../../../shared/game-page";
 import { gameLinkKinds } from "../../../shared/game-page";
-import type { IgdbGameDetails, IgdbGameSummary, TimeToBeat } from "../../../shared/igdb";
+import type {
+  IgdbCompanyCredit,
+  IgdbGameDetails,
+  IgdbGameSummary,
+  IgdbNamedRef,
+  TimeToBeat,
+} from "../../../shared/igdb";
 import type { IgdbClient } from "./client";
 
 // Operações de alto nível sobre o IGDB, já convertidas para os tipos do app.
@@ -93,9 +99,19 @@ interface RawGame {
   total_rating_count?: number;
 }
 
-/** Jogo com os ids em lojas e serviços (só no `getGame`, que alimenta a tabela `games`). */
-interface RawGameWithExternals extends RawGame {
+/** Jogo com o que a tabela `games` guarda além do resumo (só no `getGames`). */
+interface RawGameDetails extends RawGame {
   external_games?: { uid?: string; external_game_source?: number }[];
+  themes?: { name: string }[];
+  game_modes?: { name: string }[];
+  player_perspectives?: { name: string }[];
+  involved_companies?: {
+    company?: { id: number; name: string };
+    developer?: boolean;
+    publisher?: boolean;
+  }[];
+  collections?: { id: number; name: string }[];
+  franchises?: { id: number; name: string }[];
 }
 
 /** Máximo de resultados por query no IGDB. */
@@ -113,6 +129,19 @@ interface RawExternalGame {
 /** `external_game_sources` do IGDB: 1 = Steam. */
 const EXTERNAL_SOURCE_STEAM = 1;
 const EXTERNAL_FIELDS = "external_games.uid, external_games.external_game_source";
+/** O que `getGames` pede além do resumo: base do perfil de gamer e da sugestão do que jogar. */
+const DETAIL_FIELDS = [
+  GAME_FIELDS,
+  EXTERNAL_FIELDS,
+  "themes.name",
+  "game_modes.name",
+  "player_perspectives.name",
+  "involved_companies.company.name",
+  "involved_companies.developer",
+  "involved_companies.publisher",
+  "collections.name",
+  "franchises.name",
+].join(", ");
 
 interface RawFeedGame extends RawGame {
   aggregated_rating?: number;
@@ -434,10 +463,9 @@ export function createIgdbApi(client: IgdbClient): IgdbApi {
     const details: IgdbGameDetails[] = [];
     for (const batch of chunk(unique(igdbIds.map(toInt)), GAMES_BATCH)) {
       // oxlint-disable-next-line no-await-in-loop
-      const raws = await client.query<RawGameWithExternals[]>(
+      const raws = await client.query<RawGameDetails[]>(
         "games",
-        `fields ${GAME_FIELDS}, ${EXTERNAL_FIELDS}; where id = (${batch.join(",")}); ` +
-          `limit ${IGDB_MAX_LIMIT};`,
+        `fields ${DETAIL_FIELDS}; where id = (${batch.join(",")}); limit ${IGDB_MAX_LIMIT};`,
       );
       if (raws.length === 0) continue;
       // oxlint-disable-next-line no-await-in-loop
@@ -448,6 +476,12 @@ export function createIgdbApi(client: IgdbClient): IgdbApi {
           ...toSummary(raw),
           timeToBeat: ttb ? toTimeToBeat(ttb) : null,
           steamAppId: steamAppIdOf(raw),
+          themes: names(raw.themes),
+          gameModes: names(raw.game_modes),
+          perspectives: names(raw.player_perspectives),
+          companies: companyCredits(raw),
+          collections: namedRefs(raw.collections),
+          franchises: namedRefs(raw.franchises),
         });
       }
     }
@@ -519,8 +553,34 @@ function chunk<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
+function namedRefs(items: { id: number; name: string }[] | undefined): IgdbNamedRef[] {
+  const byId = new Map((items ?? []).map((i) => [i.id, { igdbId: i.id, name: i.name }]));
+  return [...byId.values()];
+}
+
+/**
+ * Quem desenvolveu e quem publicou, uma linha por empresa (o IGDB pode repetir a empresa, uma
+ * vez como dev e outra como publisher). Port, apoio e afins ficam de fora.
+ */
+function companyCredits(raw: RawGameDetails): IgdbCompanyCredit[] {
+  const byId = new Map<number, IgdbCompanyCredit>();
+  for (const ic of raw.involved_companies ?? []) {
+    if (!ic.company || !(ic.developer || ic.publisher)) continue;
+    const current = byId.get(ic.company.id) ?? {
+      igdbId: ic.company.id,
+      name: ic.company.name,
+      developer: false,
+      publisher: false,
+    };
+    current.developer ||= Boolean(ic.developer);
+    current.publisher ||= Boolean(ic.publisher);
+    byId.set(ic.company.id, current);
+  }
+  return [...byId.values()];
+}
+
 /** O primeiro appid da Steam em `external_games` (o uid vem como texto). */
-function steamAppIdOf(raw: RawGameWithExternals): number | null {
+function steamAppIdOf(raw: RawGameDetails): number | null {
   for (const ext of raw.external_games ?? []) {
     if (ext.external_game_source !== EXTERNAL_SOURCE_STEAM || !ext.uid) continue;
     const id = Number(ext.uid);
@@ -729,7 +789,7 @@ function videoRank(name: string): number {
 }
 
 function names(list?: { name: string }[]): string[] {
-  return (list ?? []).map((x) => x.name);
+  return unique((list ?? []).map((x) => x.name));
 }
 
 function toDate(sec: number): Date {

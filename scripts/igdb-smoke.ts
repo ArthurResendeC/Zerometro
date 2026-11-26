@@ -28,7 +28,19 @@ if (!first) {
 const details = await igdb.getGame(first.igdbId);
 const ttb = details?.timeToBeat;
 console.log(`\nDetalhes de ${first.name}:`);
-console.log(`  gêneros: ${details?.genres.join(", ") || "—"}`);
+const list = (items: string[] | undefined) => items?.join(", ") || "—";
+const companiesWith = (role: "developer" | "publisher") =>
+  list(details?.companies.filter((c) => c[role]).map((c) => c.name));
+console.log(`  gêneros: ${list(details?.genres)}`);
+console.log(`  temas: ${list(details?.themes)} · modos: ${list(details?.gameModes)}`);
+console.log(`  perspectivas: ${list(details?.perspectives)}`);
+console.log(
+  `  desenvolvedora: ${companiesWith("developer")} · publisher: ${companiesWith("publisher")}`,
+);
+console.log(
+  `  série: ${list(details?.collections.map((c) => c.name))}` +
+    ` · franquia: ${list(details?.franchises.map((f) => f.name))}`,
+);
 console.log(`  capa: ${first.coverImageId ? coverUrl(first.coverImageId) : "—"}`);
 console.log(
   ttb

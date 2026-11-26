@@ -23,10 +23,39 @@ export interface IgdbGameSummary {
   gameType: string | null;
 }
 
+/** Empresa num jogo (`involved_companies`): só quem desenvolveu ou publicou. */
+export interface IgdbCompanyCredit {
+  igdbId: number;
+  name: string;
+  developer: boolean;
+  publisher: boolean;
+}
+
+/** Série (`collections`) ou franquia (`franchises`) do IGDB. */
+export interface IgdbNamedRef {
+  igdbId: number;
+  name: string;
+}
+
 export interface IgdbGameDetails extends IgdbGameSummary {
   timeToBeat: TimeToBeat | null;
   /** App na Steam (de `external_games`), para ligar a lista de conquistas sozinho. */
   steamAppId: number | null;
+  themes: string[];
+  gameModes: string[];
+  /** `player_perspectives` (primeira pessoa, terceira pessoa, visão de cima…). */
+  perspectives: string[];
+  companies: IgdbCompanyCredit[];
+  /** A "série" de verdade (Zelda, Mario 3D…). */
+  collections: IgdbNamedRef[];
+  /** Mais amplo que a série (ex.: a franquia Mario inteira). */
+  franchises: IgdbNamedRef[];
+}
+
+/** Só o resumo de um jogo com detalhes (o que a busca devolve). */
+export function toGameSummary(details: IgdbGameDetails): IgdbGameSummary {
+  const { igdbId, name, slug, coverImageId, platforms, genres, releaseYear, gameType } = details;
+  return { igdbId, name, slug, coverImageId, platforms, genres, releaseYear, gameType };
 }
 
 export const igdbSearchQuerySchema = z.object({

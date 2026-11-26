@@ -78,6 +78,13 @@
       "when": 1795228780748,
       "tag": "0010_steam_sessoes",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1795677102103,
+      "tag": "0011_perfil_metadados",
+      "breakpoints": true
     }
   ]
 }

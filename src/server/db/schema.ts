@@ -4,6 +4,7 @@ import {
   check,
   index,
   integer,
+  primaryKey,
   real,
   sqliteTable,
   text,
@@ -14,6 +15,7 @@ import {
   gameStatuses,
   objectiveSources,
   playtimeSources,
+  seriesKinds,
   sessionSources,
   ttbSources,
 } from "../../shared/domain";
@@ -63,6 +65,9 @@ export const games = sqliteTable("games", {
   coverImageId: text("cover_image_id"),
   platforms: text("platforms", { mode: "json" }).$type<string[]>().notNull().default([]),
   genres: text("genres", { mode: "json" }).$type<string[]>().notNull().default([]),
+  themes: text("themes", { mode: "json" }).$type<string[]>().notNull().default([]),
+  gameModes: text("game_modes", { mode: "json" }).$type<string[]>().notNull().default([]),
+  perspectives: text("perspectives", { mode: "json" }).$type<string[]>().notNull().default([]),
   releaseYear: integer("release_year"),
   ttbMainSec: integer("ttb_main_sec"),
   ttbExtraSec: integer("ttb_extra_sec"),
@@ -73,9 +78,68 @@ export const games = sqliteTable("games", {
   /** Quando o IGDB foi consultado sobre o app da Steam (null: nunca; vale re-sincronizar). */
   steamCheckedAt: text("steam_checked_at"),
   syncedAt: text("synced_at"),
+  /**
+   * Versão dos metadados gravados (temas, modos, empresas, séries…). Abaixo de
+   * `IGDB_META_VERSION`, o backfill busca o jogo de novo no IGDB.
+   */
+  metaVersion: integer("meta_version").notNull().default(0),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
+
+/** Empresas do IGDB (desenvolvedoras e publishers), compartilhadas como o cache `games`. */
+export const companies = sqliteTable("companies", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  igdbId: integer("igdb_id").notNull().unique(),
+  name: text("name").notNull(),
+});
+
+/** Quem desenvolveu e quem publicou cada jogo (a mesma empresa pode ser as duas coisas). */
+export const gameCompanies = sqliteTable(
+  "game_companies",
+  {
+    gameId: integer("game_id")
+      .notNull()
+      .references(() => games.id, { onDelete: "cascade" }),
+    companyId: integer("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    developer: integer("developer", { mode: "boolean" }).notNull().default(false),
+    publisher: integer("publisher", { mode: "boolean" }).notNull().default(false),
+  },
+  (t) => [
+    primaryKey({ columns: [t.gameId, t.companyId] }),
+    index("game_companies_company_idx").on(t.companyId),
+  ],
+);
+
+/** Séries (`collections`) e franquias (`franchises`) do IGDB; os ids de cada tipo são separados. */
+export const series = sqliteTable(
+  "series",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    igdbId: integer("igdb_id").notNull(),
+    kind: text("kind", { enum: seriesKinds }).notNull(),
+    name: text("name").notNull(),
+  },
+  (t) => [uniqueIndex("series_kind_igdb_idx").on(t.kind, t.igdbId)],
+);
+
+export const gameSeries = sqliteTable(
+  "game_series",
+  {
+    gameId: integer("game_id")
+      .notNull()
+      .references(() => games.id, { onDelete: "cascade" }),
+    seriesId: integer("series_id")
+      .notNull()
+      .references(() => series.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.gameId, t.seriesId] }),
+    index("game_series_series_idx").on(t.seriesId),
+  ],
+);
 
 /** A relação de cada usuário com um jogo (no máximo uma entrada por usuário e jogo). */
 export const libraryEntries = sqliteTable(

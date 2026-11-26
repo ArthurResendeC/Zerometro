@@ -147,6 +147,10 @@ run = "bun scripts/capture-demo-games.ts"
 description = "Congela no demo as listas de conquistas reais da Steam (scripts/demo-achievements.json); precisa de STEAM_WEB_API_KEY"
 run = "bun scripts/capture-demo-achievements.ts"
 
+[tasks."demo:capture-meta"]
+description = "Congela no demo os metadados do IGDB real (temas, empresas, séries) em scripts/demo-game-meta.json"
+run = "bun scripts/capture-demo-meta.ts"
+
 [tasks."readme:shots"]
 description = "Refaz os prints do README (docs/readme) num demo novo; só alguns: mise run readme:shots ajustes jogo"
 run = "bun scripts/readme-shots.ts"

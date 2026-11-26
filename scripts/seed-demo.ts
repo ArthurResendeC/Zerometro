@@ -37,6 +37,7 @@ import { saveFeedSnapshot } from "../src/server/services/feeds";
 import { saveGamePage } from "../src/server/services/game-pages";
 import type { IgdbGamePage } from "../src/shared/game-page";
 import { GAMES, type GameKey, type GameRow } from "./demo-library";
+import { seedDemoMeta } from "./seed-demo-meta";
 // Listas da home (IGDB, nov/2026) congeladas: o demo roda sem credenciais do IGDB.
 import demoFeeds from "./demo-feeds.json";
 // Páginas de jogo (aba "Sobre") dos jogos do demo e das listas: `mise run demo:capture`.
@@ -258,6 +259,7 @@ db.transaction((tx) => {
     };
     gameIds.set(key, tx.insert(games).values(values).returning({ id: games.id }).get().id);
   }
+  seedDemoMeta(tx);
 
   const startedAtOf: Partial<Record<GameKey, string>> = {
     ...Object.fromEntries(firstPlayed),
