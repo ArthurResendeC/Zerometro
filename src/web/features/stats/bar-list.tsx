@@ -25,12 +25,14 @@ interface BarListProps {
   items: BarListItem[];
   /** Cor da barra (token). */
   color?: string;
+  /** Valor da barra cheia (padrão: o maior da lista). Fixo, deixa páginas comparáveis. */
+  max?: number;
 }
 
 const valueOf = (item: BarListItem) => item.value ?? item.minutes;
 
-export function BarList({ items, color = "var(--chart-2)" }: BarListProps) {
-  const max = Math.max(...items.map(valueOf), 1);
+export function BarList({ items, color = "var(--chart-2)", max: fullBar }: BarListProps) {
+  const max = fullBar ?? Math.max(...items.map(valueOf), 1);
   return (
     <ol className="space-y-3">
       {items.map((item) => {

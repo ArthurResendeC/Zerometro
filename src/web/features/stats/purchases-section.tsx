@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import {
   Bar,
   BarChart,
@@ -10,9 +11,23 @@ import {
 } from "recharts";
 import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
 import { formatBrl } from "@shared/money";
-import { MIN_MINUTES_FOR_COST, type PurchaseMonth, type PurchaseStats } from "@shared/purchases";
+import {
+  type CostPerHourGame,
+  MIN_MINUTES_FOR_COST,
+  type PurchaseMonth,
+  type PurchaseStats,
+} from "@shared/purchases";
 import { GameCover } from "@/components/game-cover";
+import { SegmentedToggle } from "@/components/segmented-toggle";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ChartContainer } from "@/components/ui/chart";
 import { formatDate, formatMinutes } from "@/lib/format";
 import { BarList } from "./bar-list";
@@ -21,7 +36,10 @@ import { StatTile } from "./stat-tile";
 // Comprei × zerei: quantos jogos entraram e quantos saíram da pilha por mês, quanto custou e
 // quanto cada compra rendeu por hora. O preço é pessoal: esta seção não vai para o recap.
 
+/** No card; o resto fica no modal "Ver todos". */
 const COST_ROWS = 8;
+/** Por página, no modal. */
+const COST_PAGE = 10;
 
 const SERIES = [
   { key: "bought", label: "Comprados", color: "var(--chart-2)" },
@@ -65,8 +83,8 @@ function NoPurchases() {
 function Purchases({ purchases }: { purchases: PurchaseStats }) {
   const { bought, finished, spentCents, viaSubscription } = purchases;
   const balance = finished - bought;
-  const shown = purchases.costPerHour.slice(0, COST_ROWS);
-  const hidden = purchases.costPerHour.length - shown.length;
+  const { costPerHour } = purchases;
+  const [showAll, setShowAll] = useState(false);
 
   return (
     <>
@@ -117,35 +135,139 @@ function Purchases({ purchases }: { purchases: PurchaseStats }) {
                 : `Média de ${formatBrl(purchases.averageCentsPerHour)}/h. Todas as compras com preço, de qualquer época, com ${formatMinutes(MIN_MINUTES_FOR_COST)} ou mais jogada.`}
             </p>
           </div>
-          {shown.length > 0 && (
-            <BarList
-              items={shown.map((game) => ({
-                key: game.gameId,
-                igdbId: game.igdbId,
-                label: game.name,
-                minutes: game.minutesPlayed,
-                value: game.centsPerHour,
-                display: `${formatBrl(game.centsPerHour)}/h`,
-                hint: `${formatBrl(game.pricePaidCents)} · ${formatMinutes(game.minutesPlayed)}`,
-                leading: (
-                  <GameCover
-                    name={game.name}
-                    imageId={game.coverImageId}
-                    size="thumb"
-                    className="w-8 shrink-0"
-                  />
-                ),
-              }))}
-            />
+          {costPerHour.length > 0 && <CostList games={costPerHour.slice(0, COST_ROWS)} />}
+          {costPerHour.length > COST_ROWS && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="self-start"
+              onClick={() => setShowAll(true)}
+            >
+              Ver todos os {costPerHour.length}
+            </Button>
           )}
-          {hidden > 0 && (
-            <p className="text-xs text-muted-foreground">
-              E mais {games(hidden)}, mais caros por hora.
-            </p>
-          )}
+          <Dialog open={showAll} onOpenChange={setShowAll}>
+            {/* Desmonta ao fechar: abre sempre na primeira página, dos mais baratos. */}
+            {showAll && <CostDialogContent purchases={purchases} />}
+          </Dialog>
         </Card>
       </div>
     </>
+  );
+}
+
+const maxCost = (list: CostPerHourGame[]) => Math.max(1, ...list.map((g) => g.centsPerHour));
+
+/** Ranking de custo por hora; `start` é a posição do primeiro (para numerar as páginas). */
+function CostList({
+  games: list,
+  max,
+  start,
+}: {
+  games: CostPerHourGame[];
+  /** Valor da barra cheia (padrão: o maior da lista). */
+  max?: number;
+  start?: number;
+}) {
+  return (
+    <BarList
+      max={max}
+      items={list.map((game, i) => ({
+        key: game.gameId,
+        igdbId: game.igdbId,
+        label: game.name,
+        minutes: game.minutesPlayed,
+        value: game.centsPerHour,
+        display: `${formatBrl(game.centsPerHour)}/h`,
+        hint: `${formatBrl(game.pricePaidCents)} · ${formatMinutes(game.minutesPlayed)}`,
+        leading: (
+          <>
+            {start !== undefined && (
+              <span className="w-6 shrink-0 text-right text-xs text-muted-foreground tabular-nums">
+                {start + i}
+              </span>
+            )}
+            <GameCover
+              name={game.name}
+              imageId={game.coverImageId}
+              size="thumb"
+              className="w-8 shrink-0"
+            />
+          </>
+        ),
+      }))}
+    />
+  );
+}
+
+type CostOrder = "cheap" | "expensive";
+
+const costOrders = [
+  { value: "cheap", label: "Mais baratos por hora", short: "Mais baratos" },
+  { value: "expensive", label: "Mais caros por hora", short: "Mais caros" },
+] as const;
+
+/** Todas as compras do custo por hora, de 10 em 10, nas duas ordens. */
+function CostDialogContent({ purchases }: { purchases: PurchaseStats }) {
+  const [order, setOrder] = useState<CostOrder>("cheap");
+  const [page, setPage] = useState(0);
+  const all = order === "cheap" ? purchases.costPerHour : purchases.costPerHour.toReversed();
+  const pages = Math.ceil(all.length / COST_PAGE);
+  const first = page * COST_PAGE;
+  const shown = all.slice(first, first + COST_PAGE);
+
+  return (
+    <DialogContent className="sm:max-w-[640px]">
+      <DialogHeader>
+        <DialogTitle>Custo por hora</DialogTitle>
+        <DialogDescription>
+          {games(all.length)} com preço e {formatMinutes(MIN_MINUTES_FOR_COST)} ou mais jogada
+          {purchases.averageCentsPerHour !== null &&
+            `, média de ${formatBrl(purchases.averageCentsPerHour)}/h`}
+          .
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <SegmentedToggle
+          legend="Ordem"
+          options={costOrders}
+          value={order}
+          onChange={(value) => {
+            setOrder(value);
+            setPage(0);
+          }}
+          className="mb-1"
+        />
+        {/* Em cima da lista, para não precisar rolar até o fim para trocar de página. */}
+        {pages > 1 && (
+          <nav aria-label="Páginas" className="flex items-center">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page === 0}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              Anterior
+            </Button>
+            <span className="px-1 text-xs text-muted-foreground tabular-nums" aria-live="polite">
+              {first + 1}–{first + shown.length} de {all.length}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page === pages - 1}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Próxima
+            </Button>
+          </nav>
+        )}
+      </div>
+
+      {/* A mesma escala em todas as páginas: a barra cheia é o mais caro por hora. */}
+      <CostList games={shown} max={maxCost(all)} start={first + 1} />
+    </DialogContent>
   );
 }
 
