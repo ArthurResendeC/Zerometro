@@ -48,6 +48,7 @@ export interface LibraryItem {
   emulatedOn: string | null;
   startedAt: string | null;
   finishedAt: string | null;
+  /** Nota final da avaliação mais recente (0–10, com casas decimais); null sem avaliação. */
   rating: number | null;
   notes: string | null;
   /** Compra (comprei × zerei); null se nada foi informado. */
@@ -177,6 +178,7 @@ export interface RemovalSummary {
   minutesPlayed: number;
   completionsCount: number;
   objectivesCount: number;
+  ratingsCount: number;
   /** Conquistas desbloqueadas nas listas do jogo (somem junto, se nenhum outro jogo seguir a lista). */
   achievementsUnlocked: number;
 }
@@ -263,7 +265,6 @@ export const subscriptionSuggestions = [
 export const updateLibraryEntrySchema = z
   .object({
     status: gameStatusSchema,
-    rating: z.number().int().min(1).max(10).nullable(),
     notes: z.string().trim().max(2000).nullable(),
     platformPlayed: platformSchema.nullable(),
     emulatedOn: platformSchema.nullable(),

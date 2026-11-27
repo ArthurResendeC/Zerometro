@@ -21,6 +21,9 @@ import {
 } from "../../shared/domain";
 import { achievementSources, achievementUnlockOrigins } from "../../shared/achievements";
 import { progressGoals } from "../../shared/completions";
+import type { CriterionWeights } from "../../shared/rating-criteria";
+import { ratingPresets } from "../../shared/rating-criteria";
+import { type CriterionNotes, ratingModes, type RatingScores } from "../../shared/ratings";
 
 // Datas/horas como texto ISO 8601 em UTC; datas de calendário (played_on) como YYYY-MM-DD no fuso do usuário.
 const nowIso = sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`;
@@ -162,7 +165,8 @@ export const libraryEntries = sqliteTable(
     progressGoalMinutes: integer("progress_goal_minutes"),
     startedAt: text("started_at"),
     finishedAt: text("finished_at"),
-    rating: integer("rating"),
+    /** Cache da nota final da avaliação mais recente (0–10; a fonte é `ratings`). */
+    rating: real("rating"),
     notes: text("notes"),
     /** Tempo jogado antes de registrar no Zerômetro: conta no total do jogo, não nas estatísticas. */
     priorMinutes: integer("prior_minutes").notNull().default(0),
@@ -194,7 +198,7 @@ export const libraryEntries = sqliteTable(
   (t) => [
     uniqueIndex("library_entries_user_game_idx").on(t.userId, t.gameId),
     index("library_entries_user_status_idx").on(t.userId, t.status),
-    check("library_entries_rating_range", sql`${t.rating} is null or ${t.rating} between 1 and 10`),
+    check("library_entries_rating_range", sql`${t.rating} is null or ${t.rating} between 0 and 10`),
     check("library_entries_prior_minutes_non_negative", sql`${t.priorMinutes} >= 0`),
     check(
       "library_entries_price_non_negative",
@@ -269,6 +273,46 @@ export const completions = sqliteTable(
   (t) => [
     index("completions_user_game_completed_on_idx").on(t.userId, t.gameId, t.completedOn),
     index("completions_user_completed_on_idx").on(t.userId, t.completedOn),
+  ],
+);
+
+/**
+ * Avaliações guiadas de um jogo: notas 1–7 por critério, nota de coração e a final. Um jogo pode
+ * ter várias (uma por playthrough); a atual é a mais recente, e a final dela fica em cache em
+ * `library_entries.rating`.
+ */
+export const ratings = sqliteTable(
+  "ratings",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: userId(),
+    gameId: integer("game_id")
+      .notNull()
+      .references(() => games.id, { onDelete: "cascade" }),
+    /** Playthrough avaliado; apagar a conclusão mantém a avaliação. */
+    completionId: integer("completion_id").references(() => completions.id, {
+      onDelete: "set null",
+    }),
+    /** Nota 1–7 por critério; ausente ou null = "Não se aplica". */
+    scores: text("scores", { mode: "json" }).$type<RatingScores>().notNull(),
+    criterionNotes: text("criterion_notes", { mode: "json" }).$type<CriterionNotes>(),
+    /** Snapshot dos pesos usados: mudar os pesos padrão depois não altera a nota. */
+    weights: text("weights", { mode: "json" }).$type<CriterionWeights>().notNull(),
+    preset: text("preset", { enum: ratingPresets }).notNull(),
+    /** Nota de coração, 0–10. */
+    enjoyment: real("enjoyment").notNull(),
+    /** Ponderada 0–10 (null com poucos critérios aplicáveis). */
+    weighted: real("weighted"),
+    final: real("final").notNull(),
+    mode: text("mode", { enum: ratingModes }).notNull(),
+    review: text("review"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("ratings_user_game_created_idx").on(t.userId, t.gameId, t.createdAt),
+    check("ratings_enjoyment_range", sql`${t.enjoyment} between 0 and 10`),
+    check("ratings_final_range", sql`${t.final} between 0 and 10`),
   ],
 );
 
@@ -428,6 +472,7 @@ export type PlaySession = typeof playSessions.$inferSelect;
 export type NewPlaySession = typeof playSessions.$inferInsert;
 export type Completion = typeof completions.$inferSelect;
 export type Objective = typeof objectives.$inferSelect;
+export type Rating = typeof ratings.$inferSelect;
 export type AchievementSet = typeof achievementSets.$inferSelect;
 export type Achievement = typeof achievements.$inferSelect;
 export type ActivityLogEntry = typeof activityLog.$inferSelect;

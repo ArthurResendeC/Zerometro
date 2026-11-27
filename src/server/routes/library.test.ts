@@ -23,12 +23,11 @@ describe("/api/library", () => {
 
     const patched = await request(
       `/api/library/${item.gameId}`,
-      json({ status: "finished", rating: 10 }, "PATCH"),
+      json({ status: "finished" }, "PATCH"),
     );
     expect(patched.status).toBe(200);
     expect(((await patched.json()) as { item: LibraryItem }).item).toMatchObject({
       status: "finished",
-      rating: 10,
     });
 
     const removed = await request(`/api/library/${item.gameId}`, { method: "DELETE" });

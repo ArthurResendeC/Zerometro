@@ -106,6 +106,13 @@
       "when": 1795761151609,
       "tag": "0014_meta_de_progresso",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1795771877105,
+      "tag": "0015_avaliacoes",
+      "breakpoints": true
     }
   ]
 }

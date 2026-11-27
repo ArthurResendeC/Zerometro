@@ -18,6 +18,7 @@ import { createAchievementCatalog } from "./services/achievement-catalog";
 import type { RaGameListEntry, RetroAchievementsApi } from "./services/retroachievements";
 import type { SteamOwnedGame, SteamUnlock, SteamUserApi } from "./services/steam/user";
 import { NotFoundError, SteamProfilePrivateError } from "./errors";
+import { createRating } from "./services/ratings";
 
 export function fakeIgdbGame(overrides: Partial<IgdbGameDetails> = {}): IgdbGameDetails {
   return {
@@ -364,6 +365,11 @@ export function createTestContext(overrides: Partial<ServiceContext> = {}): Serv
     db,
     userId,
   };
+}
+
+/** Avalia um jogo só com a nota de coração (a "nota rápida"), para testes que só precisam da nota. */
+export function rateGut(ctx: ServiceContext, gameId: number, enjoyment: number) {
+  return createRating(ctx, gameId, { scores: {}, enjoyment, preset: "default", mode: "gut" });
 }
 
 /** Token da instância nos testes. */

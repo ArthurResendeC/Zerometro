@@ -95,7 +95,7 @@ describe("schema", () => {
     expect(db.select().from(games).all()).toHaveLength(1); // cache do IGDB fica
   });
 
-  test("rejeita minutos <= 0 e nota fora de 1..10", () => {
+  test("rejeita minutos <= 0 e nota fora de 0..10", () => {
     const game = insertGame();
 
     expect(() =>
@@ -447,5 +447,42 @@ describe("migration de dados: reagrupar as sessões da Steam", () => {
     runMigrations(old);
     expect(rows()).toHaveLength(6);
     expect(rows().at(-1)).toMatchObject({ id: 50, started_at: null });
+  });
+});
+
+describe("migration 0015 + dados: notas antigas viram avaliações", () => {
+  test("a nota 1–10 vira uma avaliação só de coração; sem nota, nada", async () => {
+    const old = await migratedUntil(14);
+    const sql = (statement: string) => old.$client.run(statement);
+    sql(`INSERT INTO games (id, igdb_id, name) VALUES (1, 1, 'Hades'), (2, 2, 'Celeste')`);
+    sql(`INSERT INTO library_entries (user_id, game_id, status, rating, updated_at) VALUES
+      ('owner', 1, 'finished', 9, '2026-10-01T12:00:00.000Z'), ('owner', 2, 'playing', NULL, '2026-10-02T12:00:00.000Z')`);
+
+    runMigrations(old);
+
+    const all = (query: string) => old.$client.query(query).all();
+    expect(
+      all(
+        "SELECT game_id, scores, preset, enjoyment, weighted, final, mode, created_at FROM ratings",
+      ),
+    ).toEqual([
+      {
+        game_id: 1,
+        scores: "{}",
+        preset: "default",
+        enjoyment: 9,
+        weighted: null,
+        final: 9,
+        mode: "gut",
+        created_at: "2026-10-01T12:00:00.000Z",
+      },
+    ]);
+    expect(all("SELECT game_id, rating FROM library_entries ORDER BY game_id")).toEqual([
+      { game_id: 1, rating: 9 },
+      { game_id: 2, rating: null },
+    ]);
+    // A nota agora aceita casas decimais (cache da final).
+    sql(`UPDATE library_entries SET rating = 8.4 WHERE game_id = 1`);
+    expect(() => sql(`UPDATE library_entries SET rating = 10.5 WHERE game_id = 1`)).toThrow();
   });
 });

@@ -1,8 +1,9 @@
 import { and, asc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { todayIn } from "../../shared/dates";
+import { DEFAULT_WEIGHTS } from "../../shared/rating-criteria";
 import { groupSteamChunks } from "../services/steam-session-chunks";
 import type { Db, Tx } from "./client";
-import { kv, playSessions } from "./schema";
+import { kv, libraryEntries, playSessions, ratings } from "./schema";
 
 // Migrations de dados em TS, para o que não dá para escrever em SQL. Rodam uma vez, depois das
 // migrations do Drizzle (o schema já está atual), cada uma numa transação; a chave
@@ -14,6 +15,47 @@ interface DataMigration {
 }
 
 const migrations: DataMigration[] = [
+  {
+    // A nota 1–10 da biblioteca vira uma avaliação só com a nota de coração (modo "gut"), e
+    // `library_entries.rating` passa a ser o cache da final da avaliação mais recente.
+    name: "ratings-from-legacy",
+    run(tx) {
+      const rated = tx
+        .select({
+          userId: libraryEntries.userId,
+          gameId: libraryEntries.gameId,
+          rating: libraryEntries.rating,
+          updatedAt: libraryEntries.updatedAt,
+        })
+        .from(libraryEntries)
+        .where(isNotNull(libraryEntries.rating))
+        .all();
+      for (const entry of rated) {
+        const already = tx
+          .select({ id: ratings.id })
+          .from(ratings)
+          .where(and(eq(ratings.userId, entry.userId), eq(ratings.gameId, entry.gameId)))
+          .get();
+        if (already || entry.rating === null) continue;
+        tx.insert(ratings)
+          .values({
+            userId: entry.userId,
+            gameId: entry.gameId,
+            scores: {},
+            weights: DEFAULT_WEIGHTS,
+            preset: "default",
+            enjoyment: entry.rating,
+            weighted: null,
+            final: entry.rating,
+            mode: "gut",
+            // Quando a nota foi dada não ficou guardado; a última mudança na entrada é o melhor palpite.
+            createdAt: entry.updatedAt,
+            updatedAt: entry.updatedAt,
+          })
+          .run();
+      }
+    },
+  },
   {
     // Antes, cada sincronização da Steam virava uma sessão sem horário (4h jogadas = 4 sessões
     // de 1h). Reagrupa com a regra nova, usando o created_at como a hora da sincronização. Só as

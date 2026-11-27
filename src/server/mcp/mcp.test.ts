@@ -193,8 +193,8 @@ describe("tools", () => {
     expect(playing.data.games.map((g: { name: string }) => g.name)).toEqual(["Persona 5 Royal"]);
 
     // Por nota: a maior primeiro; sem nota no fim, nas duas direções.
-    await t.request("/api/library/1", { ...json({ rating: 7 }), method: "PATCH" });
-    await t.request("/api/library/3", { ...json({ rating: 9 }), method: "PATCH" });
+    await t.request("/api/library/1/ratings", json({ enjoyment: 7, mode: "gut" }));
+    await t.request("/api/library/3/ratings", json({ enjoyment: 9, mode: "gut" }));
     expect(ids(await callJson(client, "list_library", { sort: "rating" }))).toEqual([3, 1, 2]);
     expect(ids(await callJson(client, "list_library", { sort: "rating", order: "asc" }))).toEqual([
       1, 3, 2,

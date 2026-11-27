@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { activityLog, completions, games, objectives, playSessions } from "../db/schema";
 import { AmbiguousGameError, ConflictError, NotFoundError, ValidationError } from "../errors";
-import { createFakeIgdb, createTestContext, fakeIgdbGame, TEST_TODAY } from "../testing";
+import { createFakeIgdb, createTestContext, fakeIgdbGame, rateGut, TEST_TODAY } from "../testing";
 import type { ServiceContext } from "./context";
 import {
   resolveLibraryGame,
@@ -216,8 +216,9 @@ describe("onde parei (lastNote)", () => {
 describe("updateLibraryEntry", () => {
   test("zerar com nota e depois voltar a jogar limpa a data de término", async () => {
     const { gameId } = await addToLibrary(ctx, igdb, { igdbId: 114283, status: "playing" });
+    rateGut(ctx, gameId, 9);
 
-    const finished = updateLibraryEntry(ctx, gameId, { status: "finished", rating: 9 });
+    const finished = updateLibraryEntry(ctx, gameId, { status: "finished" });
     expect(finished.previousStatus).toBe("playing");
     expect(finished.item).toMatchObject({ status: "finished", finishedAt: TEST_TODAY, rating: 9 });
 
@@ -304,6 +305,7 @@ describe("removeFromLibrary", () => {
       minutesPlayed: 135,
       completionsCount: 1,
       objectivesCount: 1,
+      ratingsCount: 0,
       achievementsUnlocked: 0,
     });
 

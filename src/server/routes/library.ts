@@ -9,6 +9,7 @@ import {
 } from "../../shared/achievements";
 import { markCompletedSchema } from "../../shared/completions";
 import { addObjectiveSchema, reorderObjectivesSchema } from "../../shared/objectives";
+import { ratingInputSchema } from "../../shared/ratings";
 import { igdbIdSchema } from "../../shared/igdb";
 import { lastSessionNoteSchema } from "../../shared/sessions";
 import {
@@ -31,6 +32,7 @@ import {
 } from "../services/achievements";
 import { listCompletions, markCompleted } from "../services/completions";
 import { addObjective, listObjectives, reorderObjectives } from "../services/objectives";
+import { createRating, listRatings } from "../services/ratings";
 import { noteLastSession } from "../services/sessions";
 import { syncSteamGame } from "../services/steam-sync";
 import {
@@ -92,6 +94,19 @@ export function createLibraryRoutes(deps: AppDeps) {
         (c) => {
           const { gameId } = c.req.valid("param");
           return c.json(markCompleted(webContext(deps, c), gameId, c.req.valid("json")), 201);
+        },
+      )
+      .get("/:gameId/ratings", validate("param", gameIdParamSchema), (c) => {
+        const { gameId } = c.req.valid("param");
+        return c.json({ ratings: listRatings(webContext(deps, c), gameId) });
+      })
+      .post(
+        "/:gameId/ratings",
+        validate("param", gameIdParamSchema),
+        validate("json", ratingInputSchema),
+        (c) => {
+          const { gameId } = c.req.valid("param");
+          return c.json(createRating(webContext(deps, c), gameId, c.req.valid("json")), 201);
         },
       )
       .get("/:gameId/objectives", validate("param", gameIdParamSchema), (c) => {

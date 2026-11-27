@@ -160,7 +160,6 @@ function PlayedSummary({ item }: { item: LibraryItem }) {
 
 interface EntryFormValues {
   status: GameStatus;
-  rating: string;
   platformPlayed: string;
   /** "" = nativo, um de `emulationTargets` ou "outro" (com o texto em `emulatedOther`). */
   emulatedOn: string;
@@ -185,7 +184,6 @@ function toFormValues(item: LibraryItem): EntryFormValues {
   const known = (emulationTargets as readonly string[]).includes(item.emulatedOn ?? "");
   return {
     status: item.status,
-    rating: item.rating?.toString() ?? "",
     platformPlayed: item.platformPlayed ?? "",
     emulatedOn: item.emulatedOn === null ? "" : known ? item.emulatedOn : OTHER_EMULATION,
     emulatedOther: item.emulatedOn !== null && !known ? item.emulatedOn : "",
@@ -209,7 +207,6 @@ const emulatedValue = (v: EntryFormValues) =>
 function toPatch(values: EntryFormValues, initial: EntryFormValues): UpdateLibraryEntryInput {
   const patch: UpdateLibraryEntryInput = {};
   if (values.status !== initial.status) patch.status = values.status;
-  if (values.rating !== initial.rating) patch.rating = values.rating ? Number(values.rating) : null;
   if (values.platformPlayed !== initial.platformPlayed)
     patch.platformPlayed = orNull(values.platformPlayed);
   if (emulatedValue(values) !== emulatedValue(initial)) patch.emulatedOn = emulatedValue(values);
@@ -269,26 +266,6 @@ function EntryForm({ item }: { item: LibraryItem }) {
                 {gameStatuses.map((s) => (
                   <option key={s} value={s}>
                     {gameStatusLabels[s]}
-                  </option>
-                ))}
-              </NativeSelect>
-            </div>
-          )}
-        </form.Field>
-
-        <form.Field name="rating">
-          {(field) => (
-            <div className="space-y-2">
-              <Label htmlFor={field.name}>Nota</Label>
-              <NativeSelect
-                id={field.name}
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-              >
-                <option value="">Sem nota</option>
-                {Array.from({ length: 10 }, (_, i) => 10 - i).map((n) => (
-                  <option key={n} value={n}>
-                    {n}
                   </option>
                 ))}
               </NativeSelect>

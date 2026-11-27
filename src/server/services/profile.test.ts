@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { sortProfileRows } from "../../shared/profile";
-import { createFakeIgdb, createTestContext, fakeIgdbGame, TEST_TODAY } from "../testing";
+import { createFakeIgdb, createTestContext, fakeIgdbGame, rateGut, TEST_TODAY } from "../testing";
 import { markCompleted } from "./completions";
 import type { ServiceContext } from "./context";
 import { addToLibrary, updateLibraryEntry } from "./library";
@@ -67,9 +67,10 @@ beforeEach(async () => {
   logSession(ctx, { gameId: ids.hades!, minutes: 300, playedOn: TEST_TODAY });
   logSession(ctx, { gameId: ids.hades2!, minutes: 200, playedOn: TEST_TODAY });
   markCompleted(ctx, ids.hades!, { type: "main" });
-  updateLibraryEntry(ctx, ids.e33!, { rating: 10, platformPlayed: "PC" });
-  updateLibraryEntry(ctx, ids.hades!, { rating: 8 });
-  updateLibraryEntry(ctx, ids.hades2!, { rating: 9 });
+  updateLibraryEntry(ctx, ids.e33!, { platformPlayed: "PC" });
+  rateGut(ctx, ids.e33!, 10);
+  rateGut(ctx, ids.hades!, 8);
+  rateGut(ctx, ids.hades2!, 9);
 });
 
 describe("getProfile", () => {

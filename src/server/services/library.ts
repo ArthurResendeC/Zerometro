@@ -25,6 +25,7 @@ import {
   games,
   libraryEntries,
   objectives,
+  ratings,
   playSessions,
   userAchievementSets,
 } from "../db/schema";
@@ -505,7 +506,6 @@ export function updateLibraryEntry(
   const changes = {
     ...(goalChanged && { progressGoal: goal, progressGoalMinutes: goalMinutes }),
     ...(patch.status !== undefined && { status: patch.status }),
-    ...(patch.rating !== undefined && { rating: patch.rating }),
     ...(patch.notes !== undefined && { notes: patch.notes || null }),
     ...(patch.platformPlayed !== undefined && { platformPlayed: patch.platformPlayed }),
     ...(patch.emulatedOn !== undefined && { emulatedOn: patch.emulatedOn }),
@@ -541,7 +541,7 @@ export function updateLibraryEntry(
 /** O que seria apagado ao remover o jogo (usado para confirmação no site e no MCP). */
 export function previewRemoval(scope: UserScope, gameId: number): RemovalSummary {
   const item = getLibraryItem(scope, gameId);
-  const count = (table: typeof completions | typeof objectives) =>
+  const count = (table: typeof completions | typeof objectives | typeof ratings) =>
     scope.db
       .select({ count: sql<number>`count(*)` })
       .from(table)
@@ -554,16 +554,17 @@ export function previewRemoval(scope: UserScope, gameId: number): RemovalSummary
     minutesPlayed: item.minutesPlayed,
     completionsCount: count(completions),
     objectivesCount: count(objectives),
+    ratingsCount: count(ratings),
     achievementsUnlocked: item.achievements?.unlocked ?? 0,
   };
 }
 
-/** Remove o jogo da biblioteca junto com as sessões, conclusões e objetivos dele. */
+/** Remove o jogo da biblioteca junto com as sessões, conclusões, objetivos e avaliações dele. */
 export function removeFromLibrary(ctx: ServiceContext, gameId: number): RemovalSummary {
   const summary = previewRemoval(ctx, gameId);
   ctx.db.transaction((tx) => {
     // O jogo continua no cache do IGDB (`games`, compartilhado); saem só os dados do usuário.
-    for (const table of [playSessions, completions, objectives]) {
+    for (const table of [playSessions, completions, objectives, ratings]) {
       tx.delete(table)
         .where(and(eq(table.userId, ctx.userId), eq(table.gameId, gameId)))
         .run();
