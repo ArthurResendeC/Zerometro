@@ -10,11 +10,13 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { ActivityHeatmap } from "@/features/stats/activity-heatmap";
 import { BarList } from "@/features/stats/bar-list";
 import { RecordsSection } from "@/features/stats/records-section";
+import { PurchasesSection } from "@/features/stats/purchases-section";
 import { RhythmSection } from "@/features/stats/rhythm-section";
 import { TimelineSection } from "@/features/stats/timeline-section";
 import {
   breakdownQuery,
   heatmapQuery,
+  purchasesQuery,
   recordsQuery,
   rhythmQuery,
   timelineQuery,
@@ -37,6 +39,7 @@ export const Route = createFileRoute("/estatisticas")({
       context.queryClient.ensureQueryData(rhythmQuery(deps.year)),
       context.queryClient.ensureQueryData(recordsQuery(deps.year)),
       context.queryClient.ensureQueryData(timelineQuery(deps.year)),
+      context.queryClient.ensureQueryData(purchasesQuery(deps.year)),
     ]),
   component: StatsPage,
 });
@@ -49,6 +52,7 @@ function StatsPage() {
   const { data: rhythm } = useSuspenseQuery(rhythmQuery(year));
   const { data: records } = useSuspenseQuery(recordsQuery(year));
   const { data: timeline } = useSuspenseQuery(timelineQuery(year));
+  const { data: purchases } = useSuspenseQuery(purchasesQuery(year));
   const period = year ? `em ${year}` : "nos últimos 12 meses";
 
   return (
@@ -92,6 +96,8 @@ function StatsPage() {
       <RhythmSection rhythm={rhythm} />
 
       <RecordsSection records={records} />
+
+      <PurchasesSection purchases={purchases} />
     </div>
   );
 }

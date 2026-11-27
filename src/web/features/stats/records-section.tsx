@@ -1,11 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import type { ReactNode } from "react";
 import type { FinishedGame, Records } from "@shared/stats";
 import { completionTypeLabels } from "@shared/domain";
 import { GameCover } from "@/components/game-cover";
 import { Card } from "@/components/ui/card";
 import { formatDate, formatMinutes } from "@/lib/format";
 import { ColumnChart } from "./column-chart";
+import { StatTile } from "./stat-tile";
 
 // Recordes do período, zerados por mês e cada zerado comparado ao tempo da história no IGDB.
 
@@ -121,16 +121,6 @@ export function RecordsSection({ records }: { records: Records }) {
         </Card>
       </div>
     </section>
-  );
-}
-
-function StatTile({ label, value, hint }: { label: string; value: ReactNode; hint: ReactNode }) {
-  return (
-    <Card className="gap-2">
-      <p className="display-xs text-muted-foreground">{label}</p>
-      <p className="display-sm whitespace-nowrap sm:display-md">{value}</p>
-      <p className="text-xs text-muted-foreground">{hint}</p>
-    </Card>
   );
 }
 

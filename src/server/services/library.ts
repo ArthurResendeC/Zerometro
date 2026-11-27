@@ -335,6 +335,18 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
       finishedAt: entry.finishedAt,
       rating: entry.rating,
       notes: entry.notes,
+      purchase:
+        entry.acquiredOn !== null ||
+        entry.pricePaidCents !== null ||
+        entry.store !== null ||
+        entry.viaSubscription
+          ? {
+              acquiredOn: entry.acquiredOn,
+              pricePaidCents: entry.pricePaidCents,
+              store: entry.store,
+              viaSubscription: entry.viaSubscription,
+            }
+          : null,
       addedAt: entry.createdAt,
       updatedAt: entry.updatedAt,
       minutesPlayed,
@@ -448,6 +460,15 @@ export function updateLibraryEntry(
     );
   }
   const dates = applyStatusRules(current, patch, ctx.today);
+  if (patch.acquiredOn && patch.acquiredOn > ctx.today) {
+    throw new ValidationError("A data da compra não pode ser no futuro");
+  }
+  const viaSubscription = patch.viaSubscription ?? current.purchase?.viaSubscription ?? false;
+  if (viaSubscription && patch.pricePaidCents != null) {
+    throw new ValidationError(
+      "Jogo de assinatura não tem preço pago: desmarque a assinatura para informar o preço",
+    );
+  }
 
   const changes = {
     ...(patch.status !== undefined && { status: patch.status }),
@@ -456,6 +477,12 @@ export function updateLibraryEntry(
     ...(patch.platformPlayed !== undefined && { platformPlayed: patch.platformPlayed }),
     ...(patch.priorMinutes !== undefined && { priorMinutes: patch.priorMinutes }),
     ...(patch.playtimeSource !== undefined && { playtimeSource: patch.playtimeSource }),
+    ...(patch.acquiredOn !== undefined && { acquiredOn: patch.acquiredOn }),
+    ...(patch.pricePaidCents !== undefined && { pricePaidCents: patch.pricePaidCents }),
+    ...(patch.store !== undefined && { store: patch.store }),
+    ...(patch.viaSubscription !== undefined && { viaSubscription: patch.viaSubscription }),
+    // Por assinatura não há preço pago: o que estiver lá some.
+    ...(patch.viaSubscription && { pricePaidCents: null }),
     ...dates,
   };
 

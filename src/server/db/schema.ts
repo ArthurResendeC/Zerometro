@@ -172,6 +172,14 @@ export const libraryEntries = sqliteTable(
     steamCountedMinutes: integer("steam_counted_minutes"),
     /** Quando a base foi marcada: as sessões do timer/manuais depois disso são descontadas. */
     steamCountedAt: text("steam_counted_at"),
+    /** Compra (comprei × zerei): dia em que comprou ou resgatou (YYYY-MM-DD). */
+    acquiredOn: text("acquired_on"),
+    /** Preço pago, em centavos de real (0 = de graça; null = não informado). */
+    pricePaidCents: integer("price_paid_cents"),
+    /** Loja ou serviço (Steam, Nuuvem, eShop, Game Pass…), texto livre. */
+    store: text("store"),
+    /** Veio de uma assinatura (Game Pass, PS Plus…): fica fora do custo por hora. */
+    viaSubscription: integer("via_subscription", { mode: "boolean" }).notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -180,6 +188,10 @@ export const libraryEntries = sqliteTable(
     index("library_entries_user_status_idx").on(t.userId, t.status),
     check("library_entries_rating_range", sql`${t.rating} is null or ${t.rating} between 1 and 10`),
     check("library_entries_prior_minutes_non_negative", sql`${t.priorMinutes} >= 0`),
+    check(
+      "library_entries_price_non_negative",
+      sql`${t.pricePaidCents} is null or ${t.pricePaidCents} >= 0`,
+    ),
   ],
 );
 

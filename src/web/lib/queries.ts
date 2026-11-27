@@ -187,7 +187,11 @@ export function useUpdateLibraryEntry(gameId: number) {
     onSuccess: (result) => {
       playMostImportant(libraryChangeSounds(result));
       setLibraryItem(queryClient, result.item);
-      return queryClient.invalidateQueries({ queryKey: libraryKeys.all });
+      // Status, nota e compra entram nas estatísticas (zerados, perfil, comprei × zerei).
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: libraryKeys.all }),
+        queryClient.invalidateQueries({ queryKey: statsKeys.all }),
+      ]);
     },
     onError,
   });
@@ -526,6 +530,13 @@ export const recordsQuery = (year?: number) =>
   queryOptions({
     queryKey: [...statsKeys.all, "records", year ?? "rolling"],
     queryFn: () => unwrap(api.stats.records.$get({ query: year ? { year: String(year) } : {} })),
+    placeholderData: keepPreviousData,
+  });
+
+export const purchasesQuery = (year?: number) =>
+  queryOptions({
+    queryKey: [...statsKeys.all, "purchases", year ?? "rolling"],
+    queryFn: () => unwrap(api.stats.purchases.$get({ query: year ? { year: String(year) } : {} })),
     placeholderData: keepPreviousData,
   });
 

@@ -3,6 +3,7 @@ import type { CompletionSummary, DisplayState } from "./completions";
 import type { AchievementsSummary } from "./achievements";
 import type { ObjectivesSummary } from "./objectives";
 import { isoDateSchema } from "./dates";
+import { MAX_PRICE_CENTS } from "./money";
 import {
   type CompletionType,
   type GameStatus,
@@ -41,6 +42,8 @@ export interface LibraryItem {
   finishedAt: string | null;
   rating: number | null;
   notes: string | null;
+  /** Compra (comprei × zerei); null se nada foi informado. */
+  purchase: Purchase | null;
   addedAt: string;
   updatedAt: string;
   /**
@@ -71,6 +74,17 @@ export interface LibraryItem {
   progress: number | null;
   /** Para onde o progresso aponta: história antes de zerar, depois extras e 100%. */
   progressTarget: CompletionType;
+}
+
+export interface Purchase {
+  /** Dia em que comprou ou resgatou (YYYY-MM-DD). */
+  acquiredOn: string | null;
+  /** Em centavos de real (0 = de graça). */
+  pricePaidCents: number | null;
+  /** Loja ou serviço, texto livre (Steam, Nuuvem, Game Pass…). */
+  store: string | null;
+  /** Veio de uma assinatura: sem preço, fora do custo por hora. */
+  viaSubscription: boolean;
 }
 
 export interface LastSessionNote {
@@ -181,6 +195,36 @@ export const addToLibrarySchema = z.object({
 });
 export type AddToLibraryInput = z.infer<typeof addToLibrarySchema>;
 
+export const pricePaidCentsSchema = z
+  .number()
+  .int()
+  .min(0, "O preço não pode ser negativo")
+  .max(MAX_PRICE_CENTS, "O preço vai até R$ 99.999,99");
+
+export const storeSchema = z.string().trim().min(1).max(50);
+
+/** Sugestões do campo de loja (o campo aceita qualquer texto). */
+export const storeSuggestions = [
+  "Steam",
+  "Epic Games Store",
+  "GOG",
+  "Nuuvem",
+  "Green Man Gaming",
+  "Humble",
+  "eShop",
+  "PlayStation Store",
+  "Microsoft Store",
+  "Mídia física",
+] as const;
+export const subscriptionSuggestions = [
+  "Game Pass",
+  "PS Plus",
+  "Nintendo Switch Online",
+  "Ubisoft+",
+  "EA Play",
+  "Prime Gaming",
+] as const;
+
 export const updateLibraryEntrySchema = z
   .object({
     status: gameStatusSchema,
@@ -191,6 +235,10 @@ export const updateLibraryEntrySchema = z
     finishedAt: isoDateSchema.nullable(),
     priorMinutes: priorMinutesSchema,
     playtimeSource: playtimeSourceSchema,
+    acquiredOn: isoDateSchema.nullable(),
+    pricePaidCents: pricePaidCentsSchema.nullable(),
+    store: storeSchema.nullable(),
+    viaSubscription: z.boolean(),
   })
   .partial()
   .refine((patch) => Object.keys(patch).length > 0, "Nada para atualizar");

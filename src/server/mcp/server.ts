@@ -21,6 +21,7 @@ import { genreLabel } from "../../shared/genres";
 import { gameModeLabel, perspectiveLabel, themeLabel } from "../../shared/game-labels";
 import {
   type LibraryItem,
+  type Purchase,
   librarySortSchema,
   priorMinutesSchema,
   sortDirectionSchema,
@@ -50,6 +51,7 @@ import { recapSlideIds, recapSlides } from "../../shared/recap-slides";
 import { profileTitle } from "../../shared/recap-text";
 import { sessionLengthBuckets } from "../../shared/stats";
 import { timelinePauses } from "../../shared/timeline";
+import { formatBrl, MAX_PRICE_CENTS, reaisToCents } from "../../shared/money";
 import { type LogSessionResult, noteSchema } from "../../shared/sessions";
 import type { AppDeps } from "../app";
 import { AppError, TimerActiveError } from "../errors";
@@ -92,6 +94,8 @@ import { getRecap } from "../services/recap";
 import { renderRecapImage } from "../services/recap-image";
 import { getHeatmap, getPeriodBreakdown, getRecords, getRhythm, getStats } from "../services/stats";
 import { getTimeline } from "../services/timeline";
+import { getPurchaseStats } from "../services/purchases";
+import type { PurchaseStats } from "../../shared/purchases";
 import { getActiveSession, startTimer, stopTimer } from "../services/timer";
 
 // Servidor MCP do Zerômetro: tools finas por cima dos `services/` (as mesmas regras da API
@@ -196,6 +200,58 @@ function gameSummary(item: LibraryItem) {
     firstPlayedOn: item.firstPlayedOn,
     /** "Onde parei": a nota da última sessão que tem nota, com o dia (null se nenhuma tem). */
     lastNote: item.lastNote && { note: item.lastNote.note, playedOn: item.lastNote.playedOn },
+    /** Compra (null se nada foi informado); o preço vai em reais e formatado. */
+    purchase: item.purchase && purchaseSummary(item.purchase),
+  };
+}
+
+function purchaseSummary({ acquiredOn, pricePaidCents, store, viaSubscription }: Purchase) {
+  return {
+    acquiredOn,
+    price: pricePaidCents === null ? null : reais(pricePaidCents),
+    priceLabel: pricePaidCents === null ? null : formatBrl(pricePaidCents),
+    store,
+    viaSubscription,
+  };
+}
+
+const reais = (cents: number) => cents / 100;
+
+/** Comprei × zerei e custo por hora, em reais, sem capas nem ids do IGDB. */
+function purchasesSummary(stats: PurchaseStats) {
+  return {
+    hasPurchases: stats.hasPurchases,
+    bought: stats.bought,
+    viaSubscription: stats.viaSubscription,
+    spent: reais(stats.spentCents),
+    spentLabel: formatBrl(stats.spentCents),
+    finishedFirstTime: stats.finished,
+    byMonth: stats.byMonth
+      .filter((m) => m.bought > 0 || m.finished > 0)
+      .map(({ month, bought, finished, spentCents }) => ({
+        month,
+        bought,
+        finished,
+        spent: reais(spentCents),
+      })),
+    /** Do mais barato por hora para o mais caro (só com 1h+ jogada). */
+    costPerHour: stats.costPerHour.map((game) => ({
+      gameId: game.gameId,
+      name: game.name,
+      price: reais(game.pricePaidCents),
+      minutesPlayed: game.minutesPlayed,
+      perHour: reais(game.centsPerHour),
+      perHourLabel: `${formatBrl(game.centsPerHour)}/h`,
+    })),
+    averagePerHour: stats.averageCentsPerHour === null ? null : reais(stats.averageCentsPerHour),
+    /** Comprados e ainda nunca jogados (de qualquer data). */
+    unplayed: stats.unplayed.map((game) => ({
+      gameId: game.gameId,
+      name: game.name,
+      acquiredOn: game.acquiredOn,
+      price: game.pricePaidCents === null ? null : reais(game.pricePaidCents),
+    })),
+    unplayedTotal: reais(stats.unplayedCents),
   };
 }
 
@@ -392,6 +448,7 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
         const breakdown = getPeriodBreakdown(scope, { today, year });
         const rhythm = getRhythm(scope, { today, timeZone, year });
         const records = getRecords(scope, { today, year });
+        const purchases = getPurchaseStats(scope, { today, year });
         return {
           today,
           from: heatmap.from,
@@ -424,6 +481,11 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
           finished: records.finished,
           finishedByMonth: records.finishedByMonth.filter((m) => m.count > 0),
           paceRatio: records.paceRatio,
+          /**
+           * Comprei × zerei no período (pela data da compra; zerados = primeira vez) e o custo
+           * por hora de todas as compras com preço. Valores em reais.
+           */
+          purchases: purchasesSummary(purchases),
         };
       }),
   );
@@ -807,6 +869,61 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
         const scope = ctx();
         const { gameId } = resolveLibraryGame(scope, game);
         return gameSummary(updateLibraryEntry(scope, gameId, { priorMinutes: minutes }).item);
+      }),
+  );
+
+  server.registerTool(
+    "set_purchase",
+    {
+      title: "Compra de um jogo",
+      description:
+        'Registra quando, onde e por quanto o usuário comprou um jogo da biblioteca ("comprei o Hades na Steam por 47,49 ontem", "peguei o Hi-Fi Rush no Game Pass"). Alimenta o comprei × zerei e o custo por hora (get_period_stats → purchases). Campo omitido fica como está; null apaga. Jogo de assinatura (viaSubscription true) não tem preço: marcar a assinatura apaga o preço, e informar preço num jogo de assinatura é erro. O preço é dado pessoal: não entra no recap.',
+      inputSchema: z
+        .object({
+          game: gameRefSchema,
+          acquiredOn: isoDateSchema
+            .nullable()
+            .optional()
+            .describe("Dia da compra ou do resgate (YYYY-MM-DD), nunca no futuro"),
+          price: z
+            .number()
+            .min(0)
+            .max(MAX_PRICE_CENTS / 100)
+            .nullable()
+            .optional()
+            .describe("Preço pago em reais (ex.: 47.49; 0 = de graça)"),
+          store: z
+            .string()
+            .trim()
+            .min(1)
+            .max(50)
+            .nullable()
+            .optional()
+            .describe("Loja ou serviço (Steam, Nuuvem, eShop, PlayStation Store, Game Pass…)"),
+          viaSubscription: z
+            .boolean()
+            .optional()
+            .describe("Veio de assinatura (Game Pass, PS Plus…): fica fora do custo por hora"),
+        })
+        .refine(
+          ({ game: _game, ...fields }) => Object.values(fields).some((v) => v !== undefined),
+          "Informe pelo menos um campo da compra",
+        ),
+      annotations: { ...write, idempotentHint: true },
+    },
+    ({ game, acquiredOn, price, store, viaSubscription }) =>
+      run(() => {
+        const scope = ctx();
+        const { gameId } = resolveLibraryGame(scope, game);
+        const { item } = updateLibraryEntry(scope, gameId, {
+          ...(acquiredOn !== undefined && { acquiredOn }),
+          ...(price !== undefined && {
+            pricePaidCents: price === null ? null : reaisToCents(price),
+          }),
+          ...(store !== undefined && { store }),
+          ...(viaSubscription !== undefined && { viaSubscription }),
+        });
+        return gameSummary(item);
       }),
   );
 

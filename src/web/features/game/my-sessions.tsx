@@ -1,5 +1,5 @@
 import { useForm } from "@tanstack/react-form";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { todayIn } from "@shared/dates";
 import { progressTargetLabels } from "@shared/completions";
 import {
@@ -13,8 +13,11 @@ import {
   type LibraryItem,
   MAX_PRIOR_MINUTES,
   priorMinutesSchema,
+  storeSuggestions,
+  subscriptionSuggestions,
   type UpdateLibraryEntryInput,
 } from "@shared/library";
+import { parseBrl } from "@shared/money";
 import { DateInput, dateField } from "@/components/date-input";
 import { DurationInput } from "@/components/duration-input";
 import { FieldErrors } from "@/components/field-errors";
@@ -34,7 +37,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { NativeSelect } from "@/components/ui/native-select";
 import { XpBar } from "@/components/ui/progress";
 import { PlaytimeSourceControl } from "@/features/steam/playtime-source";
@@ -157,7 +162,16 @@ interface EntryFormValues {
   startedAt: string;
   notes: string;
   priorMinutes: number;
+  acquiredOn: string;
+  /** Como digitado ("59,90"); vira centavos no envio. */
+  price: string;
+  store: string;
+  viaSubscription: boolean;
 }
+
+/** 5990 → "59,90" (o campo não leva o "R$"). */
+const priceText = (cents: number | null) =>
+  cents === null ? "" : (cents / 100).toFixed(2).replace(".", ",");
 
 function toFormValues(item: LibraryItem): EntryFormValues {
   return {
@@ -167,6 +181,10 @@ function toFormValues(item: LibraryItem): EntryFormValues {
     startedAt: item.startedAt ?? "",
     notes: item.notes ?? "",
     priorMinutes: item.priorMinutes,
+    acquiredOn: item.purchase?.acquiredOn ?? "",
+    price: priceText(item.purchase?.pricePaidCents ?? null),
+    store: item.purchase?.store ?? "",
+    viaSubscription: item.purchase?.viaSubscription ?? false,
   };
 }
 
@@ -182,6 +200,15 @@ function toPatch(values: EntryFormValues, initial: EntryFormValues): UpdateLibra
   if (values.startedAt !== initial.startedAt) patch.startedAt = orNull(values.startedAt);
   if (values.notes !== initial.notes) patch.notes = orNull(values.notes);
   if (values.priorMinutes !== initial.priorMinutes) patch.priorMinutes = values.priorMinutes;
+  if (values.acquiredOn !== initial.acquiredOn) patch.acquiredOn = orNull(values.acquiredOn);
+  if (values.store !== initial.store) patch.store = orNull(values.store);
+  if (values.viaSubscription !== initial.viaSubscription) {
+    patch.viaSubscription = values.viaSubscription;
+  }
+  // Por assinatura não há preço: o servidor apaga o que houver.
+  if (!values.viaSubscription && values.price !== initial.price) {
+    patch.pricePaidCents = values.price.trim() === "" ? null : parseBrl(values.price);
+  }
   return patch;
 }
 
@@ -194,6 +221,8 @@ function EntryForm({ item }: { item: LibraryItem }) {
   const platforms = [
     ...new Set([...item.platforms, ...(item.platformPlayed ? [item.platformPlayed] : [])]),
   ];
+
+  const storeListId = useId();
 
   const form = useForm({
     defaultValues: initial,
@@ -325,6 +354,104 @@ function EntryForm({ item }: { item: LibraryItem }) {
           </div>
         )}
       </form.Field>
+
+      <fieldset className="space-y-3">
+        <legend className="display-xs text-muted-foreground">Compra</legend>
+        <p className="text-sm text-muted-foreground">
+          Para o comprei × zerei e o custo por hora nas Estatísticas. Fica só com você: o preço não
+          entra no recap.
+        </p>
+        <form.Field name="viaSubscription">
+          {(field) => (
+            <div className="flex items-center gap-3">
+              <Switch
+                id={field.name}
+                checked={field.state.value}
+                onCheckedChange={field.handleChange}
+              />
+              <Label htmlFor={field.name}>Veio de assinatura (Game Pass, PS Plus…)</Label>
+            </div>
+          )}
+        </form.Field>
+        <form.Subscribe selector={(state) => state.values.viaSubscription}>
+          {(viaSubscription) => (
+            <div className="grid gap-4 sm:grid-cols-3">
+              <form.Field
+                name="acquiredOn"
+                validators={{ onSubmit: dateField({ max: today, optional: true }) }}
+              >
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor={field.name}>
+                      {viaSubscription ? "Resgatou em" : "Comprou em"}
+                    </Label>
+                    <DateInput
+                      id={field.name}
+                      max={today}
+                      value={field.state.value}
+                      onChange={field.handleChange}
+                      aria-invalid={field.state.meta.errors.length > 0}
+                    />
+                    <FieldErrors errors={field.state.meta.errors} />
+                  </div>
+                )}
+              </form.Field>
+
+              {!viaSubscription && (
+                <form.Field
+                  name="price"
+                  validators={{
+                    onSubmit: ({ value }) =>
+                      value.trim() === "" || parseBrl(value) !== null
+                        ? undefined
+                        : "Preço inválido: use 59,90 (até R$ 99.999,99)",
+                  }}
+                >
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor={field.name}>Preço pago (R$)</Label>
+                      <Input
+                        id={field.name}
+                        inputMode="decimal"
+                        autoComplete="off"
+                        placeholder="0,00"
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        aria-invalid={field.state.meta.errors.length > 0}
+                      />
+                      <FieldErrors errors={field.state.meta.errors} />
+                    </div>
+                  )}
+                </form.Field>
+              )}
+
+              <form.Field name="store">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor={field.name}>{viaSubscription ? "Assinatura" : "Loja"}</Label>
+                    <Input
+                      id={field.name}
+                      list={storeListId}
+                      maxLength={50}
+                      autoComplete="off"
+                      placeholder={viaSubscription ? "Game Pass" : "Steam"}
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                    />
+                    <datalist id={storeListId}>
+                      {(viaSubscription ? subscriptionSuggestions : storeSuggestions).map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </datalist>
+                  </div>
+                )}
+              </form.Field>
+            </div>
+          )}
+        </form.Subscribe>
+      </fieldset>
 
       <form.Field name="notes">
         {(field) => (

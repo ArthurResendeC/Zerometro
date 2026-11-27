@@ -85,6 +85,13 @@
       "when": 1795677102103,
       "tag": "0011_perfil_metadados",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1795758934020,
+      "tag": "0012_compras",
+      "breakpoints": true
     }
   ]
 }

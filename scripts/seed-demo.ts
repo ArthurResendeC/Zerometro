@@ -76,6 +76,8 @@ interface EntrySpec {
   notes?: string;
   /** Horas jogadas antes do Zerômetro (sem sessões). */
   priorHours?: number;
+  /** Compra: alguns dias antes de começar a jogar, ou `daysAgo` (jogos ainda não jogados). */
+  purchase?: { store: string; price?: number; subscription?: boolean; daysAgo?: number };
 }
 
 const LIBRARY: Record<GameKey, EntrySpec> = {
@@ -83,14 +85,41 @@ const LIBRARY: Record<GameKey, EntrySpec> = {
     status: "playing",
     platform: "PS5",
     notes: "Build de força com Greatsword. Falta a Malenia.",
+    purchase: { store: "PlayStation Store", price: 229.9 },
   },
-  clairObscur: { status: "playing", platform: "PC" },
-  silksong: { status: "playing", platform: "Switch 2" },
-  persona5: { status: "playing", platform: "PS5", notes: "Rota da Makoto." },
-  bg3: { status: "playing", platform: "PC", notes: "Campanha co-op, ato 2.", priorHours: 25 },
-  hades: { status: "finished", platform: "Switch", rating: 10 },
+  clairObscur: {
+    status: "playing",
+    platform: "PC",
+    purchase: { store: "Game Pass", subscription: true },
+  },
+  silksong: { status: "playing", platform: "Switch 2", purchase: { store: "eShop", price: 59.99 } },
+  persona5: {
+    status: "playing",
+    platform: "PS5",
+    notes: "Rota da Makoto.",
+    purchase: { store: "PlayStation Store", price: 149.9 },
+  },
+  bg3: {
+    status: "playing",
+    platform: "PC",
+    notes: "Campanha co-op, ato 2.",
+    priorHours: 25,
+    purchase: { store: "Steam", price: 199.99 },
+  },
+  hades: {
+    status: "finished",
+    platform: "Switch",
+    rating: 10,
+    purchase: { store: "eShop", price: 79.99 },
+  },
   // Zerada e de volta para os B-sides: pós-jogo.
-  celeste: { status: "playing", platform: "Switch", rating: 9, notes: "Faltam os B-sides." },
+  celeste: {
+    status: "playing",
+    platform: "Switch",
+    rating: 9,
+    notes: "Faltam os B-sides.",
+    purchase: { store: "eShop", price: 36.99 },
+  },
   hollowKnight: { status: "finished", platform: "Switch", rating: 9 },
   outerWilds: {
     status: "finished",
@@ -98,15 +127,34 @@ const LIBRARY: Record<GameKey, EntrySpec> = {
     rating: 10,
     notes: "Jogar sem spoiler, sempre.",
   },
-  discoElysium: { status: "finished", platform: "PC", rating: 9 },
-  zeldaTotk: { status: "finished", platform: "Switch", rating: 8 },
-  stardew: { status: "paused", platform: "PC", notes: "Ano 2, primavera. Voltar no co-op." },
-  deathStranding: { status: "dropped", platform: "PS5" },
-  witcher3: { status: "backlog" },
-  rdr2: { status: "backlog" },
+  discoElysium: {
+    status: "finished",
+    platform: "PC",
+    rating: 9,
+    purchase: { store: "GOG", price: 23.99 },
+  },
+  zeldaTotk: {
+    status: "finished",
+    platform: "Switch",
+    rating: 8,
+    purchase: { store: "Mídia física", price: 299 },
+  },
+  stardew: {
+    status: "paused",
+    platform: "PC",
+    notes: "Ano 2, primavera. Voltar no co-op.",
+    purchase: { store: "Steam", price: 24.99 },
+  },
+  deathStranding: {
+    status: "dropped",
+    platform: "PS5",
+    purchase: { store: "PS Plus", subscription: true },
+  },
+  witcher3: { status: "backlog", purchase: { store: "Steam", price: 15.99, daysAgo: 70 } },
+  rdr2: { status: "backlog", purchase: { store: "Steam", price: 74.99, daysAgo: 12 } },
   sekiro: { status: "backlog" },
   chronoTrigger: { status: "backlog" },
-  hades2: { status: "backlog" },
+  hades2: { status: "backlog", purchase: { store: "Steam", price: 72.99, daysAgo: 5 } },
   metroidPrime4: { status: "wishlist" },
   gta6: { status: "wishlist" },
 };
@@ -268,16 +316,27 @@ db.transaction((tx) => {
   };
   for (const [key, spec] of Object.entries(LIBRARY) as [GameKey, EntrySpec][]) {
     const dates = finishedDates.get(key);
+    const startedAt = dates?.startedAt ?? startedAtOf[key] ?? null;
+    const { purchase } = spec;
+    const acquiredOn = purchase
+      ? purchase.daysAgo !== undefined || !startedAt
+        ? addDays(today, -(purchase.daysAgo ?? 30))
+        : addDays(startedAt, -between(1, 20))
+      : null;
     const entry: NewLibraryEntry = {
       userId: OWNER_ID,
       gameId: gameIds.get(key)!,
       status: spec.status,
       platformPlayed: spec.platform ?? null,
-      startedAt: dates?.startedAt ?? startedAtOf[key] ?? null,
+      startedAt,
       finishedAt: spec.status === "finished" ? (dates?.finishedAt ?? null) : null,
       rating: spec.rating ?? null,
       notes: spec.notes ?? null,
       priorMinutes: (spec.priorHours ?? 0) * 60,
+      acquiredOn,
+      pricePaidCents: purchase?.price === undefined ? null : Math.round(purchase.price * 100),
+      store: purchase?.store ?? null,
+      viaSubscription: purchase?.subscription ?? false,
     };
     tx.insert(libraryEntries).values(entry).run();
   }

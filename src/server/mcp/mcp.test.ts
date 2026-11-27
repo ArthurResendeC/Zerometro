@@ -405,6 +405,38 @@ describe("tools", () => {
     await client.close();
   });
 
+  test("compra: set_purchase em reais e comprei × zerei no get_period_stats", async () => {
+    const client = await connect(t, await authorize(t));
+    await callJson(client, "add_game", { igdbId: 114283, status: "playing", priorMinutes: 600 });
+
+    const bought = await callJson(client, "set_purchase", {
+      game: "persona",
+      acquiredOn: "2026-11-01",
+      price: 47.49,
+      store: "Steam",
+    });
+    expect(bought.data.purchase).toEqual({
+      acquiredOn: "2026-11-01",
+      price: 47.49,
+      priceLabel: "R$ 47,49",
+      store: "Steam",
+      viaSubscription: false,
+    });
+
+    const period = await callJson(client, "get_period_stats", {});
+    expect(period.data.purchases).toMatchObject({ bought: 1, spent: 47.49, averagePerHour: 4.75 });
+    expect(period.data.purchases.costPerHour[0]).toMatchObject({ perHourLabel: "R$ 4,75/h" });
+
+    // Sem nenhum campo, ou preço num jogo de assinatura: erro.
+    expect((await callJson(client, "set_purchase", { game: "persona" })).isError).toBe(true);
+    await callJson(client, "set_purchase", { game: "persona", viaSubscription: true });
+    const priced = await callJson(client, "set_purchase", { game: "persona", price: 10 });
+    expect(priced).toMatchObject({ isError: true });
+    expect(priced.text).toContain("assinatura");
+
+    await client.close();
+  });
+
   test("conclusões: zerei continuando a jogar (pós-jogo), platinei e apagar com confirmação", async () => {
     const client = await connect(t, await authorize(t));
     await callJson(client, "add_game", { igdbId: 114283, status: "playing" });
