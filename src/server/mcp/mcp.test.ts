@@ -405,6 +405,27 @@ describe("tools", () => {
     await client.close();
   });
 
+  test("plataforma: set_platform com emulação, e o add_game já emulado", async () => {
+    const client = await connect(t, await authorize(t));
+    const added = await callJson(client, "add_game", {
+      igdbId: 114283,
+      status: "playing",
+      platformPlayed: "PS4",
+      emulatedOn: "PC",
+    });
+    expect(added.data).toMatchObject({ platformPlayed: "PS4", emulatedOn: "PC" });
+
+    const native = await callJson(client, "set_platform", {
+      game: "persona",
+      platform: "PS5",
+      emulatedOn: null,
+    });
+    expect(native.data).toMatchObject({ platformPlayed: "PS5", emulatedOn: null });
+    expect((await callJson(client, "set_platform", { game: "persona" })).isError).toBe(true);
+
+    await client.close();
+  });
+
   test("compra: set_purchase em reais e comprei × zerei no get_period_stats", async () => {
     const client = await connect(t, await authorize(t));
     await callJson(client, "add_game", { igdbId: 114283, status: "playing", priorMinutes: 600 });

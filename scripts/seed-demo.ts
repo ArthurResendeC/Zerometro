@@ -72,6 +72,8 @@ const roundTo5 = (minutes: number) => Math.max(5, Math.round(minutes / 5) * 5);
 interface EntrySpec {
   status: GameStatus;
   platform?: string;
+  /** Onde emula (a plataforma continua sendo o console do jogo). */
+  emulatedOn?: string;
   rating?: number;
   notes?: string;
   /** Horas jogadas antes do Zerômetro (sem sessões). */
@@ -136,6 +138,7 @@ const LIBRARY: Record<GameKey, EntrySpec> = {
   zeldaTotk: {
     status: "finished",
     platform: "Switch",
+    emulatedOn: "PC",
     rating: 8,
     purchase: { store: "Mídia física", price: 299 },
   },
@@ -328,6 +331,7 @@ db.transaction((tx) => {
       gameId: gameIds.get(key)!,
       status: spec.status,
       platformPlayed: spec.platform ?? null,
+      emulatedOn: spec.emulatedOn ?? null,
       startedAt,
       finishedAt: spec.status === "finished" ? (dates?.finishedAt ?? null) : null,
       rating: spec.rating ?? null,

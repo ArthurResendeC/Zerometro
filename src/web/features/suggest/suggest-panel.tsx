@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { todayIn } from "@shared/dates";
+import { deviceOf } from "@shared/library";
 import {
   type AvailableTime,
   availableTimeLabels,
@@ -42,7 +43,15 @@ export function SuggestPanel({ onPlay, disabled }: SuggestPanelProps) {
   const items = useMemo(() => library.data?.items ?? [], [library.data]);
   const platforms = useMemo(
     () =>
-      [...new Set(items.flatMap((i) => (i.platformPlayed ? [i.platformPlayed] : [])))].toSorted(),
+      // Onde roda: um jogo de Switch emulado no PC aparece em "PC".
+      [
+        ...new Set(
+          items.flatMap((i) => {
+            const device = deviceOf(i);
+            return device ? [device] : [];
+          }),
+        ),
+      ].toSorted(),
     [items],
   );
   const platform = prefs.platform && platforms.includes(prefs.platform) ? prefs.platform : null;

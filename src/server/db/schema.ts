@@ -151,7 +151,10 @@ export const libraryEntries = sqliteTable(
       .notNull()
       .references(() => games.id, { onDelete: "cascade" }),
     status: text("status", { enum: gameStatuses }).notNull(),
+    /** Plataforma do jogo (de qual console é a versão jogada). */
     platformPlayed: text("platform_played"),
+    /** Onde rodou, quando emulado (PC, Android, Steam Deck ou texto livre); null = nativo. */
+    emulatedOn: text("emulated_on"),
     startedAt: text("started_at"),
     finishedAt: text("finished_at"),
     rating: integer("rating"),

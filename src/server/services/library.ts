@@ -335,6 +335,7 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
           }
         : null,
       platformPlayed: entry.platformPlayed,
+      emulatedOn: entry.emulatedOn,
       startedAt: entry.startedAt,
       finishedAt: entry.finishedAt,
       rating: entry.rating,
@@ -397,6 +398,7 @@ export async function addToLibrary(
     insertLibraryEntry(tx, ctx, game, {
       status: input.status,
       platformPlayed: input.platformPlayed ?? null,
+      emulatedOn: input.emulatedOn ?? null,
       priorMinutes: input.priorMinutes ?? 0,
     });
   });
@@ -407,6 +409,7 @@ export async function addToLibrary(
 export interface NewLibraryEntry {
   status: GameStatus;
   platformPlayed?: string | null;
+  emulatedOn?: string | null;
   priorMinutes?: number;
   playtimeSource?: PlaytimeSource;
   /** Total na Steam já conhecido (a importação traz da conta). */
@@ -431,6 +434,7 @@ export function insertLibraryEntry(
       gameId: game.id,
       status: entry.status,
       platformPlayed: entry.platformPlayed ?? null,
+      emulatedOn: entry.emulatedOn ?? null,
       priorMinutes: entry.priorMinutes ?? 0,
       playtimeSource: entry.playtimeSource ?? "sessions",
       steamMinutes: entry.steamMinutes ?? null,
@@ -479,6 +483,7 @@ export function updateLibraryEntry(
     ...(patch.rating !== undefined && { rating: patch.rating }),
     ...(patch.notes !== undefined && { notes: patch.notes || null }),
     ...(patch.platformPlayed !== undefined && { platformPlayed: patch.platformPlayed }),
+    ...(patch.emulatedOn !== undefined && { emulatedOn: patch.emulatedOn }),
     ...(patch.priorMinutes !== undefined && { priorMinutes: patch.priorMinutes }),
     ...(patch.playtimeSource !== undefined && { playtimeSource: patch.playtimeSource }),
     ...(patch.acquiredOn !== undefined && { acquiredOn: patch.acquiredOn }),

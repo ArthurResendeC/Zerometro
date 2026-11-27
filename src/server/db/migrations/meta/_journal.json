@@ -92,6 +92,13 @@
       "when": 1795758934020,
       "tag": "0012_compras",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1795760921718,
+      "tag": "0013_emulacao",
+      "breakpoints": true
     }
   ]
 }

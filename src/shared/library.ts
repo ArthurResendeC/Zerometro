@@ -37,7 +37,10 @@ export interface LibraryItem {
   objectives: ObjectivesSummary | null;
   /** Conquistas das listas que o jogo segue (null se não segue nenhuma). */
   achievements: AchievementsSummary | null;
+  /** De qual console é a versão jogada (ex.: Switch, mesmo emulado no PC). */
   platformPlayed: string | null;
+  /** Onde rodou, quando emulado (PC, Android, Steam Deck…); null = nativo. */
+  emulatedOn: string | null;
   startedAt: string | null;
   finishedAt: string | null;
   rating: number | null;
@@ -179,6 +182,26 @@ export type LibraryListQuery = z.infer<typeof libraryListQuerySchema>;
 
 const platformSchema = z.string().trim().min(1).max(50);
 
+/** Onde costuma rodar a emulação (o campo aceita qualquer texto em "Outro"). */
+export const emulationTargets = ["PC", "Android", "Steam Deck"] as const;
+
+/**
+ * Onde o jogo foi jogado, para mostrar: "Switch", "Switch (emulado no PC)" ou "Emulado no PC"
+ * (sem console informado). null sem nenhum dos dois.
+ */
+export function platformLabel({
+  platformPlayed,
+  emulatedOn,
+}: Pick<LibraryItem, "platformPlayed" | "emulatedOn">): string | null {
+  if (!emulatedOn) return platformPlayed;
+  const where = `emulado ${(emulationTargets as readonly string[]).includes(emulatedOn) ? "no" : "em"} ${emulatedOn}`;
+  return platformPlayed ? `${platformPlayed} (${where})` : where[0]!.toUpperCase() + where.slice(1);
+}
+
+/** Onde o jogo roda de fato: o aparelho da emulação ou a plataforma (para "onde vou jogar"). */
+export const deviceOf = (item: Pick<LibraryItem, "platformPlayed" | "emulatedOn">) =>
+  item.emulatedOn ?? item.platformPlayed;
+
 /** Até 9999h de tempo anterior por jogo. */
 export const MAX_PRIOR_MINUTES = 9999 * 60;
 export const priorMinutesSchema = z
@@ -191,6 +214,7 @@ export const addToLibrarySchema = z.object({
   igdbId: z.number().int().positive(),
   status: gameStatusSchema,
   platformPlayed: platformSchema.nullish(),
+  emulatedOn: platformSchema.nullish(),
   priorMinutes: priorMinutesSchema.optional(),
 });
 export type AddToLibraryInput = z.infer<typeof addToLibrarySchema>;
@@ -231,6 +255,7 @@ export const updateLibraryEntrySchema = z
     rating: z.number().int().min(1).max(10).nullable(),
     notes: z.string().trim().max(2000).nullable(),
     platformPlayed: platformSchema.nullable(),
+    emulatedOn: platformSchema.nullable(),
     startedAt: isoDateSchema.nullable(),
     finishedAt: isoDateSchema.nullable(),
     priorMinutes: priorMinutesSchema,

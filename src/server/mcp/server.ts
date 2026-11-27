@@ -167,6 +167,8 @@ function gameSummary(item: LibraryItem) {
     status: item.status,
     statusLabel: gameStatusLabels[item.status],
     platformPlayed: item.platformPlayed,
+    /** Onde roda a emulação (null = nativo). */
+    emulatedOn: item.emulatedOn,
     releaseYear: item.releaseYear,
     /** Total que vale para o progresso (pelas sessões + tempo anterior, ou pela Steam). */
     minutesPlayed: item.minutesPlayed,
@@ -598,7 +600,9 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
           .trim()
           .min(1)
           .optional()
-          .describe('Só jogos dessa plataforma, como na biblioteca (ex.: "PC", "Switch")'),
+          .describe(
+            'Só jogos que rodam nessa plataforma (ex.: "PC", "Switch"); um jogo emulado conta onde é emulado (Switch emulado no PC → "PC")',
+          ),
         random: z.boolean().optional().describe("Sorteia 1 entre as 8 melhores"),
       }),
       annotations: readOnly,
@@ -836,6 +840,15 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
           .max(50)
           .optional()
           .describe('Plataforma em que vai jogar (ex.: "PS5", "Switch", "PC")'),
+        emulatedOn: z
+          .string()
+          .trim()
+          .min(1)
+          .max(50)
+          .optional()
+          .describe(
+            'Onde emula, se for emulado (ex.: "PC", "Android", "Steam Deck"); platformPlayed continua sendo o console do jogo',
+          ),
         priorMinutes: priorMinutesSchema
           .optional()
           .describe(
@@ -844,12 +857,48 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
       }),
       annotations: { ...write, openWorldHint: true },
     },
-    ({ igdbId, status, platformPlayed, priorMinutes }) =>
+    ({ igdbId, status, platformPlayed, emulatedOn, priorMinutes }) =>
       run(async () =>
         gameSummary(
-          await addToLibrary(ctx(), deps.igdb, { igdbId, status, platformPlayed, priorMinutes }),
+          await addToLibrary(ctx(), deps.igdb, {
+            igdbId,
+            status,
+            platformPlayed,
+            emulatedOn,
+            priorMinutes,
+          }),
         ),
       ),
+  );
+
+  server.registerTool(
+    "set_platform",
+    {
+      title: "Plataforma e emulação",
+      description:
+        'Define em que plataforma o usuário joga um jogo da biblioteca e se é emulado ("estou jogando o Zelda emulado no PC", "joguei o Persona no PS5"). platform é o console da versão jogada (Switch, PS5, PC…); emulatedOn é onde roda a emulação (PC, Android, Steam Deck ou outro texto). Campo omitido fica como está; null apaga (emulatedOn null = nativo).',
+      inputSchema: z
+        .object({
+          game: gameRefSchema,
+          platform: z.string().trim().min(1).max(50).nullable().optional(),
+          emulatedOn: z.string().trim().min(1).max(50).nullable().optional(),
+        })
+        .refine(
+          ({ platform, emulatedOn }) => platform !== undefined || emulatedOn !== undefined,
+          "Informe platform e/ou emulatedOn",
+        ),
+      annotations: { ...write, idempotentHint: true },
+    },
+    ({ game, platform, emulatedOn }) =>
+      run(() => {
+        const scope = ctx();
+        const { gameId } = resolveLibraryGame(scope, game);
+        const { item } = updateLibraryEntry(scope, gameId, {
+          ...(platform !== undefined && { platformPlayed: platform }),
+          ...(emulatedOn !== undefined && { emulatedOn }),
+        });
+        return gameSummary(item);
+      }),
   );
 
   server.registerTool(

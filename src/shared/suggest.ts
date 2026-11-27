@@ -3,7 +3,7 @@ import { ttbByType } from "./completions";
 import { diffInDays } from "./dates";
 import { formatMinutes } from "./format";
 import { genreLabel } from "./genres";
-import type { LibraryItem } from "./library";
+import { deviceOf, type LibraryItem } from "./library";
 
 // "O que jogar agora?": escolhe entre os jogos em andamento, os próximos e os pausados pelo
 // tempo que tenho e pelo clima. Função pura, usada pela web (funciona offline, com a biblioteca
@@ -160,8 +160,10 @@ function isCandidate(item: LibraryItem, { mood, platform }: SuggestOptions): boo
   return true;
 }
 
+/** Onde vou jogar agora: o aparelho da emulação conta (Switch emulado no PC → PC). */
 function playableOn(item: LibraryItem, platform: string): boolean {
-  return item.platformPlayed ? item.platformPlayed === platform : item.platforms.includes(platform);
+  const device = deviceOf(item);
+  return device ? device === platform : item.platforms.includes(platform);
 }
 
 function score(item: LibraryItem, { available, mood, today }: SuggestOptions): Suggestion {

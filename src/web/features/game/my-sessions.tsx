@@ -11,6 +11,7 @@ import {
 } from "@shared/domain";
 import {
   type LibraryItem,
+  emulationTargets,
   MAX_PRIOR_MINUTES,
   priorMinutesSchema,
   storeSuggestions,
@@ -159,6 +160,9 @@ interface EntryFormValues {
   status: GameStatus;
   rating: string;
   platformPlayed: string;
+  /** "" = nativo, um de `emulationTargets` ou "outro" (com o texto em `emulatedOther`). */
+  emulatedOn: string;
+  emulatedOther: string;
   startedAt: string;
   notes: string;
   priorMinutes: number;
@@ -173,11 +177,16 @@ interface EntryFormValues {
 const priceText = (cents: number | null) =>
   cents === null ? "" : (cents / 100).toFixed(2).replace(".", ",");
 
+const OTHER_EMULATION = "outro";
+
 function toFormValues(item: LibraryItem): EntryFormValues {
+  const known = (emulationTargets as readonly string[]).includes(item.emulatedOn ?? "");
   return {
     status: item.status,
     rating: item.rating?.toString() ?? "",
     platformPlayed: item.platformPlayed ?? "",
+    emulatedOn: item.emulatedOn === null ? "" : known ? item.emulatedOn : OTHER_EMULATION,
+    emulatedOther: item.emulatedOn !== null && !known ? item.emulatedOn : "",
     startedAt: item.startedAt ?? "",
     notes: item.notes ?? "",
     priorMinutes: item.priorMinutes,
@@ -190,6 +199,10 @@ function toFormValues(item: LibraryItem): EntryFormValues {
 
 const orNull = (v: string) => (v.trim() === "" ? null : v.trim());
 
+/** O que vai para `emulatedOn`: a opção escolhida ou o texto de "Outro" (vazio = nativo). */
+const emulatedValue = (v: EntryFormValues) =>
+  v.emulatedOn === OTHER_EMULATION ? orNull(v.emulatedOther) : orNull(v.emulatedOn);
+
 /** Só envia o que mudou; campos vazios viram null. */
 function toPatch(values: EntryFormValues, initial: EntryFormValues): UpdateLibraryEntryInput {
   const patch: UpdateLibraryEntryInput = {};
@@ -197,6 +210,7 @@ function toPatch(values: EntryFormValues, initial: EntryFormValues): UpdateLibra
   if (values.rating !== initial.rating) patch.rating = values.rating ? Number(values.rating) : null;
   if (values.platformPlayed !== initial.platformPlayed)
     patch.platformPlayed = orNull(values.platformPlayed);
+  if (emulatedValue(values) !== emulatedValue(initial)) patch.emulatedOn = emulatedValue(values);
   if (values.startedAt !== initial.startedAt) patch.startedAt = orNull(values.startedAt);
   if (values.notes !== initial.notes) patch.notes = orNull(values.notes);
   if (values.priorMinutes !== initial.priorMinutes) patch.priorMinutes = values.priorMinutes;
@@ -320,6 +334,49 @@ function EntryForm({ item }: { item: LibraryItem }) {
             </div>
           )}
         </form.Field>
+
+        <form.Field name="emulatedOn">
+          {(field) => (
+            <div className="space-y-2">
+              <Label htmlFor={field.name}>Emulado em</Label>
+              <NativeSelect
+                id={field.name}
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+              >
+                <option value="">Não emulado</option>
+                {emulationTargets.map((target) => (
+                  <option key={target} value={target}>
+                    {target}
+                  </option>
+                ))}
+                <option value={OTHER_EMULATION}>Outro…</option>
+              </NativeSelect>
+            </div>
+          )}
+        </form.Field>
+
+        <form.Subscribe selector={(state) => state.values.emulatedOn === OTHER_EMULATION}>
+          {(other) =>
+            other && (
+              <form.Field name="emulatedOther">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor={field.name}>Onde emula</Label>
+                    <Input
+                      id={field.name}
+                      maxLength={50}
+                      autoComplete="off"
+                      placeholder="Retroid Pocket, iPhone…"
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                    />
+                  </div>
+                )}
+              </form.Field>
+            )
+          }
+        </form.Subscribe>
       </div>
 
       <form.Field name="priorMinutes" validators={{ onSubmit: priorMinutesSchema }}>

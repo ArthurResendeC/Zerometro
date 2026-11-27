@@ -13,6 +13,7 @@ const item = (name: string, fields: Partial<LibraryItem> = {}) =>
     status: "backlog",
     platforms: ["PC"],
     platformPlayed: null,
+    emulatedOn: null,
     genres: [],
     themes: [],
     gameModes: ["Single player"],
@@ -119,6 +120,19 @@ describe("suggestGames", () => {
     );
     expect(names(top)).toEqual(["No PC", "Só no IGDB"]);
     expect(top[0]!.reasons).toEqual(["Você parou em: Palácio 3"]);
+  });
+
+  test("jogo emulado conta onde roda: Switch emulado no PC aparece no PC", () => {
+    const games = [
+      item("Zelda emulado", { platformPlayed: "Switch", emulatedOn: "PC" }),
+      item("Mario no Switch", { platformPlayed: "Switch" }),
+    ];
+    expect(names(suggestGames(games, { today: TODAY, platform: "PC" }).top)).toEqual([
+      "Zelda emulado",
+    ]);
+    expect(names(suggestGames(games, { today: TODAY, platform: "Switch" }).top)).toEqual([
+      "Mario no Switch",
+    ]);
   });
 
   test("pool de 8 para o sorteio, top de 3", () => {

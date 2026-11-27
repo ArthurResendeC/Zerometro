@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { type LibraryItem, sortLibraryItems, sortValueOf } from "./library";
+import { type LibraryItem, platformLabel, sortLibraryItems, sortValueOf } from "./library";
 
 // Só os campos que a ordenação lê.
 const item = (name: string, fields: Partial<LibraryItem> = {}) =>
@@ -71,5 +71,21 @@ describe("sortLibraryItems", () => {
   test("nome sem diferenciar acento e com números em ordem natural", () => {
     const tied = [item("Zelda 10"), item("Ábzu"), item("Zelda 2"), item("abc")];
     expect(names(sortLibraryItems(tied, "rating"))).toEqual(["abc", "Ábzu", "Zelda 2", "Zelda 10"]);
+  });
+});
+
+describe("platformLabel", () => {
+  test("console, emulação conhecida, emulação livre e só a emulação", () => {
+    expect(platformLabel({ platformPlayed: "Switch", emulatedOn: null })).toBe("Switch");
+    expect(platformLabel({ platformPlayed: "Switch", emulatedOn: "PC" })).toBe(
+      "Switch (emulado no PC)",
+    );
+    expect(platformLabel({ platformPlayed: "Wii", emulatedOn: "Retroid Pocket" })).toBe(
+      "Wii (emulado em Retroid Pocket)",
+    );
+    expect(platformLabel({ platformPlayed: null, emulatedOn: "Android" })).toBe(
+      "Emulado no Android",
+    );
+    expect(platformLabel({ platformPlayed: null, emulatedOn: null })).toBeNull();
   });
 });

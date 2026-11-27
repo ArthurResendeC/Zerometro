@@ -1,5 +1,5 @@
 import { eq, inArray } from "drizzle-orm";
-import type { LibraryItem } from "../../shared/library";
+import { type LibraryItem, platformLabel } from "../../shared/library";
 import {
   type GamerProfile,
   PROFILE_ROW_GAMES,
@@ -41,7 +41,11 @@ export function getProfile(scope: UserScope): GamerProfile {
     themes: rank(items, (i) => tags(i.themes)),
     perspectives: rank(items, (i) => tags(i.perspectives)),
     gameModes: rank(items, (i) => tags(i.gameModes)),
-    platforms: rank(items, (i) => tags(i.platformPlayed ? [i.platformPlayed] : [])),
+    // "Switch (emulado no PC)" fica separado do Switch de verdade.
+    platforms: rank(items, (i) => {
+      const label = platformLabel(i);
+      return tags(label ? [label] : []);
+    }),
   };
 }
 
