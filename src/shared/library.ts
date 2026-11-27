@@ -1,5 +1,11 @@
 import { z } from "zod";
-import type { CompletionSummary, DisplayState } from "./completions";
+import {
+  type CompletionSummary,
+  type DisplayState,
+  type ProgressGoal,
+  progressGoalMinutesSchema,
+  progressGoalSchema,
+} from "./completions";
 import type { AchievementsSummary } from "./achievements";
 import type { ObjectivesSummary } from "./objectives";
 import { isoDateSchema } from "./dates";
@@ -73,10 +79,16 @@ export interface LibraryItem {
   lastNote: LastSessionNote | null;
   /** Data da primeira sessão registrada (o "comecei a jogar" usa quando `startedAt` está vazio). */
   firstPlayedOn: string | null;
-  /** 0..1, estimado pelo tempo do IGDB rumo a `progressTarget`. null sem tempo e sem conclusão. */
+  /** 0..1 rumo a `progressGoal`; null sem barra (meta "none" ou sem tempo para a meta). */
   progress: number | null;
-  /** Para onde o progresso aponta: história antes de zerar, depois extras e 100%. */
-  progressTarget: CompletionType;
+  /** Meta da barra: a escolhida ou, sem escolha, a padrão do status (história; Sem fim, nenhuma). */
+  progressGoal: ProgressGoal;
+  /** O usuário escolheu a meta (senão ela segue o status). */
+  progressGoalCustom: boolean;
+  /** Minutos da meta: as horas escolhidas ou o tempo do IGDB; null sem tempo. */
+  progressTargetMinutes: number | null;
+  /** Meta cumprida (conclusão marcada no nível da meta, ou as horas alcançadas). */
+  progressDone: boolean;
 }
 
 export interface Purchase {
@@ -264,6 +276,10 @@ export const updateLibraryEntrySchema = z
     pricePaidCents: pricePaidCentsSchema.nullable(),
     store: storeSchema.nullable(),
     viaSubscription: z.boolean(),
+    /** null volta para a meta padrão do status. */
+    progressGoal: progressGoalSchema.nullable(),
+    /** Alvo da meta "hours" (obrigatório ao escolher horas, se ainda não houver). */
+    progressGoalMinutes: progressGoalMinutesSchema,
   })
   .partial()
   .refine((patch) => Object.keys(patch).length > 0, "Nada para atualizar");

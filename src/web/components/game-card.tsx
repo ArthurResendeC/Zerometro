@@ -24,7 +24,6 @@ interface GameCardProps {
 /** Card de jogo em forma de cartucho: ranhuras no topo, capa como rótulo, progresso como barra de XP. */
 export function GameCard({ item, showStatus = false, sortBadge }: GameCardProps) {
   const played = item.minutesPlayed > 0;
-  const finished = item.status === "finished";
   // Pós-jogo sempre aparece (está na aba "Jogando", mas já foi zerado).
   const statusShown = showStatus || item.displayState === "postgame";
   // Sem o selo de status, o de conclusão sempre aparece; com ele, só se não repetir o "Zerado".
@@ -62,8 +61,8 @@ export function GameCard({ item, showStatus = false, sortBadge }: GameCardProps)
           <div className="flex items-center gap-2">
             <XpBar
               value={item.progress * 100}
-              tone={finished || item.progress >= 1 ? "finished" : "primary"}
-              label={`Progresso estimado em ${item.name}, ${progressTargetLabels[item.progressTarget]}`}
+              tone={item.progressDone ? "finished" : "primary"}
+              label={`Progresso em ${item.name}, ${progressTargetLabels[item.progressGoal]}`}
             />
           </div>
         )}

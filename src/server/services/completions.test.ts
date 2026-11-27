@@ -50,7 +50,10 @@ describe("markCompleted", () => {
         firstCompletedOn: TEST_TODAY,
         lastCompletedOn: TEST_TODAY,
       },
-      progressTarget: "extras",
+      // A meta não muda sozinha: zerada a história, a barra enche (não pula para os extras).
+      progressGoal: "main",
+      progress: 1,
+      progressDone: true,
     });
     expect(ctx.db.select().from(activityLog).all().at(-1)).toMatchObject({
       action: "completion.add",

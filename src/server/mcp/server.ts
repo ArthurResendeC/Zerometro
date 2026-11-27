@@ -8,7 +8,13 @@ import {
   achievementSourceSchema,
 } from "../../shared/achievements";
 import { isoDateSchema, localTimeSchema } from "../../shared/dates";
-import { type CompletionItem, displayStateLabels } from "../../shared/completions";
+import {
+  type CompletionItem,
+  displayStateLabels,
+  MAX_GOAL_MINUTES,
+  progressGoalLabels,
+  progressGoals,
+} from "../../shared/completions";
 import {
   completionTypeLabels,
   completionTypeSchema,
@@ -54,7 +60,7 @@ import { timelinePauses } from "../../shared/timeline";
 import { formatBrl, MAX_PRICE_CENTS, reaisToCents } from "../../shared/money";
 import { type LogSessionResult, noteSchema } from "../../shared/sessions";
 import type { AppDeps } from "../app";
-import { AppError, TimerActiveError } from "../errors";
+import { AppError, TimerActiveError, ValidationError } from "../errors";
 import {
   findSetCandidates,
   linkSet,
@@ -189,9 +195,15 @@ function gameSummary(item: LibraryItem) {
       ...item.completion,
       bestLabel: completionTypeLabels[item.completion.best],
     },
+    /** Progresso rumo à meta (null = sem barra). Sem a conclusão marcada, não passa de 99%. */
     progressPercent: item.progress === null ? null : Math.round(item.progress * 100),
-    /** Para onde o progresso aponta: história antes de zerar; depois extras e 100%. */
-    progressTarget: item.progressTarget,
+    /** Meta da barra: main/extras/full (pelo tempo do IGDB), hours (alvo do usuário) ou none. */
+    progressGoal: item.progressGoal,
+    progressGoalLabel: progressGoalLabels[item.progressGoal],
+    /** false = a meta padrão do status (história; sem fim = none). */
+    progressGoalCustom: item.progressGoalCustom,
+    progressTargetMinutes: item.progressTargetMinutes,
+    progressDone: item.progressDone,
     objectives: item.objectives,
     /** Conquistas das listas da Steam/RA que o jogo segue (null se não segue nenhuma). */
     achievements: item.achievements,
@@ -1000,6 +1012,39 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
           ...(finishedAt && { finishedAt }),
         });
         return { ...gameSummary(item), previousStatus };
+      }),
+  );
+
+  server.registerTool(
+    "set_progress_goal",
+    {
+      title: "Meta da barra de progresso",
+      description:
+        'Define até onde a barra de progresso de um jogo mede ("quero fazer o 100% do Hollow Knight", "minha meta no Tarkov é 500h", "esconde a barra do Fortnite"). goal: main = história (padrão), extras = história + extras, full = 100% (essas pelo tempo do IGDB, e a barra só enche ao marcar a conclusão com mark_completed), hours = alvo em horas do usuário (passe hours), none = sem barra (padrão do status endless), default = volta para a meta padrão do status. A meta nunca muda sozinha.',
+      inputSchema: z.object({
+        game: gameRefSchema,
+        goal: z.enum([...progressGoals, "default"]),
+        hours: z
+          .number()
+          .positive()
+          .max(MAX_GOAL_MINUTES / 60)
+          .optional()
+          .describe('Alvo em horas, com goal "hours" (ex.: 500)'),
+      }),
+      annotations: { ...write, idempotentHint: true },
+    },
+    ({ game, goal, hours: goalHours }) =>
+      run(() => {
+        const scope = ctx();
+        const { gameId } = resolveLibraryGame(scope, game);
+        if (goalHours !== undefined && goal !== "hours") {
+          throw new ValidationError('hours só vale com goal "hours"');
+        }
+        const { item } = updateLibraryEntry(scope, gameId, {
+          progressGoal: goal === "default" ? null : goal,
+          ...(goalHours !== undefined && { progressGoalMinutes: Math.round(goalHours * 60) }),
+        });
+        return gameSummary(item);
       }),
   );
 

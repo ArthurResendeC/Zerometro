@@ -20,6 +20,7 @@ import {
   ttbSources,
 } from "../../shared/domain";
 import { achievementSources, achievementUnlockOrigins } from "../../shared/achievements";
+import { progressGoals } from "../../shared/completions";
 
 // Datas/horas como texto ISO 8601 em UTC; datas de calendário (played_on) como YYYY-MM-DD no fuso do usuário.
 const nowIso = sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`;
@@ -155,6 +156,10 @@ export const libraryEntries = sqliteTable(
     platformPlayed: text("platform_played"),
     /** Onde rodou, quando emulado (PC, Android, Steam Deck ou texto livre); null = nativo. */
     emulatedOn: text("emulated_on"),
+    /** Meta da barra de progresso; null = a padrão do status. */
+    progressGoal: text("progress_goal", { enum: progressGoals }),
+    /** Alvo da meta "hours", em minutos (validado no serviço). */
+    progressGoalMinutes: integer("progress_goal_minutes"),
     startedAt: text("started_at"),
     finishedAt: text("finished_at"),
     rating: integer("rating"),

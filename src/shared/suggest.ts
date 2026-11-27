@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { ttbByType } from "./completions";
 import { diffInDays } from "./dates";
 import { formatMinutes } from "./format";
 import { genreLabel } from "./genres";
@@ -145,11 +144,10 @@ export function pickSuggestion(
   return pool.at(-1)!;
 }
 
-/** Quanto falta para o alvo do progresso; null sem tempo do IGDB para ele. */
+/** Quanto falta para a meta do jogo; null com a meta cumprida, sem meta ou sem tempo para ela. */
 export function remainingMinutes(item: LibraryItem): number | null {
-  const seconds = item.timeToBeat?.[ttbByType[item.progressTarget]];
-  if (!seconds) return null;
-  return Math.max(0, Math.round(seconds / 60) - item.minutesPlayed);
+  if (item.progressDone || item.progressTargetMinutes === null) return null;
+  return Math.max(0, item.progressTargetMinutes - item.minutesPlayed);
 }
 
 function isCandidate(item: LibraryItem, { mood, platform }: SuggestOptions): boolean {
@@ -203,9 +201,17 @@ function score(item: LibraryItem, { available, mood, today }: SuggestOptions): S
   if (available && remaining !== null) {
     const minutes = AVAILABLE_MINUTES[available];
     if (remaining > 0 && remaining <= minutes) {
-      bump(4, `Dá para zerar hoje: faltam ~${approx(remaining)}`);
+      bump(
+        4,
+        `${item.progressGoal === "hours" ? "Dá para bater a meta hoje" : "Dá para zerar hoje"}: faltam ~${approx(remaining)}`,
+      );
     } else if (remaining <= ALMOST_DONE_MINUTES && available !== "long") {
-      bump(2, `Falta pouco: ~${approx(remaining)}`);
+      bump(
+        2,
+        remaining > 0
+          ? `Falta pouco: ~${approx(remaining)}`
+          : "Já passou do tempo estimado: deve faltar pouco",
+      );
     }
     const notStarted = item.minutesPlayed === 0;
     if (available === "short" && notStarted && remaining > LONG_GAME_MINUTES) bump(-2);

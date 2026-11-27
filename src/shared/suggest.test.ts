@@ -20,7 +20,10 @@ const item = (name: string, fields: Partial<LibraryItem> = {}) =>
     perspectives: [],
     timeToBeat: null,
     minutesPlayed: 0,
-    progressTarget: "main",
+    progressGoal: "main",
+    // Meta padrão (a história): os minutos vêm do tempo do IGDB, como no servidor.
+    progressTargetMinutes: fields.timeToBeat?.mainSec ? fields.timeToBeat.mainSec / 60 : null,
+    progressDone: false,
     lastPlayedOn: null,
     lastNote: null,
     ...fields,
@@ -144,15 +147,37 @@ describe("suggestGames", () => {
 });
 
 describe("remainingMinutes", () => {
-  test("pelo alvo do progresso (depois de zerar, os extras)", () => {
+  test("pela meta do jogo; cumprida ou sem tempo, null", () => {
     const ttb = { mainSec: 10 * HOUR, extraSec: 20 * HOUR, completeSec: null };
     expect(remainingMinutes(item("A", { timeToBeat: ttb, minutesPlayed: 60 }))).toBe(540);
     expect(
       remainingMinutes(
-        item("B", { timeToBeat: ttb, minutesPlayed: 700, progressTarget: "extras" }),
+        item("B", {
+          minutesPlayed: 700,
+          progressGoal: "extras",
+          progressTargetMinutes: 1200,
+        }),
       ),
     ).toBe(500);
+    expect(
+      remainingMinutes(item("Zerado", { timeToBeat: ttb, minutesPlayed: 300, progressDone: true })),
+    ).toBeNull();
     expect(remainingMinutes(item("C"))).toBeNull();
+  });
+
+  test('meta em horas: "bater a meta" em vez de "zerar"', () => {
+    const { top } = suggestGames(
+      [
+        item("Tarkov", {
+          status: "endless",
+          progressGoal: "hours",
+          progressTargetMinutes: 500 * 60,
+          minutesPlayed: 500 * 60 - 20,
+        }),
+      ],
+      { today: TODAY, available: "short" },
+    );
+    expect(top[0]!.reasons).toContain("Dá para bater a meta hoje: faltam ~20min");
   });
 });
 

@@ -132,6 +132,43 @@ describe("listLibrary", () => {
     });
   });
 
+  test("meta da barra: escolher, horas, voltar ao padrão e as validações", async () => {
+    const { gameId } = await addToLibrary(ctx, igdb, { igdbId: 114283, status: "endless" });
+    logSession(ctx, { gameId, minutes: 300, playedOn: "2026-11-18" });
+    expect(getLibraryItem(ctx, gameId)).toMatchObject({
+      progressGoal: "none",
+      progressGoalCustom: false,
+    });
+
+    expect(() => updateLibraryEntry(ctx, gameId, { progressGoal: "hours" })).toThrow(/horas/);
+    updateLibraryEntry(ctx, gameId, { progressGoal: "hours", progressGoalMinutes: 600 });
+    expect(getLibraryItem(ctx, gameId)).toMatchObject({
+      progressGoal: "hours",
+      progressGoalCustom: true,
+      progressTargetMinutes: 600,
+      progress: 0.5,
+      progressDone: false,
+    });
+    // Só as horas: a meta continua em horas.
+    updateLibraryEntry(ctx, gameId, { progressGoalMinutes: 300 });
+    expect(getLibraryItem(ctx, gameId)).toMatchObject({ progress: 1, progressDone: true });
+
+    // Trocar para um nível apaga as horas; horas sem a meta em horas é erro.
+    updateLibraryEntry(ctx, gameId, { progressGoal: "extras" });
+    expect(getLibraryItem(ctx, gameId)).toMatchObject({
+      progressGoal: "extras",
+      progressTargetMinutes: Math.round(424580 / 60),
+    });
+    expect(() => updateLibraryEntry(ctx, gameId, { progressGoalMinutes: 600 })).toThrow(/horas/);
+
+    updateLibraryEntry(ctx, gameId, { progressGoal: null });
+    expect(getLibraryItem(ctx, gameId)).toMatchObject({
+      progressGoal: "none",
+      progressGoalCustom: false,
+      progress: null,
+    });
+  });
+
   test("countByStatus inclui todos os status, mesmo zerados", async () => {
     await addToLibrary(ctx, igdb, { igdbId: 114283, status: "playing" });
     await addToLibrary(ctx, igdb, { igdbId: 12517, status: "backlog" });

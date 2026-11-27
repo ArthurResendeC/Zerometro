@@ -2,6 +2,7 @@ import { z } from "zod";
 import { isoDateSchema } from "./dates";
 import {
   type CompletionType,
+  completionTypeLabels,
   completionTypes,
   completionTypeSchema,
   type GameStatus,
@@ -57,7 +58,7 @@ export const markCompletedSchema = z.object({
 export type MarkCompletedInput = z.infer<typeof markCompletedSchema>;
 
 // ---------------------------------------------------------------------------
-// Progresso estimado com alvo dinâmico
+// Progresso rumo à meta do jogo
 
 export const ttbByType: Record<CompletionType, keyof TimeToBeat> = {
   main: "mainSec",
@@ -65,30 +66,88 @@ export const ttbByType: Record<CompletionType, keyof TimeToBeat> = {
   full: "completeSec",
 };
 
+/**
+ * Até onde a barra de progresso mede: um nível de conclusão (pelo tempo do IGDB), um alvo em
+ * horas escolhido pelo usuário ou nenhum (sem barra).
+ */
+export const progressGoals = [...completionTypes, "hours", "none"] as const;
+export const progressGoalSchema = z.enum(progressGoals);
+export type ProgressGoal = z.infer<typeof progressGoalSchema>;
+
+export const progressGoalLabels: Record<ProgressGoal, string> = {
+  ...completionTypeLabels,
+  hours: "Horas",
+  none: "Sem barra",
+};
+
+/** Teto do alvo em horas (o mesmo do tempo antes do Zerômetro). */
+export const MAX_GOAL_MINUTES = 9999 * 60;
+export const progressGoalMinutesSchema = z
+  .number()
+  .int()
+  .min(60, "A meta precisa ter pelo menos 1h")
+  .max(MAX_GOAL_MINUTES, "A meta pode ter até 9999h");
+
+/** Sem meta escolhida: a história; jogo sem fim, sem barra. */
+export const defaultProgressGoal = (status: GameStatus): ProgressGoal =>
+  status === "endless" ? "none" : "main";
+
+/**
+ * Sem marcar a conclusão, a barra para aqui: passar do tempo do IGDB não é zerar (cada um joga
+ * num ritmo).
+ */
+export const MAX_UNCONFIRMED_PROGRESS = 0.99;
+
 export interface ProgressEstimate {
-  /** 0..1; null sem tempo do IGDB e sem conclusão. */
+  /** 0..1; null sem barra (meta "none" ou sem tempo do IGDB para a meta). */
   progress: number | null;
-  /** Para onde a barra aponta: a história, os extras ou o 100%. */
-  target: CompletionType;
+  goal: ProgressGoal;
+  /** Minutos da meta: as horas escolhidas ou o tempo do IGDB; null sem tempo. */
+  targetMinutes: number | null;
+  /** Meta cumprida: conclusão marcada no nível da meta (ou acima) ou as horas alcançadas. */
+  done: boolean;
 }
 
 /**
- * Sem conclusão, mede o tempo jogado contra a história; depois de zerar, contra o próximo nível
- * (extras e depois 100%) que tenha tempo no IGDB. Sem próximo nível com tempo, fica cheia no
- * nível já alcançado.
+ * Progresso rumo à meta. Num nível de conclusão, a barra só enche quando a conclusão é marcada
+ * (mesmo zerando mais rápido que o IGDB) e, sem ela, não passa de 99%. Em horas, enche ao
+ * alcançar o alvo. A meta nunca muda sozinha (zerar a história não troca a barra para os extras).
  */
-export function estimateProgress(
-  minutesPlayed: number,
-  timeToBeat: TimeToBeat | null,
-  best: CompletionType | null,
-): ProgressEstimate {
-  const next =
-    best === null ? (["main"] as const) : completionTypes.slice(completionRank(best) + 1);
-  for (const target of next) {
-    const seconds = timeToBeat?.[ttbByType[target]];
-    if (seconds) return { progress: Math.min(1, (minutesPlayed * 60) / seconds), target };
+export function estimateProgress({
+  minutesPlayed,
+  timeToBeat,
+  best,
+  goal,
+  goalMinutes,
+}: {
+  minutesPlayed: number;
+  timeToBeat: TimeToBeat | null;
+  best: CompletionType | null;
+  goal: ProgressGoal;
+  goalMinutes: number | null;
+}): ProgressEstimate {
+  if (goal === "none") return { progress: null, goal, targetMinutes: null, done: false };
+  if (goal === "hours") {
+    if (!goalMinutes) return { progress: null, goal, targetMinutes: null, done: false };
+    return {
+      progress: Math.min(1, minutesPlayed / goalMinutes),
+      goal,
+      targetMinutes: goalMinutes,
+      done: minutesPlayed >= goalMinutes,
+    };
   }
-  return best === null ? { progress: null, target: "main" } : { progress: 1, target: best };
+  const seconds = timeToBeat?.[ttbByType[goal]];
+  const targetMinutes = seconds ? Math.round(seconds / 60) : null;
+  if (best !== null && completionRank(best) >= completionRank(goal)) {
+    return { progress: 1, goal, targetMinutes, done: true };
+  }
+  if (!seconds) return { progress: null, goal, targetMinutes: null, done: false };
+  return {
+    progress: Math.min(MAX_UNCONFIRMED_PROGRESS, (minutesPlayed * 60) / seconds),
+    goal,
+    targetMinutes,
+    done: false,
+  };
 }
 
 /** Texto curto dos selos: "Zerado", "Zerado+", "100%". */
@@ -98,9 +157,11 @@ export const completionBadgeLabels: Record<CompletionType, string> = {
   full: "100%",
 };
 
-/** "45% da história", "60% rumo à história + extras", "80% rumo ao 100%". */
-export const progressTargetLabels: Record<CompletionType, string> = {
+/** "45% da história", "60% rumo à história + extras", "80% rumo ao 100%", "50% da meta". */
+export const progressTargetLabels: Record<ProgressGoal, string> = {
   main: "da história",
   extras: "rumo à história + extras",
   full: "rumo ao 100%",
+  hours: "da meta",
+  none: "",
 };

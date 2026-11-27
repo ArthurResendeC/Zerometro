@@ -1,5 +1,5 @@
 import { isNotNull, and, desc, eq, inArray, isNull, ne, type SQL, sql } from "drizzle-orm";
-import { displayStateOf, estimateProgress } from "../../shared/completions";
+import { defaultProgressGoal, displayStateOf, estimateProgress } from "../../shared/completions";
 import {
   type CompletionType,
   completionTypes,
@@ -296,11 +296,13 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
       entry.playtimeSource === "steam" && steamPlaytime
         ? steamPlaytime.minutes
         : minutes + entry.priorMinutes;
-    // Sem fim não se zera: sem barra de progresso.
-    const estimate =
-      entry.status === "endless"
-        ? ({ progress: null, target: "main" } as const)
-        : estimateProgress(minutesPlayed, timeToBeat, best);
+    const estimate = estimateProgress({
+      minutesPlayed,
+      timeToBeat,
+      best,
+      goal: entry.progressGoal ?? defaultProgressGoal(entry.status),
+      goalMinutes: entry.progressGoalMinutes,
+    });
     const onSteam =
       game.steamAppId !== null || row.followsSteamSet || steamPlaytime !== null
         ? true
@@ -368,7 +370,10 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
           : null,
       firstPlayedOn: firstPlayedOn ?? null,
       progress: estimate.progress,
-      progressTarget: estimate.target,
+      progressGoal: estimate.goal,
+      progressGoalCustom: entry.progressGoal !== null,
+      progressTargetMinutes: estimate.targetMinutes,
+      progressDone: estimate.done,
     };
   });
 }
@@ -478,7 +483,27 @@ export function updateLibraryEntry(
     );
   }
 
+  const goal =
+    patch.progressGoal !== undefined
+      ? patch.progressGoal
+      : current.progressGoalCustom
+        ? current.progressGoal
+        : null;
+  const goalMinutes =
+    goal !== "hours"
+      ? null
+      : (patch.progressGoalMinutes ??
+        (current.progressGoal === "hours" ? current.progressTargetMinutes : null));
+  if (goal === "hours" && goalMinutes === null) {
+    throw new ValidationError("Informe quantas horas tem a meta");
+  }
+  if (patch.progressGoalMinutes !== undefined && goal !== "hours") {
+    throw new ValidationError("Horas da meta só valem com a meta em horas");
+  }
+  const goalChanged = patch.progressGoal !== undefined || patch.progressGoalMinutes !== undefined;
+
   const changes = {
+    ...(goalChanged && { progressGoal: goal, progressGoalMinutes: goalMinutes }),
     ...(patch.status !== undefined && { status: patch.status }),
     ...(patch.rating !== undefined && { rating: patch.rating }),
     ...(patch.notes !== undefined && { notes: patch.notes || null }),

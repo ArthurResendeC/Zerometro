@@ -32,6 +32,7 @@ import {
   zonedToInstant,
 } from "../src/shared/dates";
 import type { CompletionType, GameStatus, SessionSource } from "../src/shared/domain";
+import type { ProgressGoal } from "../src/shared/completions";
 import { type FeedGame, type FeedKey, feedKeys } from "../src/shared/feeds";
 import { saveFeedSnapshot } from "../src/server/services/feeds";
 import { saveGamePage } from "../src/server/services/game-pages";
@@ -74,6 +75,8 @@ interface EntrySpec {
   platform?: string;
   /** Onde emula (a plataforma continua sendo o console do jogo). */
   emulatedOn?: string;
+  /** Meta da barra de progresso (sem ela, a padrão do status). */
+  goal?: ProgressGoal;
   rating?: number;
   notes?: string;
   /** Horas jogadas antes do Zerômetro (sem sessões). */
@@ -118,6 +121,7 @@ const LIBRARY: Record<GameKey, EntrySpec> = {
   celeste: {
     status: "playing",
     platform: "Switch",
+    goal: "extras",
     rating: 9,
     notes: "Faltam os B-sides.",
     purchase: { store: "eShop", price: 36.99 },
@@ -341,6 +345,7 @@ db.transaction((tx) => {
       pricePaidCents: purchase?.price === undefined ? null : Math.round(purchase.price * 100),
       store: purchase?.store ?? null,
       viaSubscription: purchase?.subscription ?? false,
+      progressGoal: spec.goal ?? null,
     };
     tx.insert(libraryEntries).values(entry).run();
   }

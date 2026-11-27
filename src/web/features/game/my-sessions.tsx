@@ -50,6 +50,7 @@ import { useRemoveFromLibrary, useUpdateLibraryEntry } from "@/lib/queries";
 import { useLogSessionDialog } from "@/stores/log-session-dialog";
 import { CompleteDialog, CompletionsSection } from "./completions-section";
 import { ObjectivesSection } from "./objectives-section";
+import { ProgressGoalControl } from "./progress-goal";
 
 // Aba "Minhas sessões" da página do jogo: tempo jogado, sessões, detalhes da entrada e remover.
 
@@ -131,14 +132,15 @@ function PlayedSummary({ item }: { item: LibraryItem }) {
             <XpBar
               value={item.progress * 100}
               cells={20}
-              tone={item.progress >= 1 ? "finished" : "primary"}
-              label={`Progresso estimado ${progressTargetLabels[item.progressTarget]}`}
+              tone={item.progressDone ? "finished" : "primary"}
+              label={`Progresso ${progressTargetLabels[item.progressGoal]}`}
             />
             <span className="display-xs tabular-nums">{formatPercent(item.progress)}</span>
           </div>
           <p className="text-xs text-muted-foreground">{progressText(item, item.progress)}</p>
         </div>
       )}
+      <ProgressGoalControl key={item.updatedAt} item={item} />
       {item.playtimeSource === "sessions" && item.priorMinutes > 0 && (
         <p className="text-xs text-muted-foreground">
           {formatMinutes(item.priorMinutes)} antes do Zerômetro
@@ -570,16 +572,25 @@ function RemoveButton({ item }: { item: LibraryItem }) {
   );
 }
 
-/** O que a barra de progresso mede: a história antes de zerar, depois o próximo nível. */
+/** O que a barra mede, rumo à meta do jogo. */
 function progressText(item: LibraryItem, progress: number): string {
-  const { completion, progressTarget } = item;
-  // Já zerou e o IGDB não tem tempo do próximo nível: a barra fica cheia no nível alcançado.
-  if (completion && progressTarget === completion.best) {
-    return completion.best === "full"
-      ? "Concluído 100%"
-      : `${completionTypeLabels[completion.best]} concluída (o IGDB não tem tempo do próximo nível)`;
+  const { progressGoal: goal, progressDone: done, minutesPlayed: played } = item;
+  const target = item.progressTargetMinutes;
+  if (goal === "none") return "";
+  if (goal === "hours") {
+    if (target === null) return "";
+    return done
+      ? `Meta de ${formatMinutes(target)} alcançada`
+      : `${formatMinutes(played)} de ${formatMinutes(target)}`;
   }
-  return `${formatPercent(progress)} ${progressTargetLabels[progressTarget]} (estimativa pelo tempo do IGDB)`;
+  if (done) {
+    const faster = target !== null && played < target;
+    return `Meta cumprida: ${completionTypeLabels[goal]}${faster ? ` em ${formatMinutes(played)} (o IGDB estima ${formatMinutes(target)})` : ""}`;
+  }
+  if (target !== null && played >= target) {
+    return `Passou dos ${formatMinutes(target)} estimados pelo IGDB: marque a conclusão quando chegar lá`;
+  }
+  return `${formatPercent(progress)} ${progressTargetLabels[goal]} (estimativa pelo tempo do IGDB)`;
 }
 
 /** "Também apaga 8 sessões (13h 55min), 2 conclusões e 3 objetivos." */

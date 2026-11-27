@@ -405,6 +405,31 @@ describe("tools", () => {
     await client.close();
   });
 
+  test("meta da barra: set_progress_goal em horas e de volta ao padrão", async () => {
+    const client = await connect(t, await authorize(t));
+    await callJson(client, "add_game", { igdbId: 114283, status: "endless" });
+    const hours = await callJson(client, "set_progress_goal", {
+      game: "persona",
+      goal: "hours",
+      hours: 500,
+    });
+    expect(hours.data).toMatchObject({
+      progressGoal: "hours",
+      progressGoalCustom: true,
+      progressTargetMinutes: 30_000,
+      progressPercent: 0,
+    });
+    const back = await callJson(client, "set_progress_goal", { game: "persona", goal: "default" });
+    expect(back.data).toMatchObject({ progressGoal: "none", progressPercent: null });
+    const wrong = await callJson(client, "set_progress_goal", {
+      game: "persona",
+      goal: "main",
+      hours: 10,
+    });
+    expect(wrong.isError).toBe(true);
+    await client.close();
+  });
+
   test("plataforma: set_platform com emulação, e o add_game já emulado", async () => {
     const client = await connect(t, await authorize(t));
     const added = await callJson(client, "add_game", {
