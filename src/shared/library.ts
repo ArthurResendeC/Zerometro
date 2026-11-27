@@ -11,7 +11,6 @@ import type { ObjectivesSummary } from "./objectives";
 import { isoDateSchema } from "./dates";
 import { MAX_PRICE_CENTS } from "./money";
 import {
-  type CompletionType,
   type GameStatus,
   gameStatusSchema,
   type PlaytimeSource,

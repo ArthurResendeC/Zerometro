@@ -10,6 +10,9 @@ describe("settings", () => {
     expect(getSettings(createTestContext())).toEqual({
       streakMinMinutes: 30,
       longSessionMinutes: 360,
+      ratingMode: "blend",
+      ratingBlendWeight: 0.7,
+      ratingCustomWeights: null,
     });
   });
 

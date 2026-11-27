@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BLEND_WEIGHT, ratingModeSchema, ratingWeightsSchema } from "./ratings";
 
 // Preferências do usuário (guardadas no `kv`), compartilhadas por API, frontend e MCP.
 
@@ -19,12 +20,24 @@ export const settingsSchema = z.object({
     .int()
     .min(LONG_SESSION_MINUTES.min, "O aviso de sessão longa começa em pelo menos 1h")
     .max(LONG_SESSION_MINUTES.max, "O aviso de sessão longa vai até 24h"),
+  /** Como sai a nota final das avaliações. */
+  ratingMode: ratingModeSchema,
+  /** Peso da nota calculada na mistura com a de coração. */
+  ratingBlendWeight: z
+    .number()
+    .min(BLEND_WEIGHT.min, "A calculada pesa pelo menos 10% na mistura")
+    .max(BLEND_WEIGHT.max, "A calculada pesa no máximo 90% na mistura"),
+  /** Pesos padrão personalizados (null = os do método). */
+  ratingCustomWeights: ratingWeightsSchema.nullable(),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
 export const DEFAULT_SETTINGS: Settings = {
   streakMinMinutes: STREAK_MIN_MINUTES.default,
   longSessionMinutes: LONG_SESSION_MINUTES.default,
+  ratingMode: "blend",
+  ratingBlendWeight: BLEND_WEIGHT.default,
+  ratingCustomWeights: null,
 };
 
 export const updateSettingsSchema = settingsSchema
