@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, useLayoutEffect, useRef } from "react";
 import { addDays, diffInDays, startOfWeek } from "@shared/dates";
 import type { Heatmap } from "@shared/stats";
 import { Card } from "@/components/ui/card";
@@ -6,11 +6,11 @@ import { ChartTooltipBox } from "@/components/ui/chart";
 import { formatMinutes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { type HeatLevel, heatColors, heatLevel, heatThresholds } from "./heat-levels";
+import { useMarkTooltip } from "./use-mark-tooltip";
 
 // Heatmap estilo GitHub: uma coluna por semana (segunda a domingo), uma célula por dia.
 // No celular a grade rola de lado e começa mostrando as semanas mais recentes.
-// Com mouse o dia aparece no hover; no toque, tocar num dia fixa o balão até o próximo toque
-// (em outro dia troca, no mesmo dia ou fora da grade fecha), como um menu.
+// Com mouse o dia aparece no hover; no toque, tocar num dia fixa o balão (useMarkTooltip).
 
 const WEEKDAY_LABELS = [
   ["mon", "seg"],
@@ -79,15 +79,6 @@ function monthLabels(
   return labels;
 }
 
-interface ActiveCell {
-  cell: HeatCell;
-  /** Centro do topo da célula, na viewport. */
-  x: number;
-  y: number;
-  /** Fixado pelo toque: fica até o próximo toque. Sem isso, é hover do mouse. */
-  pinned: boolean;
-}
-
 interface ActivityHeatmapProps {
   heatmap: Heatmap;
   /** Controles no cabeçalho (ex.: seletor de ano). */
@@ -99,9 +90,8 @@ interface ActivityHeatmapProps {
 export function ActivityHeatmap({ heatmap, actions, stale = false }: ActivityHeatmapProps) {
   const weeks = buildWeeks(heatmap);
   const months = monthLabels(weeks, heatmap.from, heatmap.to);
-  const [active, setActive] = useState<ActiveCell | null>(null);
+  const tooltip = useMarkTooltip<HeatCell>();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
   const period = heatmap.year ? `em ${heatmap.year}` : "nos últimos 12 meses";
 
   // Quando a grade não cabe, começa mostrando hoje na borda direita (ou o fim de um ano que
@@ -114,46 +104,6 @@ export function ActivityHeatmap({ heatmap, actions, stale = false }: ActivityHea
       ? today.offsetLeft + today.offsetWidth + 8 - el.clientWidth
       : el.scrollWidth;
   }, []);
-
-  // O balão é `fixed`: qualquer rolagem (da grade ou da página) o descola do dia, então fecha.
-  // Fixado pelo toque, também fecha com um toque fora da grade ou com Esc.
-  const pinned = active?.pinned ?? false;
-  useEffect(() => {
-    if (!active) return;
-    const close = () => setActive(null);
-    const onPointerDown = (event: PointerEvent) => {
-      // Tocar num dia é tratado no pointerup dele (troca ou fecha); qualquer outro lugar fecha.
-      if (!(event.target as Element).closest?.("[data-day]")) close();
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
-    };
-    window.addEventListener("scroll", close, { capture: true, passive: true });
-    if (pinned) {
-      document.addEventListener("pointerdown", onPointerDown);
-      document.addEventListener("keydown", onKeyDown);
-    }
-    return () => {
-      window.removeEventListener("scroll", close, { capture: true });
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [active, pinned]);
-
-  // Centralizado no dia, mas sem passar da borda da tela (os últimos dias ficam no canto direito).
-  useLayoutEffect(() => {
-    const el = tooltipRef.current;
-    if (!el || !active) return;
-    const margin = 8;
-    const half = el.offsetWidth / 2;
-    const max = document.documentElement.clientWidth - margin - half;
-    el.style.left = `${Math.max(margin + half, Math.min(active.x, max))}px`;
-  }, [active]);
-
-  const show = (target: HTMLElement, cell: HeatCell, isPinned: boolean) => {
-    const rect = target.getBoundingClientRect();
-    setActive({ cell, x: rect.left + rect.width / 2, y: rect.top, pinned: isPinned });
-  };
 
   return (
     <Card className={cn("gap-3", stale && "opacity-60")}>
@@ -192,9 +142,7 @@ export function ActivityHeatmap({ heatmap, actions, stale = false }: ActivityHea
               gridTemplateColumns: `repeat(${weeks.length}, var(--cell))`,
               gridTemplateRows: "1.25rem repeat(7, var(--cell))",
             }}
-            onPointerLeave={(event) => {
-              if (event.pointerType === "mouse") setActive((prev) => (prev?.pinned ? prev : null));
-            }}
+            onPointerLeave={tooltip.onPointerLeave}
           >
             {months.map(({ column, label }) => (
               <span
@@ -210,8 +158,8 @@ export function ActivityHeatmap({ heatmap, actions, stale = false }: ActivityHea
               week.map((cell, weekday) => (
                 <span
                   key={cell.date}
+                  {...(cell.visible && tooltip.mark(cell.date, cell))}
                   data-today={cell.date === heatmap.today || undefined}
-                  data-day={cell.visible || undefined}
                   style={{
                     gridRow: weekday + 2,
                     gridColumn: column + 1,
@@ -221,30 +169,9 @@ export function ActivityHeatmap({ heatmap, actions, stale = false }: ActivityHea
                     "size-(--cell)",
                     cell.visible && "hover:brightness-125",
                     cell.date === heatmap.today && "shadow-[inset_0_0_0_2px_var(--foreground)]",
-                    active?.pinned &&
-                      active.cell.date === cell.date &&
+                    tooltip.isPinned(cell.date) &&
                       "brightness-125 outline-2 outline-offset-1 outline-foreground",
                   )}
-                  onPointerEnter={
-                    cell.visible
-                      ? (event) => {
-                          // No toque o pointerenter vem junto do tap; quem decide é o pointerup.
-                          if (event.pointerType !== "mouse" || active?.pinned) return;
-                          show(event.currentTarget, cell, false);
-                        }
-                      : undefined
-                  }
-                  onPointerUp={
-                    cell.visible
-                      ? (event) => {
-                          // Com mouse o hover já basta. No toque, arrastar para rolar a grade vira
-                          // pointercancel, então só um tap de verdade chega aqui.
-                          if (event.pointerType === "mouse") return;
-                          if (active?.pinned && active.cell.date === cell.date) setActive(null);
-                          else show(event.currentTarget, cell, true);
-                        }
-                      : undefined
-                  }
                 />
               )),
             )}
@@ -254,19 +181,12 @@ export function ActivityHeatmap({ heatmap, actions, stale = false }: ActivityHea
 
       <HeatLegend streakMinMinutes={heatmap.streakMinMinutes} />
 
-      {active && (
-        <div
-          ref={tooltipRef}
-          role="tooltip"
-          className="pointer-events-none fixed z-50 w-max -translate-x-1/2 -translate-y-full pb-1"
-          style={{ left: active.x, top: active.y }}
-        >
-          <ChartTooltipBox
-            value={active.cell.minutes > 0 ? formatMinutes(active.cell.minutes) : "Não jogou"}
-            label={dayFormat.format(utc(active.cell.date))}
-          />
-        </div>
-      )}
+      {tooltip.tooltip((cell) => (
+        <ChartTooltipBox
+          value={cell.minutes > 0 ? formatMinutes(cell.minutes) : "Não jogou"}
+          label={dayFormat.format(utc(cell.date))}
+        />
+      ))}
 
       {/* sr-only numa div: em <table> a altura de 1px e o overflow não valem. */}
       <div className="sr-only">

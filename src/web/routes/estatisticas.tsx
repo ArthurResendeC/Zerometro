@@ -11,7 +11,14 @@ import { ActivityHeatmap } from "@/features/stats/activity-heatmap";
 import { BarList } from "@/features/stats/bar-list";
 import { RecordsSection } from "@/features/stats/records-section";
 import { RhythmSection } from "@/features/stats/rhythm-section";
-import { breakdownQuery, heatmapQuery, recordsQuery, rhythmQuery } from "@/lib/queries";
+import { TimelineSection } from "@/features/stats/timeline-section";
+import {
+  breakdownQuery,
+  heatmapQuery,
+  recordsQuery,
+  rhythmQuery,
+  timelineQuery,
+} from "@/lib/queries";
 
 const GENRES_SHOWN = 8;
 
@@ -29,6 +36,7 @@ export const Route = createFileRoute("/estatisticas")({
       context.queryClient.ensureQueryData(breakdownQuery(deps.year)),
       context.queryClient.ensureQueryData(rhythmQuery(deps.year)),
       context.queryClient.ensureQueryData(recordsQuery(deps.year)),
+      context.queryClient.ensureQueryData(timelineQuery(deps.year)),
     ]),
   component: StatsPage,
 });
@@ -40,6 +48,7 @@ function StatsPage() {
   const { data: breakdown } = useSuspenseQuery(breakdownQuery(year));
   const { data: rhythm } = useSuspenseQuery(rhythmQuery(year));
   const { data: records } = useSuspenseQuery(recordsQuery(year));
+  const { data: timeline } = useSuspenseQuery(timelineQuery(year));
   const period = year ? `em ${year}` : "nos últimos 12 meses";
 
   return (
@@ -77,6 +86,8 @@ function StatsPage() {
         <GenresCard breakdown={breakdown} />
         <GamesCard breakdown={breakdown} />
       </div>
+
+      <TimelineSection timeline={timeline} />
 
       <RhythmSection rhythm={rhythm} />
 

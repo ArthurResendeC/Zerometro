@@ -529,6 +529,13 @@ export const recordsQuery = (year?: number) =>
     placeholderData: keepPreviousData,
   });
 
+export const timelineQuery = (year?: number) =>
+  queryOptions({
+    queryKey: [...statsKeys.all, "timeline", year ?? "rolling"],
+    queryFn: () => unwrap(api.stats.timeline.$get({ query: year ? { year: String(year) } : {} })),
+    placeholderData: keepPreviousData,
+  });
+
 /** Recap da semana ou do mês que contém `date` (sem data: o último período fechado). */
 export const recapQuery = (period: RecapPeriod, date?: string) =>
   queryOptions({

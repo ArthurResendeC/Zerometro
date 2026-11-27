@@ -5,6 +5,7 @@ import { recapImageFileName, recapImageQuerySchema, recapQuerySchema } from "../
 import { statsPeriodSchema } from "../../shared/stats";
 import { validate } from "../lib/validate";
 import { getRecap } from "../services/recap";
+import { getTimeline } from "../services/timeline";
 import { renderRecapImage } from "../services/recap-image";
 import { getHeatmap, getPeriodBreakdown, getRecords, getRhythm, getStats } from "../services/stats";
 
@@ -35,6 +36,11 @@ export function createStatsRoutes(deps: AppDeps) {
       const ctx = webContext(deps, c);
       const { year } = c.req.valid("query");
       return c.json(getRecords(ctx, { today: ctx.today, year }));
+    })
+    .get("/timeline", validate("query", statsPeriodSchema), (c) => {
+      const ctx = webContext(deps, c);
+      const { year } = c.req.valid("query");
+      return c.json(getTimeline(ctx, { today: ctx.today, year }));
     })
     .get("/recap", validate("query", recapQuerySchema), (c) => {
       const ctx = webContext(deps, c);

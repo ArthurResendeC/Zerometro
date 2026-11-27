@@ -173,6 +173,7 @@ describe("tools", () => {
       "get_profile",
       "get_recap",
       "get_stats",
+      "get_timeline",
       "list_achievements",
       "list_library",
       "list_objectives",
@@ -222,6 +223,12 @@ describe("tools", () => {
     expect(period.data).toMatchObject({ totalMinutes: 45, playedDays: 1, sessions: 1 });
     expect(period.data.topGames[0]).toMatchObject({ name: "Persona 5 Royal", minutes: 45 });
     expect(period.data.weekdays).toHaveLength(7);
+
+    const timeline = await callJson(client, "get_timeline", {});
+    const persona = timeline.data.games.find((g: { name: string }) => g.name === "Persona 5 Royal");
+    expect(persona).toMatchObject({ minutes: 45, statusLabel: "Jogando", pauses: [] });
+    expect(persona.spans).toEqual([expect.objectContaining({ minutes: 45, playedDays: 1 })]);
+    expect(persona).not.toHaveProperty("coverImageId");
 
     // Perfil: entram o Persona (45 min) e o Pokémon Red (zerado, sem tempo); o próximo, não. O
     // fake credita a todos a mesma dev (Atlus) e a mesma série (Persona).

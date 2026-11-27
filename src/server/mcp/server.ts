@@ -49,6 +49,7 @@ import {
 import { recapSlideIds, recapSlides } from "../../shared/recap-slides";
 import { profileTitle } from "../../shared/recap-text";
 import { sessionLengthBuckets } from "../../shared/stats";
+import { timelinePauses } from "../../shared/timeline";
 import { type LogSessionResult, noteSchema } from "../../shared/sessions";
 import type { AppDeps } from "../app";
 import { AppError, TimerActiveError } from "../errors";
@@ -90,6 +91,7 @@ import { getProfile } from "../services/profile";
 import { getRecap } from "../services/recap";
 import { renderRecapImage } from "../services/recap-image";
 import { getHeatmap, getPeriodBreakdown, getRecords, getRhythm, getStats } from "../services/stats";
+import { getTimeline } from "../services/timeline";
 import { getActiveSession, startTimer, stopTimer } from "../services/timer";
 
 // Servidor MCP do Zerômetro: tools finas por cima dos `services/` (as mesmas regras da API
@@ -422,6 +424,48 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
           finished: records.finished,
           finishedByMonth: records.finishedByMonth.filter((m) => m.count > 0),
           paceRatio: records.paceRatio,
+        };
+      }),
+  );
+
+  server.registerTool(
+    "get_timeline",
+    {
+      title: "Linha do tempo",
+      description:
+        'Quando joguei cada jogo nos últimos 12 meses (padrão) ou num ano: os trechos contínuos de jogo (from/to, minutos e dias jogados), as pausas de mais de 14 dias sem jogar entre eles e as conclusões. startedBefore/continuesAfter = o trecho atravessa a borda do período. Ex.: "quando eu larguei o Persona?", "em que jogos eu voltei depois de uma pausa?", "o que eu joguei em março?".',
+      inputSchema: z.object({
+        year: z
+          .number()
+          .int()
+          .min(2000)
+          .max(2100)
+          .optional()
+          .describe("Ano de calendário; sem ano, os últimos 12 meses"),
+      }),
+      annotations: readOnly,
+    },
+    ({ year }) =>
+      run(() => {
+        const scope = ctx();
+        const timeline = getTimeline(scope, { today: scope.today, year });
+        return {
+          ...timeline,
+          games: timeline.games.map((game) => ({
+            gameId: game.gameId,
+            igdbId: game.igdbId,
+            name: game.name,
+            status: game.status,
+            statusLabel: gameStatusLabels[game.status],
+            minutes: game.minutes,
+            spans: game.spans,
+            pauses: timelinePauses(game.spans),
+            completions: game.completions.map(({ completedOn, type }) => ({
+              completedOn,
+              type,
+              typeLabel: completionTypeLabels[type],
+            })),
+          })),
         };
       }),
   );
