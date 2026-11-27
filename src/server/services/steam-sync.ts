@@ -299,7 +299,8 @@ export async function autoSyncSteam(
 
 /**
  * Vale buscar as conquistas de novo? Sem jogar, elas não mudam, e jogar muda as horas (ou a data
- * em que jogou por último). Quem esconde o tempo de jogo na Steam: só os jogos "jogando".
+ * em que jogou por último). Quem esconde o tempo de jogo na Steam: só os jogos "jogando" e
+ * "sem fim".
  */
 export function changedSinceSync(
   item: Pick<LibraryItem, "status" | "steamPlaytime">,
@@ -308,7 +309,7 @@ export function changedSinceSync(
 ): boolean {
   const last = item.steamPlaytime;
   if (!last) return true;
-  if (hidesPlaytime) return item.status === "playing";
+  if (hidesPlaytime) return item.status === "playing" || item.status === "endless";
   if (game.minutes !== last.minutes) return true;
   return game.lastPlayedAt !== null && game.lastPlayedAt.getTime() > Date.parse(last.syncedAt);
 }

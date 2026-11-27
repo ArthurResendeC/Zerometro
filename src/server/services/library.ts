@@ -296,7 +296,11 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
       entry.playtimeSource === "steam" && steamPlaytime
         ? steamPlaytime.minutes
         : minutes + entry.priorMinutes;
-    const estimate = estimateProgress(minutesPlayed, timeToBeat, best);
+    // Sem fim não se zera: sem barra de progresso.
+    const estimate =
+      entry.status === "endless"
+        ? ({ progress: null, target: "main" } as const)
+        : estimateProgress(minutesPlayed, timeToBeat, best);
     const onSteam =
       game.steamAppId !== null || row.followsSteamSet || steamPlaytime !== null
         ? true
@@ -624,7 +628,7 @@ export function applyStatusRules(
   let finishedAt =
     patch.finishedAt !== undefined ? patch.finishedAt : (current?.finishedAt ?? null);
 
-  if (status === "playing" && !startedAt) startedAt = today;
+  if ((status === "playing" || status === "endless") && !startedAt) startedAt = today;
   if (status === "finished") finishedAt ??= today;
   else finishedAt = null;
 

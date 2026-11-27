@@ -13,6 +13,8 @@ const badgeVariants = cva(
         brand: "bg-primary text-primary-foreground [--px-frame-color:var(--primary)]",
         playing:
           "bg-status-playing text-status-playing-foreground [--px-frame-color:var(--status-playing)]",
+        endless:
+          "bg-status-endless text-status-endless-foreground [--px-frame-color:var(--status-endless)]",
         finished:
           "bg-status-finished text-status-finished-foreground [--px-frame-color:var(--status-finished)]",
         backlog:

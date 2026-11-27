@@ -4,6 +4,8 @@ import { z } from "zod";
 
 export const gameStatuses = [
   "playing",
+  /** Jogo sem fim (multiplayer, live service): não se zera, nem está pausado ou abandonado. */
+  "endless",
   "finished",
   "backlog",
   "wishlist",
@@ -15,6 +17,7 @@ export type GameStatus = z.infer<typeof gameStatusSchema>;
 
 export const gameStatusLabels: Record<GameStatus, string> = {
   playing: "Jogando",
+  endless: "Sem fim",
   finished: "Zerado",
   backlog: "Próximos",
   wishlist: "Desejos",

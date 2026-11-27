@@ -194,8 +194,24 @@ export const VolumeOffIcon = pixelIcon(
   "VolumeOffIcon",
 );
 
+/** ∞: dois laços que se cruzam no meio. */
+export const InfinityIcon = pixelIcon(
+  r(1, 2, 2) +
+    r(5, 2, 2) +
+    r(0, 3) +
+    r(3, 3, 2) +
+    r(7, 3) +
+    r(0, 4) +
+    r(3, 4, 2) +
+    r(7, 4) +
+    r(1, 5, 2) +
+    r(5, 5, 2),
+  "InfinityIcon",
+);
+
 const statusIcons: Record<GameStatus, ReturnType<typeof pixelIcon>> = {
   playing: PlayIcon,
+  endless: InfinityIcon,
   finished: CheckIcon,
   backlog: ListIcon,
   wishlist: StarIcon,

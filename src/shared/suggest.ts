@@ -153,7 +153,7 @@ export function remainingMinutes(item: LibraryItem): number | null {
 }
 
 function isCandidate(item: LibraryItem, { mood, platform }: SuggestOptions): boolean {
-  if (!["playing", "backlog", "paused"].includes(item.status)) return false;
+  if (!["playing", "endless", "backlog", "paused"].includes(item.status)) return false;
   if (platform && !playableOn(item, platform)) return false;
   // Coop é obrigatório: sugerir um jogo solo para jogar com alguém não serve.
   if (mood === "coop" && !item.gameModes.some((m) => COOP_MODES.has(m))) return false;
@@ -176,11 +176,15 @@ function score(item: LibraryItem, { available, mood, today }: SuggestOptions): S
 
   // Status: o que está em andamento vem antes.
   if (item.status === "paused") bump(0.5, "Está pausado: que tal retomar?");
-  else bump(item.status === "playing" ? 3 : 1);
+  else if (item.status === "endless") {
+    // Sem fim: não há o que zerar, mas uma partida cabe num tempo curto.
+    bump(2);
+    if (available === "short") bump(1, "Sem fim: uma partida cabe em pouco tempo");
+  } else bump(item.status === "playing" ? 3 : 1);
 
   // Continuidade: jogou há pouco, ou está parado há muito.
   const daysAway = item.lastPlayedOn ? diffInDays(item.lastPlayedOn, today) : null;
-  if (item.status === "playing" && daysAway !== null) {
+  if ((item.status === "playing" || item.status === "endless") && daysAway !== null) {
     if (daysAway <= RECENT_DAYS) {
       bump(
         2,

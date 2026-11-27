@@ -339,7 +339,7 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     {
       title: "Listar biblioteca",
       description:
-        'Lista os jogos da biblioteca do usuário, com status, conclusões (zerado, 100%), tempo jogado e progresso estimado. Filtre por status (playing = jogando, finished = zerado e parado, backlog = próximos, wishlist = desejos, paused, dropped), por display_state "postgame" (jogando um jogo já zerado) e/ou parte do nome. Ordene com sort: last_session (última sessão), started_at (quando começou a jogar; sem data de início, a primeira sessão) ou rating (nota do usuário); quem não tem o valor fica no fim.',
+        'Lista os jogos da biblioteca do usuário, com status, conclusões (zerado, 100%), tempo jogado e progresso estimado. Filtre por status (playing = jogando, endless = sem fim (multiplayer, live service: não se zera), finished = zerado e parado, backlog = próximos, wishlist = desejos, paused, dropped), por display_state "postgame" (jogando um jogo já zerado) e/ou parte do nome. Ordene com sort: last_session (última sessão), started_at (quando começou a jogar; sem data de início, a primeira sessão) ou rating (nota do usuário); quem não tem o valor fica no fim.',
       inputSchema: z.object({
         status: gameStatusSchema.optional(),
         display_state: z
@@ -825,7 +825,7 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     {
       title: "Adicionar jogo",
       description:
-        "Adiciona um jogo do IGDB à biblioteca. Use search_igdb antes para achar o igdbId (confirme com o usuário se houver várias edições). Status: backlog (próximos), wishlist (desejos), playing (jogando), finished (zerado), paused, dropped. Erro se o jogo já estiver na biblioteca.",
+        "Adiciona um jogo do IGDB à biblioteca. Use search_igdb antes para achar o igdbId (confirme com o usuário se houver várias edições). Status: backlog (próximos), wishlist (desejos), playing (jogando), endless (sem fim: multiplayer, live service, jogos que não se zeram), finished (zerado), paused, dropped. Erro se o jogo já estiver na biblioteca.",
       inputSchema: z.object({
         igdbId: z.number().int().positive().describe("Id do jogo no IGDB (de search_igdb)"),
         status: gameStatusSchema.default("backlog"),
@@ -932,7 +932,7 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     {
       title: "Mudar status",
       description:
-        'Muda o status de um jogo da biblioteca ("larguei Y", "vou jogar Z depois", "terminei e parei de jogar X"). playing preenche a data de início se vazia; finished preenche a data de término (hoje, ou finishedAt) e, se o jogo não tiver nenhuma conclusão, registra a da história nessa data; sair de finished não apaga conclusões. Para registrar que zerou (inclusive extras/100% ou continuando a jogar), prefira mark_completed. Datas no formato YYYY-MM-DD, nunca no futuro.',
+        'Muda o status de um jogo da biblioteca ("larguei Y", "vou jogar Z depois", "terminei e parei de jogar X"). playing e endless (sem fim: multiplayer, live service, que não se zera nem está pausado ou abandonado) preenchem a data de início se vazia; finished preenche a data de término (hoje, ou finishedAt) e, se o jogo não tiver nenhuma conclusão, registra a da história nessa data; sair de finished não apaga conclusões. Para registrar que zerou (inclusive extras/100% ou continuando a jogar), prefira mark_completed. Datas no formato YYYY-MM-DD, nunca no futuro.',
       inputSchema: z.object({
         game: gameRefSchema,
         status: gameStatusSchema,

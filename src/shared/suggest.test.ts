@@ -43,6 +43,13 @@ describe("suggestGames", () => {
     expect(top[0]!.reasons).toEqual(["Jogou ontem: continue no embalo"]);
   });
 
+  test("sem fim entra, acima dos próximos, e ganha um motivo com pouco tempo", () => {
+    const games = [item("Próximo"), item("Tarkov", { status: "endless" })];
+    expect(names(suggestGames(games, { today: TODAY }).top)).toEqual(["Tarkov", "Próximo"]);
+    const { top } = suggestGames(games, { today: TODAY, available: "short" });
+    expect(top[0]!.reasons).toEqual(["Sem fim: uma partida cabe em pouco tempo"]);
+  });
+
   test("30 minutos: quem dá para zerar hoje ganha, com o motivo; jogo longo novo perde", () => {
     const { top } = suggestGames(
       [

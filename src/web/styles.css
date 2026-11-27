@@ -45,6 +45,8 @@
   --chart-5: #7a3fbf;
   --status-playing: #b34700;
   --status-playing-foreground: #ffffff;
+  --status-endless: #b0306a;
+  --status-endless-foreground: #ffffff;
   --status-finished: #2a7a2a;
   --status-finished-foreground: #ffffff;
   --status-backlog: #0b6f86;
@@ -100,6 +102,8 @@
   --chart-5: #c49bff;
   --status-playing: #ff7a1a;
   --status-playing-foreground: #1a0d00;
+  --status-endless: #ff6fae;
+  --status-endless-foreground: #2a0716;
   --status-finished: #6bd66b;
   --status-finished-foreground: #0b1a0b;
   --status-backlog: #3ec7e0;
@@ -164,6 +168,8 @@
   --color-chart-5: var(--chart-5);
   --color-status-playing: var(--status-playing);
   --color-status-playing-foreground: var(--status-playing-foreground);
+  --color-status-endless: var(--status-endless);
+  --color-status-endless-foreground: var(--status-endless-foreground);
   --color-status-finished: var(--status-finished);
   --color-status-finished-foreground: var(--status-finished-foreground);
   --color-status-backlog: var(--status-backlog);

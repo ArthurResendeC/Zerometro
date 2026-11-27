@@ -120,6 +120,18 @@ describe("listLibrary", () => {
     expect(items[0]?.progress).toBeNull(); // Undertale sem tempo para zerar
   });
 
+  test("sem fim: não tem barra de progresso, mesmo com tempo do IGDB", async () => {
+    const { gameId } = await addToLibrary(ctx, igdb, { igdbId: 114283, status: "endless" });
+    logSession(ctx, { gameId, minutes: 600, playedOn: "2026-11-18" });
+    expect(getLibraryItem(ctx, gameId)).toMatchObject({
+      status: "endless",
+      displayState: "endless",
+      progress: null,
+      // Começou hoje, mas a sessão de ontem puxa o início para ela.
+      startedAt: "2026-11-18",
+    });
+  });
+
   test("countByStatus inclui todos os status, mesmo zerados", async () => {
     await addToLibrary(ctx, igdb, { igdbId: 114283, status: "playing" });
     await addToLibrary(ctx, igdb, { igdbId: 12517, status: "backlog" });
@@ -127,6 +139,7 @@ describe("listLibrary", () => {
 
     expect(countByStatus(ctx)).toEqual({
       playing: 1,
+      endless: 0,
       finished: 0,
       backlog: 2,
       wishlist: 0,
@@ -276,6 +289,7 @@ describe("applyStatusRules", () => {
   test("só devolve o que mudou", () => {
     expect(applyStatusRules(base, { status: "wishlist" }, today)).toEqual({});
     expect(applyStatusRules(base, { status: "playing" }, today)).toEqual({ startedAt: today });
+    expect(applyStatusRules(base, { status: "endless" }, today)).toEqual({ startedAt: today });
   });
 
   test("respeita datas informadas e mantém o início existente", () => {
