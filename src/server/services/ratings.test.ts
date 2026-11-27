@@ -197,6 +197,12 @@ describe("calibragem, médias e template", () => {
       "Persona 5 Royal",
     ]);
     expect(getCalibration(ctx).social).toEqual([]);
+    // Uma nota rápida depois não tira os critérios da avaliação anterior.
+    rate(celeste, { scores: {}, mode: "gut" }, "2026-10-30T12:00:00Z");
+    expect(getCalibration(ctx).narrative.map((e) => e.name)).toEqual([
+      "Persona 5 Royal",
+      "Celeste",
+    ]);
   });
 
   test("médias por critério com o maior e o menor", async () => {

@@ -171,6 +171,8 @@ describe("tools", () => {
       "get_game",
       "get_period_stats",
       "get_profile",
+      "get_rating",
+      "get_rating_template",
       "get_recap",
       "get_stats",
       "get_timeline",
@@ -740,5 +742,75 @@ describe("tools", () => {
       headers: { "content-type": "application/json", authorization: "Bearer lixo" },
     });
     expect(res.status).toBe(401);
+  });
+});
+
+describe("avaliação guiada", () => {
+  test("template, rate_game (válido e inválido) e get_rating", async () => {
+    await t.request("/api/library", json({ igdbId: 114283, status: "finished" }));
+    const client = await connect(t, await authorize(t));
+
+    const template = await callJson(client, "get_rating_template", { game: "persona" });
+    expect(template.isError).toBe(false);
+    expect(template.data.suggestedPreset).toBe("rpg");
+    expect(template.data.criteria).toHaveLength(13);
+    expect(template.data.criteria[0]).toMatchObject({
+      id: "controls",
+      group: "Como o jogo funciona",
+      question: "Os controles respondiam como você queria?",
+      notApplicableByDefault: false,
+    });
+    const social = template.data.criteria.find((c: { id: string }) => c.id === "social");
+    expect(social.notApplicableByDefault).toBe(true);
+
+    const scores = {
+      controls: 6,
+      goals: 6,
+      feedback: 6,
+      challenge: 6,
+      audiovisual: 6,
+      technical: 6,
+      mastery: 6,
+      curiosity: 6,
+      immersion: 6,
+      autonomy: 6,
+      meaning: 6,
+      narrative: 6,
+    };
+    const rated = await callJson(client, "rate_game", { game: "persona", scores, enjoyment: 5 });
+    expect(rated.isError).toBe(false);
+    expect(rated.data.rating).toMatchObject({
+      weighted: 8.3,
+      enjoyment: 5,
+      mode: "blend",
+      preset: "rpg",
+      warning: expect.stringContaining("bem diferente"),
+    });
+    expect(rated.data.game.rating).toBe(rated.data.rating.final);
+
+    const invalid = await callJson(client, "rate_game", {
+      game: "persona",
+      scores: { controls: 9 },
+      enjoyment: 5,
+    });
+    expect(invalid.isError).toBe(true);
+    const badEnjoyment = await callJson(client, "rate_game", { game: "persona", enjoyment: 7.3 });
+    expect(badEnjoyment.isError).toBe(true);
+
+    const quick = await callJson(client, "rate_game", {
+      game: "persona",
+      enjoyment: 8,
+      mode: "gut",
+    });
+    expect(quick.data.rating).toMatchObject({ final: 8, weighted: null });
+
+    const current = await callJson(client, "get_rating", { game: "persona" });
+    expect(current.data.latest).toMatchObject({ final: 8, mode: "gut" });
+    expect(current.data.previous).toHaveLength(1);
+
+    const game = await callJson(client, "get_game", { game: "persona" });
+    expect(game.data).toMatchObject({ rating: 8, latestRating: { final: 8 } });
+    const profile = await callJson(client, "get_profile");
+    expect(profile.data.criteriaAverages[0]).toMatchObject({ average: 6, games: 1 });
   });
 });

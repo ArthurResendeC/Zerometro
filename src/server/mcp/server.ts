@@ -47,6 +47,28 @@ import {
 } from "../../shared/profile";
 import { recapImageFormats, recapPeriods } from "../../shared/recap";
 import {
+  criterionGroupLabels,
+  criteriaById,
+  presetDefs,
+  presetNotApplicable,
+  presetWeights,
+  ratingCriteria,
+  ratingPresetSchema,
+  ratingPresets,
+} from "../../shared/rating-criteria";
+import {
+  type CriterionAverage,
+  DIVERGENCE_MESSAGE,
+  enjoymentSchema,
+  MIN_APPLICABLE_CRITERIA,
+  type RatingItem,
+  ratingModeLabels,
+  ratingModeSchema,
+  ratingReviewSchema,
+  ratingScoresSchema,
+  criterionNotesSchema,
+} from "../../shared/ratings";
+import {
   availableTimeSchema,
   moodSchema,
   pickSuggestion,
@@ -96,6 +118,13 @@ import { getSettings } from "../services/settings";
 import { importSteamGames, previewSteamImport } from "../services/steam-import";
 import { syncSteamGame, syncSteamLibrary } from "../services/steam-sync";
 import { getProfile } from "../services/profile";
+import {
+  createRating,
+  getCriteriaAverages,
+  getLatestRating,
+  getRatingTemplate,
+  listRatings,
+} from "../services/ratings";
 import { getRecap } from "../services/recap";
 import { renderRecapImage } from "../services/recap-image";
 import { getHeatmap, getPeriodBreakdown, getRecords, getRhythm, getStats } from "../services/stats";
@@ -207,7 +236,8 @@ function gameSummary(item: LibraryItem) {
     objectives: item.objectives,
     /** Conquistas das listas da Steam/RA que o jogo segue (null se não segue nenhuma). */
     achievements: item.achievements,
-    rating: item.rating,
+    /** Nota final da avaliação atual (0–10, 1 casa); detalhes em get_rating. */
+    rating: item.rating === null ? null : round1(item.rating),
     startedAt: item.startedAt,
     finishedAt: item.finishedAt,
     lastPlayedOn: item.lastPlayedOn,
@@ -401,6 +431,8 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
             completionist: hours(item.timeToBeat.completeSec),
           },
           sessionsCount: item.sessionsCount,
+          /** Avaliação atual (a mais recente), com as notas por critério; null sem avaliação. */
+          latestRating: ratingSummary(getLatestRating(scope, item.gameId)),
           completions: listCompletions(scope, item.gameId).map(completionSummary),
           objectives: listObjectives(scope, item.gameId).map(objectiveSummary),
           achievementSets: listGameAchievements(scope, deps.achievements, item.gameId).sets.map(
@@ -551,7 +583,7 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     {
       title: "Perfil de gamer",
       description:
-        'O "meu gosto" calculado pela biblioteca inteira (sem recorte de período): desenvolvedoras e publishers favoritas (rankings separados; publishers são as creditadas no IGDB, inclusive regionais), séries (collections do IGDB), franquias, gêneros, temas, perspectivas, modos de jogo e plataformas em que joguei. Cada linha traz horas, jogos, zerados, nota média e os jogos mais jogados. Ex.: "qual minha publisher favorita?", "que série eu mais joguei?", "de que dev eu gosto mais?" (sort: "rating"). Só entram jogos com tempo jogado ou conclusão.',
+        'O "meu gosto" calculado pela biblioteca inteira (sem recorte de período): desenvolvedoras e publishers favoritas (rankings separados; publishers são as creditadas no IGDB, inclusive regionais), séries (collections do IGDB), franquias, gêneros, temas, perspectivas, modos de jogo e plataformas em que joguei. Cada linha traz horas, jogos, zerados, nota média e os jogos mais jogados. criteriaAverages traz a média de cada critério da avaliação guiada (imersão, narrativa, desafio…) com o jogo de maior e menor nota ("o que eu mais valorizo?"). Ex.: "qual minha publisher favorita?", "que série eu mais joguei?", "de que dev eu gosto mais?" (sort: "rating"). Só entram jogos com tempo jogado ou conclusão.',
       inputSchema: z.object({
         sort: profileSortSchema
           .default("minutes")
@@ -590,6 +622,143 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
           perspectives: top("perspectives", perspectiveLabel),
           gameModes: top("gameModes", gameModeLabel),
           platforms: top("platforms"),
+          /** Média 1–7 de cada critério da avaliação guiada (o que o usuário mais valoriza). */
+          criteriaAverages: getCriteriaAverages(ctx()).map(criterionAverageSummary),
+        };
+      }),
+  );
+
+  server.registerTool(
+    "get_rating_template",
+    {
+      title: "Como avaliar um jogo (critérios)",
+      description:
+        'Os critérios da avaliação guiada do Zerômetro, com pergunta, o que significa 1 e 7, "por que importa" e um exemplo; os pesos do preset sugerido pelos gêneros do jogo; e a calibragem (as notas que o usuário deu no mesmo critério em jogos recentes). Use antes de rate_game quando o usuário pedir para avaliar conversando ("avalia comigo o Expedition 33"): pergunte UM critério por vez, na ordem, explicando a pergunta e os extremos e citando a calibragem ("no Hades você deu 6"); aceite "não se aplica" (null). No fim, pergunte a nota de coração (0 a 10, passos de 0,5: "no geral, quanto você gostou?") e, se quiser, uma review curta. Critérios com notApplicableByDefault começam como "não se aplica": pergunte só se fizer sentido (ex.: social em jogos multiplayer/coop).',
+      inputSchema: z.object({
+        game: gameRefSchema
+          .optional()
+          .describe("Jogo a avaliar (sugere o preset e tira ele da calibragem)"),
+      }),
+      annotations: readOnly,
+    },
+    ({ game }) =>
+      run(() => {
+        const scope = ctx();
+        const item = game === undefined ? null : resolveLibraryGame(scope, game);
+        const template = getRatingTemplate(scope, item?.gameId);
+        const preset = template.suggestedPreset;
+        const weights = presetWeights(preset, template.baseWeights);
+        const notApplicable = new Set(presetNotApplicable(preset));
+        return {
+          game: item && { gameId: item.gameId, name: item.name },
+          scale: "1 a 7 em cada critério (como o miniPXI); null = não se aplica",
+          suggestedPreset: preset,
+          presets: ratingPresets
+            .filter((p) => p !== "custom")
+            .map((p) => ({
+              id: p,
+              label: presetDefs[p].label,
+              description: presetDefs[p].description,
+            })),
+          mode: template.mode,
+          modeLabel: ratingModeLabels[template.mode],
+          blendWeight: template.blendWeight,
+          minApplicableCriteria: MIN_APPLICABLE_CRITERIA,
+          criteria: ratingCriteria.map((c) => ({
+            id: c.id,
+            group: criterionGroupLabels[c.group],
+            label: c.label,
+            question: c.question,
+            score1: c.low,
+            score7: c.high,
+            why: c.why,
+            example: c.example,
+            weight: weights[c.id],
+            notApplicableByDefault: notApplicable.has(c.id),
+            calibration: template.calibration[c.id].map((e) => `${e.name}: ${e.score}`),
+          })),
+          enjoyment: "No geral, quanto você gostou? 0 a 10, em passos de 0,5",
+          latestRating: ratingSummary(template.latest),
+        };
+      }),
+  );
+
+  server.registerTool(
+    "rate_game",
+    {
+      title: "Avaliar jogo",
+      description:
+        'Salva uma avaliação guiada: notas 1–7 por critério (ids de get_rating_template; null ou ausente = não se aplica) e a nota de coração (enjoyment, 0–10 em passos de 0,5). Devolve a nota ponderada, a de coração e a final (pelo modo dos ajustes: mistura, só a calculada ou só a de coração), e um aviso se as duas ficarem muito diferentes: nesse caso, comente com o usuário e ofereça revisar algum critério (chamando de novo) ou usar só a de coração (mode: "gut"). Cada chamada cria uma avaliação nova (reavaliar = chamar de novo; a mais recente é a nota do jogo). Para só dar uma nota ("dá 8 pro Hades"), mande só enjoyment com mode "gut". Pergunte os critérios antes (get_rating_template); não invente notas.',
+      inputSchema: z.object({
+        game: gameRefSchema,
+        scores: ratingScoresSchema
+          .default({})
+          .describe('Ex.: { "controls": 6, "narrative": 7, "social": null }'),
+        enjoyment: enjoymentSchema.describe("Nota de coração, 0 a 10 (passos de 0,5)"),
+        preset: ratingPresetSchema
+          .exclude(["custom"])
+          .optional()
+          .describe("Pesos por tipo de jogo; padrão: o sugerido pelos gêneros"),
+        mode: ratingModeSchema.optional().describe("weighted, gut ou blend; padrão: o dos ajustes"),
+        review: ratingReviewSchema.optional().describe("Texto livre do usuário"),
+        criterion_notes: criterionNotesSchema.optional().describe("Comentário por critério"),
+        completion_id: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe("Playthrough avaliado (id da conclusão em get_game)"),
+      }),
+      annotations: write,
+    },
+    ({ game, scores, enjoyment, preset, mode, review, criterion_notes, completion_id }) =>
+      run(() => {
+        const scope = ctx();
+        const item = resolveLibraryGame(scope, game);
+        const template = getRatingTemplate(scope, item.gameId);
+        const { rating, item: updated } = createRating(scope, item.gameId, {
+          scores,
+          enjoyment,
+          preset: preset ?? template.suggestedPreset,
+          mode,
+          review,
+          criterionNotes: criterion_notes,
+          completionId: completion_id,
+        });
+        return {
+          rating: ratingSummary(rating),
+          game: gameSummary(updated),
+          ...(rating.weighted === null &&
+            rating.mode !== "gut" && {
+              hint: `Com menos de ${MIN_APPLICABLE_CRITERIA} critérios avaliados não há nota calculada: a final é a de coração.`,
+            }),
+        };
+      }),
+  );
+
+  server.registerTool(
+    "get_rating",
+    {
+      title: "Avaliação de um jogo",
+      description:
+        "A avaliação atual (a mais recente) de um jogo, com as notas por critério, os pesos, a ponderada, a de coração, a final e a review, e o histórico de avaliações anteriores (uma por playthrough ou reavaliação).",
+      inputSchema: z.object({ game: gameRefSchema }),
+      annotations: readOnly,
+    },
+    ({ game }) =>
+      run(() => {
+        const scope = ctx();
+        const item = resolveLibraryGame(scope, game);
+        const [latest, ...previous] = listRatings(scope, item.gameId);
+        return {
+          game: { gameId: item.gameId, name: item.name },
+          latest: ratingSummary(latest ?? null),
+          previous: previous.map((r) => ({
+            id: r.id,
+            final: round1(r.final),
+            createdAt: r.createdAt,
+            completionId: r.completionId,
+          })),
         };
       }),
   );
@@ -1509,6 +1678,44 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
   );
 
   return server;
+}
+
+const round1 = (n: number) => Math.round(n * 10) / 10;
+
+/** Avaliação para o modelo: notas por critério com o nome, e as três notas em 1 casa. */
+function ratingSummary(rating: RatingItem | null) {
+  if (!rating) return null;
+  return {
+    id: rating.id,
+    final: round1(rating.final),
+    weighted: rating.weighted === null ? null : round1(rating.weighted),
+    enjoyment: rating.enjoyment,
+    mode: rating.mode,
+    modeLabel: ratingModeLabels[rating.mode],
+    preset: rating.preset,
+    presetLabel: presetDefs[rating.preset].label,
+    applicableCount: rating.applicableCount,
+    scores: Object.fromEntries(
+      ratingCriteria.map((c) => [c.id, { label: c.label, score: rating.scores[c.id] ?? null }]),
+    ),
+    weights: rating.weights,
+    criterionNotes: rating.criterionNotes,
+    review: rating.review,
+    completionId: rating.completionId,
+    createdAt: rating.createdAt,
+    ...(rating.divergent && { warning: DIVERGENCE_MESSAGE }),
+  };
+}
+
+function criterionAverageSummary(a: CriterionAverage) {
+  return {
+    criterion: a.criterion,
+    label: criteriaById[a.criterion].label,
+    average: round1(a.average),
+    games: a.count,
+    best: a.best && `${a.best.name}: ${a.best.score}`,
+    worst: a.worst && `${a.worst.name}: ${a.worst.score}`,
+  };
 }
 
 function hours(seconds: number | null): number | null {

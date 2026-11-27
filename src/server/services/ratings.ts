@@ -284,7 +284,10 @@ interface LatestRatingRow {
   weights: Rating["weights"];
 }
 
-/** A avaliação mais recente de cada jogo da biblioteca, da mais nova para a mais antiga. */
+/**
+ * A avaliação mais recente com critérios de cada jogo da biblioteca, da mais nova para a mais
+ * antiga. Uma nota rápida (só de coração) depois não apaga os critérios da anterior.
+ */
 function latestRatingPerGame({ db, userId }: UserScope): LatestRatingRow[] {
   const rows = db
     .select({
@@ -304,7 +307,10 @@ function latestRatingPerGame({ db, userId }: UserScope): LatestRatingRow[] {
     .orderBy(desc(ratings.createdAt), desc(ratings.id))
     .all();
   const byGame = new Map<number, LatestRatingRow>();
-  for (const row of rows) if (!byGame.has(row.gameId)) byGame.set(row.gameId, row);
+  for (const row of rows) {
+    if (!byGame.has(row.gameId) && applicableCriteria(row.scores).length > 0)
+      byGame.set(row.gameId, row);
+  }
   return [...byGame.values()];
 }
 
