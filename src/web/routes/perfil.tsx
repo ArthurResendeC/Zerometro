@@ -1,5 +1,5 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { gameModeLabel, perspectiveLabel, themeLabel } from "@shared/game-labels";
 import { genreLabel } from "@shared/genres";
@@ -12,6 +12,7 @@ import {
   profileSortLabels,
   sortProfileRows,
 } from "@shared/profile";
+import { criteriaById, SCORE_MAX } from "@shared/rating-criteria";
 import { GameCover } from "@/components/game-cover";
 import { SegmentedToggle } from "@/components/segmented-toggle";
 import { Card } from "@/components/ui/card";
@@ -119,6 +120,8 @@ function ProfilePage() {
         </p>
       </div>
 
+      {profile.criteria.length > 0 && <CriteriaCard profile={profile} />}
+
       <SegmentedToggle
         legend="Ordenar por"
         options={(Object.keys(profileSortLabels) as ProfileSort[]).map((value) => ({
@@ -140,6 +143,41 @@ function ProfilePage() {
         ))}
       </div>
     </div>
+  );
+}
+
+/** "O que você mais valoriza": a média de cada critério das avaliações, com o maior e o menor. */
+function CriteriaCard({ profile }: { profile: GamerProfile }) {
+  return (
+    <Card className="gap-4">
+      <div>
+        <h2 className="display-xs text-muted-foreground">O que você mais valoriza</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Média de cada critério nas suas avaliações (de 1 a 7), da maior para a menor.{" "}
+          <Link to="/como-avaliamos" className="text-info underline">
+            Como avaliamos
+          </Link>
+        </p>
+      </div>
+      <BarList
+        color="var(--chart-1)"
+        max={SCORE_MAX}
+        items={profile.criteria.map((c) => ({
+          key: c.criterion,
+          label: criteriaById[c.criterion].label,
+          minutes: 0,
+          value: c.average,
+          display: `${c.average.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} de ${SCORE_MAX}`,
+          hint: [
+            `${c.count} ${plural(c.count, "jogo")}`,
+            c.best && `maior: ${c.best.name} (${c.best.score})`,
+            c.worst && `menor: ${c.worst.name} (${c.worst.score})`,
+          ]
+            .filter(Boolean)
+            .join(" · "),
+        }))}
+      />
+    </Card>
   );
 }
 

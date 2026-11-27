@@ -23,6 +23,13 @@ export const ratingModeLabels: Record<RatingMode, string> = {
   blend: "Mistura das duas",
 };
 
+/** Rótulos curtos, para o seletor do modo. */
+export const ratingModeShortLabels: Record<RatingMode, string> = {
+  weighted: "Calculada",
+  gut: "Coração",
+  blend: "Mistura",
+};
+
 /** Abaixo disso de critérios aplicáveis, não há nota ponderada (a final usa a de coração). */
 export const MIN_APPLICABLE_CRITERIA = 6;
 

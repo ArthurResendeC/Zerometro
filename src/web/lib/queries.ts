@@ -10,6 +10,7 @@ import type {
 } from "@shared/achievements";
 import type { MarkCompletedInput } from "@shared/completions";
 import type { RecapPeriod } from "@shared/recap";
+import type { RatingInput, UpdateRatingInput } from "@shared/ratings";
 import type {
   AddObjectiveInput,
   ObjectiveItem,
@@ -44,7 +45,7 @@ import type {
 } from "@shared/timer";
 import type { UpdateLibraryEntryResult } from "@shared/library";
 import { DEFAULT_TIME_ZONE, nextOccurrence, todayIn, zonedParts } from "@shared/dates";
-import { reachedStreakMilestone } from "@/features/audio/sound-events";
+import { ratingSavedSounds, reachedStreakMilestone } from "@/features/audio/sound-events";
 import type { SoundName } from "@/features/audio/sounds";
 import { useSound } from "@/features/audio/use-sound";
 import { useSessionNoteDialog } from "@/stores/session-note-dialog";
@@ -447,7 +448,11 @@ function invalidateCompletions(queryClient: ReturnType<typeof useQueryClient>, g
   ]);
 }
 
-export function useMarkCompleted(gameId: number) {
+/** `rateAction`: botão "Avaliar" no toast da conclusão registrada. */
+export function useMarkCompleted(
+  gameId: number,
+  { rateAction }: { rateAction?: { label: string; onClick: () => void } } = {},
+) {
   const queryClient = useQueryClient();
   const { playMostImportant } = useSound();
   return useMutation({
@@ -468,6 +473,7 @@ export function useMarkCompleted(gameId: number) {
             : null;
       toast.success(`${item.name}: ${completionTypeLabels[completion.type]} registrada`, {
         description: where ?? undefined,
+        ...(rateAction && { action: rateAction, duration: 10_000 }),
       });
       setLibraryItem(queryClient, item);
       return invalidateCompletions(queryClient, gameId);
@@ -489,6 +495,87 @@ export function useRemoveCompletion(gameId: number) {
     onError,
   });
 }
+// ---------------------------------------------------------------------------
+// Avaliações guiadas (só online: o formulário guarda o rascunho no aparelho)
+
+export const ratingKeys = {
+  all: ["ratings"] as const,
+  list: (gameId: number) => [...ratingKeys.all, "list", gameId] as const,
+  template: (gameId: number | null) => [...ratingKeys.all, "template", gameId] as const,
+};
+
+/** Critérios, preset sugerido, ajustes, calibragem e a última avaliação do jogo. */
+export const ratingTemplateQuery = (gameId: number | null) =>
+  queryOptions({
+    queryKey: ratingKeys.template(gameId),
+    queryFn: async () =>
+      (
+        await unwrap(
+          api.ratings.template.$get({ query: gameId === null ? {} : { gameId: String(gameId) } }),
+        )
+      ).template,
+  });
+
+export const gameRatingsQuery = (gameId: number) =>
+  queryOptions({
+    queryKey: ratingKeys.list(gameId),
+    queryFn: async () =>
+      (await unwrap(api.library[":gameId"].ratings.$get({ param: { gameId: String(gameId) } })))
+        .ratings,
+  });
+
+/** A nota muda o item (cache da final), as avaliações, o perfil e os recordes. */
+function invalidateRatings(queryClient: ReturnType<typeof useQueryClient>, item: LibraryItem) {
+  setLibraryItem(queryClient, item);
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: libraryKeys.all }),
+    queryClient.invalidateQueries({ queryKey: ratingKeys.all }),
+    queryClient.invalidateQueries({ queryKey: statsKeys.all }),
+  ]);
+}
+
+export function useCreateRating(gameId: number) {
+  const queryClient = useQueryClient();
+  const { playMostImportant } = useSound();
+  return useMutation({
+    mutationFn: (input: RatingInput) =>
+      unwrap(
+        api.library[":gameId"].ratings.$post({ param: { gameId: String(gameId) }, json: input }),
+      ),
+    onSuccess: ({ rating, item }) => {
+      playMostImportant(ratingSavedSounds(rating.final));
+      return invalidateRatings(queryClient, item);
+    },
+    onError,
+  });
+}
+
+export function useUpdateRating() {
+  const queryClient = useQueryClient();
+  const { playMostImportant } = useSound();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: number; patch: UpdateRatingInput }) =>
+      unwrap(api.ratings[":id"].$patch({ param: { id: String(id) }, json: patch })),
+    onSuccess: ({ rating, item }) => {
+      playMostImportant(ratingSavedSounds(rating.final));
+      return invalidateRatings(queryClient, item);
+    },
+    onError,
+  });
+}
+
+export function useDeleteRating() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => unwrap(api.ratings[":id"].$delete({ param: { id: String(id) } })),
+    onSuccess: ({ item }) => {
+      toast.success("Avaliação apagada");
+      return invalidateRatings(queryClient, item);
+    },
+    onError,
+  });
+}
+
 export const settingsKeys = { all: ["settings"] as const };
 
 export const statsQuery = () =>
@@ -569,7 +656,10 @@ export function useUpdateSettings() {
     onSuccess: (settings) => {
       queryClient.setQueryData(settingsKeys.all, settings);
       toast.success("Ajustes salvos");
-      return queryClient.invalidateQueries({ queryKey: statsKeys.all });
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: statsKeys.all }),
+        queryClient.invalidateQueries({ queryKey: ratingKeys.all }),
+      ]);
     },
     onError,
   });

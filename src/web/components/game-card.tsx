@@ -1,3 +1,4 @@
+import { formatScore } from "@shared/ratings";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { progressTargetLabels } from "@shared/completions";
@@ -56,6 +57,9 @@ export function GameCard({ item, showStatus = false, sortBadge }: GameCardProps)
         <p className="text-xs text-muted-foreground">
           {played ? formatMinutes(item.minutesPlayed) : (item.releaseYear ?? "—")}
           {played && item.progress !== null && ` · ${formatPercent(item.progress)}`}
+          {item.rating !== null && sortBadge !== "rating" && (
+            <span title="Sua nota"> · ★ {formatScore(item.rating)}</span>
+          )}
         </p>
         {played && item.progress !== null && (
           <div className="flex items-center gap-2">

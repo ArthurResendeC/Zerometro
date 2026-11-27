@@ -9,6 +9,7 @@ import {
 import { companies, gameCompanies, gameSeries, series } from "../db/schema";
 import type { UserScope } from "./context";
 import { listLibrary } from "./library";
+import { getCriteriaAverages } from "./ratings";
 
 // Perfil de gamer: rankings de devs, publishers, séries, gêneros… a partir da biblioteca. Usa o
 // total de cada jogo da biblioteca (sessões + tempo de antes, ou a Steam), sem recorte de período.
@@ -46,6 +47,8 @@ export function getProfile(scope: UserScope): GamerProfile {
       const label = platformLabel(i);
       return tags(label ? [label] : []);
     }),
+    // Todas as avaliações com critérios (mesmo de jogos ainda sem tempo registrado).
+    criteria: getCriteriaAverages(scope),
   };
 }
 

@@ -20,8 +20,11 @@ import {
   libraryEntries,
   objectives,
   playSessions,
+  ratings,
   userAchievementSets,
 } from "../src/server/db/schema";
+import { presetWeights, type RatingPreset } from "../src/shared/rating-criteria";
+import { BLEND_WEIGHT, computeRating, type RatingScores } from "../src/shared/ratings";
 import type { FetchedAchievementSet } from "../src/server/services/achievement-sources";
 import { saveSet } from "../src/server/services/achievement-catalog";
 import {
@@ -77,7 +80,6 @@ interface EntrySpec {
   emulatedOn?: string;
   /** Meta da barra de progresso (sem ela, a padrão do status). */
   goal?: ProgressGoal;
-  rating?: number;
   notes?: string;
   /** Horas jogadas antes do Zerômetro (sem sessões). */
   priorHours?: number;
@@ -114,7 +116,6 @@ const LIBRARY: Record<GameKey, EntrySpec> = {
   hades: {
     status: "finished",
     platform: "Switch",
-    rating: 10,
     purchase: { store: "eShop", price: 79.99 },
   },
   // Zerada e de volta para os B-sides: pós-jogo.
@@ -122,28 +123,24 @@ const LIBRARY: Record<GameKey, EntrySpec> = {
     status: "playing",
     platform: "Switch",
     goal: "extras",
-    rating: 9,
     notes: "Faltam os B-sides.",
     purchase: { store: "eShop", price: 36.99 },
   },
-  hollowKnight: { status: "finished", platform: "Switch", rating: 9 },
+  hollowKnight: { status: "finished", platform: "Switch" },
   outerWilds: {
     status: "finished",
     platform: "PC",
-    rating: 10,
     notes: "Jogar sem spoiler, sempre.",
   },
   discoElysium: {
     status: "finished",
     platform: "PC",
-    rating: 9,
     purchase: { store: "GOG", price: 23.99 },
   },
   zeldaTotk: {
     status: "finished",
     platform: "Switch",
     emulatedOn: "PC",
-    rating: 8,
     purchase: { store: "Mídia física", price: 299 },
   },
   stardew: {
@@ -165,6 +162,85 @@ const LIBRARY: Record<GameKey, EntrySpec> = {
   metroidPrime4: { status: "wishlist" },
   gta6: { status: "wishlist" },
 };
+
+// ---------------------------------------------------------------------------
+// Avaliações guiadas (notas 1–7 na ordem dos critérios, sem o social) e a nota de coração
+
+interface RatingSpec {
+  preset: RatingPreset;
+  /** controls, goals, feedback, challenge, audiovisual, technical, mastery, curiosity,
+   * immersion, autonomy, meaning, narrative. */
+  scores: [
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+  ];
+  enjoyment: number;
+  review?: string;
+}
+
+const SCORED = [
+  "controls",
+  "goals",
+  "feedback",
+  "challenge",
+  "audiovisual",
+  "technical",
+  "mastery",
+  "curiosity",
+  "immersion",
+  "autonomy",
+  "meaning",
+  "narrative",
+] as const;
+
+const DEMO_RATINGS: Partial<Record<GameKey, RatingSpec>> = {
+  hades: {
+    preset: "platformer",
+    scores: [7, 6, 7, 7, 7, 7, 7, 7, 6, 6, 6, 6],
+    enjoyment: 10,
+    review: "A melhor run é sempre a próxima. Cada morte conta um pouco mais da história.",
+  },
+  celeste: { preset: "platformer", scores: [7, 6, 6, 7, 6, 7, 7, 6, 6, 3, 7, 6], enjoyment: 9 },
+  hollowKnight: {
+    preset: "platformer",
+    scores: [6, 5, 7, 6, 7, 6, 6, 7, 7, 5, 6, 4],
+    enjoyment: 9,
+  },
+  outerWilds: {
+    preset: "default",
+    scores: [4, 5, 6, 5, 6, 6, 5, 7, 7, 7, 7, 7],
+    enjoyment: 10,
+    review: "Nenhum jogo me deixou tão curioso. Vou lembrar desse final por muito tempo.",
+  },
+  discoElysium: { preset: "rpg", scores: [5, 5, 5, 4, 6, 6, 5, 7, 7, 7, 7, 7], enjoyment: 9 },
+  zeldaTotk: { preset: "default", scores: [6, 5, 6, 5, 6, 4, 6, 7, 6, 7, 5, 4], enjoyment: 8 },
+  // Abandonado: a calculada fica bem acima do coração (o resumo avisa da divergência).
+  deathStranding: { preset: "default", scores: [5, 5, 5, 4, 7, 6, 4, 3, 4, 4, 3, 5], enjoyment: 4 },
+};
+
+function demoScores(spec: RatingSpec): RatingScores {
+  return { ...Object.fromEntries(SCORED.map((id, i) => [id, spec.scores[i]])), social: null };
+}
+
+function demoRating(spec: RatingSpec) {
+  return computeRating({
+    scores: demoScores(spec),
+    weights: presetWeights(spec.preset),
+    enjoyment: spec.enjoyment,
+    mode: "blend",
+    blendWeight: BLEND_WEIGHT.default,
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Sessões
@@ -338,7 +414,7 @@ db.transaction((tx) => {
       emulatedOn: spec.emulatedOn ?? null,
       startedAt,
       finishedAt: spec.status === "finished" ? (dates?.finishedAt ?? null) : null,
-      rating: spec.rating ?? null,
+      rating: DEMO_RATINGS[key] ? demoRating(DEMO_RATINGS[key]).final : null,
       notes: spec.notes ?? null,
       priorMinutes: (spec.priorHours ?? 0) * 60,
       acquiredOn,
@@ -405,6 +481,29 @@ db.transaction((tx) => {
         progress,
         unlockedAt: progress >= target ? now.toISOString() : null,
         sortOrder: index,
+      })
+      .run();
+  }
+
+  // Avaliações: um dia depois de zerar (ou de abandonar, no Death Stranding).
+  for (const [key, spec] of Object.entries(DEMO_RATINGS) as [GameKey, RatingSpec][]) {
+    const computed = demoRating(spec);
+    const ratedOn = addDays(finishedDates.get(key)?.finishedAt ?? addDays(today, -20), 1);
+    const createdAt = zonedToInstant(ratedOn, "21:30", TZ).toISOString();
+    tx.insert(ratings)
+      .values({
+        userId: OWNER_ID,
+        gameId: gameIds.get(key)!,
+        scores: demoScores(spec),
+        weights: presetWeights(spec.preset),
+        preset: spec.preset,
+        enjoyment: spec.enjoyment,
+        weighted: computed.weighted,
+        final: computed.final,
+        mode: "blend",
+        review: spec.review ?? null,
+        createdAt,
+        updatedAt: createdAt,
       })
       .run();
   }

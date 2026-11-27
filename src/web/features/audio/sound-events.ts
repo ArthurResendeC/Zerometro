@@ -27,3 +27,13 @@ export const streakMilestones = [7, 30, 100, 365] as const;
 export function reachedStreakMilestone({ before, current }: StreakChange): boolean {
   return streakMilestones.some((milestone) => before < milestone && current >= milestone);
 }
+
+/** A partir dessa nota final, salvar a avaliação comemora com o som de meta batida. */
+export const RATING_CELEBRATION = 9;
+
+/** Salvar uma avaliação soa como "jogo salvo"; nota final alta comemora (vence pela prioridade). */
+export function ratingSavedSounds(final: number): SoundName[] {
+  return [final >= RATING_CELEBRATION && "goal-reached", "session-stop"].filter(
+    (sound): sound is SoundName => sound !== false,
+  );
+}

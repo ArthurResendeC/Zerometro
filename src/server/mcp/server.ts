@@ -118,13 +118,7 @@ import { getSettings } from "../services/settings";
 import { importSteamGames, previewSteamImport } from "../services/steam-import";
 import { syncSteamGame, syncSteamLibrary } from "../services/steam-sync";
 import { getProfile } from "../services/profile";
-import {
-  createRating,
-  getCriteriaAverages,
-  getLatestRating,
-  getRatingTemplate,
-  listRatings,
-} from "../services/ratings";
+import { createRating, getLatestRating, getRatingTemplate, listRatings } from "../services/ratings";
 import { getRecap } from "../services/recap";
 import { renderRecapImage } from "../services/recap-image";
 import { getHeatmap, getPeriodBreakdown, getRecords, getRhythm, getStats } from "../services/stats";
@@ -623,7 +617,7 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
           gameModes: top("gameModes", gameModeLabel),
           platforms: top("platforms"),
           /** Média 1–7 de cada critério da avaliação guiada (o que o usuário mais valoriza). */
-          criteriaAverages: getCriteriaAverages(ctx()).map(criterionAverageSummary),
+          criteriaAverages: profile.criteria.map(criterionAverageSummary),
         };
       }),
   );

@@ -13,12 +13,14 @@ import { Route as IndexRouteImport } from "./routes/index"
 import { Route as AdicionarRouteImport } from "./routes/adicionar"
 import { Route as AjustesRouteImport } from "./routes/ajustes"
 import { Route as BibliotecaRouteImport } from "./routes/biblioteca"
+import { Route as ComoAvaliamosRouteImport } from "./routes/como-avaliamos"
 import { Route as EntrarRouteImport } from "./routes/entrar"
 import { Route as EstatisticasRouteImport } from "./routes/estatisticas"
 import { Route as PerfilRouteImport } from "./routes/perfil"
 import { Route as RecapRouteImport } from "./routes/recap"
 import { Route as JogoIgdbIdRouteImport } from "./routes/jogo.$igdbId"
 import { Route as JogosGameIdRouteImport } from "./routes/jogos.$gameId"
+import { Route as JogoIgdbIdAvaliarRouteImport } from "./routes/jogo.$igdbId_.avaliar"
 
 const IndexRoute = IndexRouteImport.update({
   id: "/",
@@ -38,6 +40,11 @@ const AjustesRoute = AjustesRouteImport.update({
 const BibliotecaRoute = BibliotecaRouteImport.update({
   id: "/biblioteca",
   path: "/biblioteca",
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComoAvaliamosRoute = ComoAvaliamosRouteImport.update({
+  id: "/como-avaliamos",
+  path: "/como-avaliamos",
   getParentRoute: () => rootRouteImport,
 } as any)
 const EntrarRoute = EntrarRouteImport.update({
@@ -70,30 +77,39 @@ const JogosGameIdRoute = JogosGameIdRouteImport.update({
   path: "/jogos/$gameId",
   getParentRoute: () => rootRouteImport,
 } as any)
+const JogoIgdbIdAvaliarRoute = JogoIgdbIdAvaliarRouteImport.update({
+  id: "/jogo/$igdbId_/avaliar",
+  path: "/jogo/$igdbId/avaliar",
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   "/": typeof IndexRoute
   "/adicionar": typeof AdicionarRoute
   "/ajustes": typeof AjustesRoute
   "/biblioteca": typeof BibliotecaRoute
+  "/como-avaliamos": typeof ComoAvaliamosRoute
   "/entrar": typeof EntrarRoute
   "/estatisticas": typeof EstatisticasRoute
   "/perfil": typeof PerfilRoute
   "/recap": typeof RecapRoute
   "/jogo/$igdbId": typeof JogoIgdbIdRoute
   "/jogos/$gameId": typeof JogosGameIdRoute
+  "/jogo/$igdbId/avaliar": typeof JogoIgdbIdAvaliarRoute
 }
 export interface FileRoutesByTo {
   "/": typeof IndexRoute
   "/adicionar": typeof AdicionarRoute
   "/ajustes": typeof AjustesRoute
   "/biblioteca": typeof BibliotecaRoute
+  "/como-avaliamos": typeof ComoAvaliamosRoute
   "/entrar": typeof EntrarRoute
   "/estatisticas": typeof EstatisticasRoute
   "/perfil": typeof PerfilRoute
   "/recap": typeof RecapRoute
   "/jogo/$igdbId": typeof JogoIgdbIdRoute
   "/jogos/$gameId": typeof JogosGameIdRoute
+  "/jogo/$igdbId/avaliar": typeof JogoIgdbIdAvaliarRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -101,12 +117,14 @@ export interface FileRoutesById {
   "/adicionar": typeof AdicionarRoute
   "/ajustes": typeof AjustesRoute
   "/biblioteca": typeof BibliotecaRoute
+  "/como-avaliamos": typeof ComoAvaliamosRoute
   "/entrar": typeof EntrarRoute
   "/estatisticas": typeof EstatisticasRoute
   "/perfil": typeof PerfilRoute
   "/recap": typeof RecapRoute
   "/jogo/$igdbId": typeof JogoIgdbIdRoute
   "/jogos/$gameId": typeof JogosGameIdRoute
+  "/jogo/$igdbId_/avaliar": typeof JogoIgdbIdAvaliarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -115,36 +133,42 @@ export interface FileRouteTypes {
     | "/adicionar"
     | "/ajustes"
     | "/biblioteca"
+    | "/como-avaliamos"
     | "/entrar"
     | "/estatisticas"
     | "/perfil"
     | "/recap"
     | "/jogo/$igdbId"
     | "/jogos/$gameId"
+    | "/jogo/$igdbId/avaliar"
   fileRoutesByTo: FileRoutesByTo
   to:
     | "/"
     | "/adicionar"
     | "/ajustes"
     | "/biblioteca"
+    | "/como-avaliamos"
     | "/entrar"
     | "/estatisticas"
     | "/perfil"
     | "/recap"
     | "/jogo/$igdbId"
     | "/jogos/$gameId"
+    | "/jogo/$igdbId/avaliar"
   id:
     | "__root__"
     | "/"
     | "/adicionar"
     | "/ajustes"
     | "/biblioteca"
+    | "/como-avaliamos"
     | "/entrar"
     | "/estatisticas"
     | "/perfil"
     | "/recap"
     | "/jogo/$igdbId"
     | "/jogos/$gameId"
+    | "/jogo/$igdbId_/avaliar"
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -152,12 +176,14 @@ export interface RootRouteChildren {
   AdicionarRoute: typeof AdicionarRoute
   AjustesRoute: typeof AjustesRoute
   BibliotecaRoute: typeof BibliotecaRoute
+  ComoAvaliamosRoute: typeof ComoAvaliamosRoute
   EntrarRoute: typeof EntrarRoute
   EstatisticasRoute: typeof EstatisticasRoute
   PerfilRoute: typeof PerfilRoute
   RecapRoute: typeof RecapRoute
   JogoIgdbIdRoute: typeof JogoIgdbIdRoute
   JogosGameIdRoute: typeof JogosGameIdRoute
+  JogoIgdbIdAvaliarRoute: typeof JogoIgdbIdAvaliarRoute
 }
 
 declare module "@tanstack/react-router" {
@@ -188,6 +214,13 @@ declare module "@tanstack/react-router" {
       path: "/biblioteca"
       fullPath: "/biblioteca"
       preLoaderRoute: typeof BibliotecaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    "/como-avaliamos": {
+      id: "/como-avaliamos"
+      path: "/como-avaliamos"
+      fullPath: "/como-avaliamos"
+      preLoaderRoute: typeof ComoAvaliamosRouteImport
       parentRoute: typeof rootRouteImport
     }
     "/entrar": {
@@ -232,6 +265,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof JogosGameIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    "/jogo/$igdbId_/avaliar": {
+      id: "/jogo/$igdbId_/avaliar"
+      path: "/jogo/$igdbId/avaliar"
+      fullPath: "/jogo/$igdbId/avaliar"
+      preLoaderRoute: typeof JogoIgdbIdAvaliarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -240,12 +280,14 @@ const rootRouteChildren: RootRouteChildren = {
   AdicionarRoute: AdicionarRoute,
   AjustesRoute: AjustesRoute,
   BibliotecaRoute: BibliotecaRoute,
+  ComoAvaliamosRoute: ComoAvaliamosRoute,
   EntrarRoute: EntrarRoute,
   EstatisticasRoute: EstatisticasRoute,
   PerfilRoute: PerfilRoute,
   RecapRoute: RecapRoute,
   JogoIgdbIdRoute: JogoIgdbIdRoute,
   JogosGameIdRoute: JogosGameIdRoute,
+  JogoIgdbIdAvaliarRoute: JogoIgdbIdAvaliarRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { FinishedGame, Records } from "@shared/stats";
 import { completionTypeLabels } from "@shared/domain";
+import { formatScore } from "@shared/ratings";
 import { GameCover } from "@/components/game-cover";
 import { Card } from "@/components/ui/card";
 import { formatDate, formatMinutes } from "@/lib/format";
@@ -156,7 +157,7 @@ function FinishedRow({ game }: { game: FinishedGame }) {
             {formatDate(game.completedOn)}
             {game.type !== "main" && ` · ${completionTypeLabels[game.type]}`}
             {game.replays > 0 && " · replay"}
-            {game.rating !== null && ` · nota ${game.rating}`}
+            {game.rating !== null && ` · nota ${formatScore(game.rating)}`}
           </p>
         </div>
         <div className="shrink-0 text-right text-xs text-muted-foreground tabular-nums">

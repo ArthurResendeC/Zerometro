@@ -51,6 +51,8 @@ import { useLogSessionDialog } from "@/stores/log-session-dialog";
 import { CompleteDialog, CompletionsSection } from "./completions-section";
 import { ObjectivesSection } from "./objectives-section";
 import { ProgressGoalControl } from "./progress-goal";
+import { RatingSection } from "./rating-section";
+import { useRatePrompt } from "@/features/rating/use-rate-prompt";
 
 // Aba "Minhas sessões" da página do jogo: tempo jogado, sessões, detalhes da entrada e remover.
 
@@ -67,6 +69,7 @@ export function MySessions({ item }: { item: LibraryItem }) {
       <PlayedSummary item={item} />
 
       <CompletionsSection item={item} onMarkCompleted={() => setCompleteWith(nextLevel(item))} />
+      <RatingSection item={item} />
       <ObjectivesSection item={item} onAllDone={() => setSuggestFull(true)} />
       <CompleteDialog item={item} openWith={completeWith} onClose={() => setCompleteWith(null)} />
       <AlertDialog open={suggestFull} onOpenChange={setSuggestFull}>
@@ -237,11 +240,15 @@ function EntryForm({ item }: { item: LibraryItem }) {
 
   const storeListId = useId();
 
+  const { prompt: promptRating } = useRatePrompt(item);
   const form = useForm({
     defaultValues: initial,
     onSubmit: async ({ value }) => {
       const patch = toPatch(value, initial);
-      if (Object.keys(patch).length > 0) await update.mutateAsync(patch);
+      if (Object.keys(patch).length === 0) return;
+      await update.mutateAsync(patch);
+      // Zerou (a conclusão da história entra junto) ou abandonou: hora de avaliar.
+      if (patch.status === "finished" || patch.status === "dropped") promptRating();
     },
   });
 
@@ -253,7 +260,7 @@ function EntryForm({ item }: { item: LibraryItem }) {
       }}
       className="space-y-4"
     >
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <form.Field name="status">
           {(field) => (
             <div className="space-y-2">
@@ -577,6 +584,7 @@ function removalText(item: LibraryItem): string {
       `${plural(item.sessionsCount, "sessão", "sessões")} (${formatMinutes(item.minutesPlayed)})`,
     item.completion && plural(item.completion.count, "conclusão", "conclusões"),
     item.objectives && plural(item.objectives.total, "objetivo", "objetivos"),
+    item.rating !== null && "as avaliações",
   ].filter(Boolean);
   if (parts.length === 0) return "";
   const list = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} e ${parts.at(-1)}`;

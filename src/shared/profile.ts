@@ -1,3 +1,4 @@
+import type { CriterionAverage } from "./ratings";
 import { z } from "zod";
 
 // Perfil de gamer: o "meu gosto" calculado a partir da biblioteca (devs, publishers, séries,
@@ -59,6 +60,8 @@ export interface GamerProfile {
   gameModes: ProfileRow[];
   /** Pela plataforma em que joguei (`platformPlayed`). */
   platforms: ProfileRow[];
+  /** Média de cada critério da avaliação guiada ("o que você mais valoriza"), maior primeiro. */
+  criteria: CriterionAverage[];
 }
 
 export const profileSections = [

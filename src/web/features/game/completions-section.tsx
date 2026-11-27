@@ -42,6 +42,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatDate } from "@/lib/format";
 import { completionsQuery, useMarkCompleted, useRemoveCompletion } from "@/lib/queries";
 import { cn } from "@/lib/utils";
+import { useRatePrompt } from "@/features/rating/use-rate-prompt";
 
 // Conclusões do jogo (história, + extras, 100%) na aba "Minhas sessões": histórico e o diálogo
 // de "Marcar como zerado".
@@ -185,7 +186,8 @@ function CompleteForm({
   initialType: CompletionType;
   onDone: () => void;
 }) {
-  const mark = useMarkCompleted(item.gameId);
+  const { action: rateAction } = useRatePrompt(item);
+  const mark = useMarkCompleted(item.gameId, { rateAction });
   const [today] = useState(() => todayIn());
 
   const form = useForm({

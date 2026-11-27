@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { pickSound, reachedStreakMilestone } from "./sound-events";
+import { pickSound, ratingSavedSounds, reachedStreakMilestone } from "./sound-events";
 
 describe("pickSound", () => {
   test("sem eventos, nenhum som", () => {
@@ -53,5 +53,12 @@ describe("reachedStreakMilestone", () => {
 
   test("ofensiva caindo não toca", () => {
     expect(reachedStreakMilestone({ before: 30, current: 0 })).toBe(false);
+  });
+});
+
+describe("ratingSavedSounds", () => {
+  test("salvar soa como jogo salvo; nota final 9+ comemora", () => {
+    expect(pickSound(ratingSavedSounds(8.9))).toBe("session-stop");
+    expect(pickSound(ratingSavedSounds(9))).toBe("goal-reached");
   });
 });

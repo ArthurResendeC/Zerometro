@@ -8,6 +8,7 @@ import { completionTypeLabels, type GameStatus, gameStatusLabels } from "@shared
 import { type LibraryItem, type LibrarySort, sortValueOf } from "@shared/library";
 import { CalendarIcon, CheckIcon, PlayIcon, StarIcon, StatusIcon } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
+import { formatScore } from "@shared/ratings";
 import { formatDate } from "@/lib/format";
 
 /** Status de um jogo (ou "Pós-jogo"): cor + ícone + texto (nunca só cor). */
@@ -67,7 +68,7 @@ const sortBadgeTitles: Record<LibrarySort, string> = {
 };
 const sortBadgeIcons = { last_session: CalendarIcon, started_at: PlayIcon, rating: StarIcon };
 
-/** O valor que ordena a biblioteca: "📅 21/11/2026", "▶ 03/11/2026" ou "★ 8/10". Sem valor, nada. */
+/** O valor que ordena a biblioteca: "📅 21/11/2026", "▶ 03/11/2026" ou "★ 8,4/10". Sem valor, nada. */
 export function SortBadge({
   item,
   sort,
@@ -80,7 +81,7 @@ export function SortBadge({
   const value = sortValueOf(item, sort);
   if (value === null) return null;
   const Icon = sortBadgeIcons[sort];
-  const text = typeof value === "number" ? `${value}/10` : formatDate(value);
+  const text = typeof value === "number" ? `${formatScore(value)}/10` : formatDate(value);
   return (
     <Badge
       variant="secondary"
