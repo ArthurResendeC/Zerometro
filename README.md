@@ -126,11 +126,8 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 - [x] ~Tela inicial com listas do IGDB: lançamentos bem avaliados, em alta e próximos lançamentos~
 - [x] ~Página própria para jogos do IGDB, inclusive os que ainda não estão na biblioteca~
 - [x] ~Heatmap anual estilo GitHub e gráficos com Recharts~
-- [ ] Kanban da biblioteca com arrastar e soltar (o hook já existe: `useMoveGameStatus`)
-- [ ] Metas anuais (ex.: zerar 20 jogos no ano) e o som de "meta batida"
 - [ ] Previsão do backlog ("no seu ritmo, você termina a fila em março")
 - [ ] Recomendações a partir dos jogos que você zerou e gostou
-- [ ] Histórico de atividade na interface (o que foi mudado pelo site e pela IA)
 - [x] ~Backup do SQLite (Litestream para um bucket S3/R2)~
 - [x] ~PWA (instalar no computador e no celular)~
 - [x] ~Registrar sessões offline e sincronizar quando a conexão voltar~
@@ -138,12 +135,10 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 - [x] ~Recap como imagem para compartilhar (stories 9:16 e 16:9)~
 - [x] ~Imagem de cada slide do recap~
 - [ ] Retrospectiva do ano
-- [ ] Alertas de lançamento da lista de desejos
 - [x] ~Sincronização de tempo jogado da Steam~
 - [x] ~Conquistas da Steam e do RetroAchievements (lista da fonte, marcadas à mão)~
 - [x] ~Sincronizar conquistas e horas com o perfil da Steam~
 - [x] ~Sincronizar com a Steam sozinho ao abrir o app~
-- [ ] Sincronizar as conquistas com o perfil do RetroAchievements
 - [x] ~Importar a biblioteca da Steam~
 - [x] ~Horas da Steam viram sessões (ofensiva e estatísticas)~
 
