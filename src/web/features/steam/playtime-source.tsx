@@ -46,7 +46,7 @@ export function PlaytimeSourceControl({ item }: { item: LibraryItem }) {
   }
 
   return (
-    <div className="space-y-2 border-t-2 border-border pt-3">
+    <div className="space-y-2 border-t-(length:--rule) border-border pt-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <span className="display-xs text-muted-foreground">Tempo jogado vem de</span>
         <fieldset className="inline-flex bg-background pixel-frame-thin" disabled={busy}>

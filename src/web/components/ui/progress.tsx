@@ -55,10 +55,11 @@ function XpBar({
   const on = Math.round((clamped / 100) * cells);
   return (
     <ProgressPrimitive.Root
+      data-slot="xp-bar"
       value={Math.round(clamped)}
       aria-label={label}
       className={cn(
-        "m-0.5 grid h-4 min-w-16 flex-1 gap-0.5 bg-muted p-0.5 pixel-frame-thin [--px-frame-color:var(--foreground)]",
+        "m-0.5 grid h-4 min-w-16 flex-1 gap-(--xp-gap) overflow-hidden rounded-control bg-muted p-0.5 pixel-frame-thin [--px-frame-color:var(--foreground)]",
         className,
       )}
       style={{ gridTemplateColumns: `repeat(${cells}, 1fr)` }}

@@ -58,7 +58,7 @@ function AddGamePage() {
       ) : (
         <ul
           className={cn(
-            "frame-space bg-card pixel-frame [&>li+li]:border-t-2 [&>li+li]:border-dashed [&>li+li]:border-muted",
+            "frame-space bg-card pixel-frame [&>li+li]:border-t-(length:--rule) [&>li+li]:border-dashed [&>li+li]:border-muted",
             search.isFetching && "opacity-60",
           )}
         >

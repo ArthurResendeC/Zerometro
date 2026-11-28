@@ -256,7 +256,7 @@ function LongSessionForm({
         )}
       </form>
 
-      <div className="flex flex-col border-t-2 border-dashed border-muted pt-4 sm:flex-row sm:justify-end">
+      <div className="flex flex-col border-t-(length:--rule) border-dashed border-muted pt-4 sm:flex-row sm:justify-end">
         <Button
           variant="outline"
           disabled={stop.isPending || tooLong}

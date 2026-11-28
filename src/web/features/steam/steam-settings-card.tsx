@@ -107,7 +107,7 @@ function LinkedProfile({
             alt=""
             width={48}
             height={48}
-            className="size-12 border-2 border-border"
+            className="size-12 border-(length:--rule) border-border"
           />
         )}
         <div className="min-w-0 flex-1">

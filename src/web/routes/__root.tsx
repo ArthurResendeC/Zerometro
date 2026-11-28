@@ -78,7 +78,7 @@ function SignedInLayout({ session: initial }: { session: AuthSession }) {
 
   return (
     <div className="min-h-dvh">
-      <header className="sticky top-0 z-40 border-b-4 border-border bg-background">
+      <header className="sticky top-0 z-40 border-b-(length:--rule-thick) border-border bg-background">
         <nav className="mx-auto flex max-w-6xl items-center px-4 py-2 sm:gap-2">
           <Link
             to="/"

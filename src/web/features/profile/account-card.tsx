@@ -101,7 +101,7 @@ function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
   };
 
   return (
-    <form onSubmit={submit} className="space-y-3 border-t-2 border-border pt-4">
+    <form onSubmit={submit} className="space-y-3 border-t-(length:--rule) border-border pt-4">
       <div className="space-y-1">
         <Label>{hasPassword ? "Trocar a senha" : "Definir uma senha"}</Label>
         {!hasPassword && (
@@ -175,7 +175,7 @@ function SignOutButtons() {
   };
 
   return (
-    <div className="space-y-2 border-t-2 border-border pt-4">
+    <div className="space-y-2 border-t-(length:--rule) border-border pt-4">
       <p className="text-sm text-muted-foreground">
         O acesso vale 30 dias em cada aparelho e se renova sozinho com o uso. "Sair dos outros"
         desconecta também os conectores de IA (é só aprovar de novo).

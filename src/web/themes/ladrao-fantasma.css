@@ -1,0 +1,168 @@
+/* Tema Ladrão Fantasma (icônico, inspirado no visual de menus de RPG estilizados): vermelho, preto e
+   branco, painéis recortados, títulos condensados e inclinados. Sem logos, personagens ou fontes
+   dos jogos: só a paleta e a atitude. Prova do contrato no caso extremo (superfícies redesenhadas). */
+
+:root[data-theme="ladrao-fantasma"] {
+  /* Tipografia */
+  --body-font: "Barlow Semi Condensed", "Arial Narrow", ui-sans-serif, sans-serif;
+  --display-font: "Anton", Impact, "Arial Narrow", sans-serif;
+  --text-xs: 14px;
+  --text-xs--line-height: 18px;
+  --text-sm: 16px;
+  --text-sm--line-height: 21px;
+  --text-base: 17px;
+  --text-base--line-height: 24px;
+  --text-lg: 20px;
+  --text-lg--line-height: 26px;
+  --text-xl: 23px;
+  --text-xl--line-height: 28px;
+  --text-2xl: 30px;
+  --text-2xl--line-height: 34px;
+  --display-xl: 46px;
+  --display-xl-lh: 50px;
+  --display-lg: 36px;
+  --display-lg-lh: 40px;
+  --display-md: 22px;
+  --display-md-lh: 26px;
+  --display-sm: 16px;
+  --display-sm-lh: 20px;
+  --display-xs: 14px;
+  --display-xs-lh: 17px;
+  --display-xs-tracking: 0.06em;
+  --display-weight: 400;
+  --display-style: italic;
+  --btn-sm-size: 14px;
+  --btn-sm-lh: 18px;
+  --btn-lg-size: 19px;
+  --btn-lg-lh: 24px;
+
+  /* Forma: moldura branca grossa (anel, sem degrau) e sombra vermelha dura */
+  --radius: 0px;
+  --control-radius: 0px;
+  --frame-offset: 0px;
+  --frame-spread: 3px;
+  --frame-thin-offset: 0px;
+  --frame-thin-spread: 2px;
+  --drop: 7px 7px 0 0 var(--primary);
+  --bevel-size: 0px;
+  --sunken-size: 0px;
+  --press-translate: 4px 4px;
+  --rule: 2px;
+  --rule-thick: 4px;
+  --frame-gap: 3px;
+  --drop-gap: 10px;
+  --inner-line: 0px;
+  --focus-width: 3px;
+  --focus-offset: 6px;
+
+  /* Textura: retícula vermelha no fundo, listras na sobreposição dos dialogs, cursor em estrela */
+  --page-texture: radial-gradient(circle, rgb(229 25 28 / 0.16) 1.2px, transparent 1.7px);
+  --page-texture-size: 10px 10px;
+  --overlay-texture: repeating-linear-gradient(
+    -45deg,
+    transparent 0 10px,
+    rgb(229 25 28 / 0.22) 10px 14px
+  );
+  --menu-cursor-width: 14px;
+  --menu-cursor-height: 14px;
+  --menu-cursor-shape: polygon(
+    50% 0,
+    61% 35%,
+    98% 35%,
+    68% 57%,
+    79% 91%,
+    50% 70%,
+    21% 91%,
+    32% 57%,
+    2% 35%,
+    39% 35%
+  );
+
+  /* Movimento: seco e rápido */
+  --ease-ui: cubic-bezier(0.7, 0, 0.2, 1);
+  --ease-reveal: cubic-bezier(0.7, 0, 0.2, 1);
+  --ease-progress: cubic-bezier(0.7, 0, 0.2, 1);
+
+  /* Arte dos painéis (9-slice): preto com contorno branco, cantos chanfrados e uma camada vermelha
+     deslocada. Os cantos (40px) ficam fixos e as bordas esticam: serve para qualquer tamanho. */
+  --lf-panel: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27100%27 height=%27100%27 viewBox=%270 0 100 100%27%3E%3Cpolygon points=%278,15 19,8 100,10 100,94 90,100 7,100%27 fill=%27%23e5191c%27/%3E%3Cpolygon points=%273,9 14,2 97,4 95,88 85,97 2,94%27 fill=%27%23141414%27 stroke=%27%23f4f4f4%27 stroke-width=%273%27 stroke-linejoin=%27miter%27/%3E%3C/svg%3E");
+}
+
+:root[data-theme="ladrao-fantasma"][data-mode="dark"] {
+  --background: #0b0b0b;
+  --foreground: #f4f4f4;
+  --card: #141414;
+  --card-foreground: #f4f4f4;
+  --popover: #141414;
+  --popover-foreground: #f4f4f4;
+  --primary: #e5191c;
+  --primary-foreground: #ffffff;
+  --primary-shade: #8f0d10;
+  --secondary: #262626;
+  --secondary-foreground: #f4f4f4;
+  --muted: #1f1f1f;
+  --muted-foreground: #b4b4b4;
+  --accent: #2e0c0d;
+  --accent-foreground: #f4f4f4;
+  --destructive: #ff4466;
+  --destructive-foreground: #1a0006;
+  --border: #f4f4f4;
+  --input: #f4f4f4;
+  --ring: #ffd400;
+  --pixel-shadow: #000000;
+  --info: #4dd0ff;
+  --chart-1: #e5191c;
+  --chart-2: #f4f4f4;
+  --chart-3: #ffd400;
+  --chart-4: #4dd0ff;
+  --chart-5: #ff7ab8;
+  --status-playing: #e5191c;
+  --status-playing-foreground: #ffffff;
+  --status-endless: #ff7ab8;
+  --status-endless-foreground: #22050f;
+  --status-finished: #f4f4f4;
+  --status-finished-foreground: #0b0b0b;
+  --status-backlog: #4dd0ff;
+  --status-backlog-foreground: #001a22;
+  --status-wishlist: #b58cff;
+  --status-wishlist-foreground: #150a24;
+  --status-paused: #ffd400;
+  --status-paused-foreground: #1a1500;
+  --status-dropped: #8a8a8a;
+  --status-dropped-foreground: #0b0b0b;
+  --score-good: #3ddc84;
+  --score-good-foreground: #04170c;
+  --score-mixed: #ffd400;
+  --score-mixed-foreground: #1a1500;
+  --score-bad: #e5191c;
+  --score-bad-foreground: #ffffff;
+  --heat-0: #1f1f1f;
+  --heat-1: #4a0b0d;
+  --heat-2: #8f0d10;
+  --heat-3: #c8141a;
+  --heat-4: #ff5054;
+  --flame: #e5191c;
+  --flame-core: #ffd400;
+}
+
+/* Superfícies redesenhadas: cards e dialogs viram painéis recortados (a arte faz moldura e sombra). */
+:root[data-theme="ladrao-fantasma"]
+  :is([data-slot="card"], [data-slot="dialog-content"], [data-slot="alert-dialog-content"]) {
+  background-color: transparent;
+  box-shadow: none;
+  border-style: solid;
+  border-width: 0;
+  border-image: var(--lf-panel) 40 fill / 40px / 0 stretch;
+}
+
+/* Botões inclinados, como cartas de menu (os discretos ficam retos). */
+:root[data-theme="ladrao-fantasma"]
+  [data-slot="button"]:not([data-variant="ghost"], [data-variant="link"]) {
+  transform: skewX(-8deg);
+}
+
+/* Títulos em caixa alta, com o eco vermelho atrás. */
+:root[data-theme="ladrao-fantasma"] :is(.display-xl, .display-lg, .display-md) {
+  text-transform: uppercase;
+  text-shadow: 3px 3px 0 var(--primary);
+}

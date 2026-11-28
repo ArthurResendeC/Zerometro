@@ -209,7 +209,7 @@ function GamePicker({ onDone }: { onDone: () => void }) {
         </ul>
       )}
 
-      <div className="border-t-2 border-dashed border-muted pt-3">
+      <div className="border-t-(length:--rule) border-dashed border-muted pt-3">
         <AddGameLink onClick={onDone} variant="ghost" />
       </div>
     </div>

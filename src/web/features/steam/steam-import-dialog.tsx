@@ -233,7 +233,7 @@ function ImportForm({
           </div>
 
           <ul
-            className="max-h-[min(20rem,40dvh)] min-h-20 min-w-0 flex-1 divide-y-2 divide-border overflow-y-auto pr-1"
+            className="max-h-[min(20rem,40dvh)] min-h-20 min-w-0 flex-1 divide-y-(length:--rule) divide-border overflow-y-auto pr-1"
             aria-label="Jogos da Steam"
           >
             {visible.map((c) => (

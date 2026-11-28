@@ -289,7 +289,7 @@ function CostDialogContent({ purchases }: { purchases: PurchaseStats }) {
 /** Comprados e ainda nunca jogados: a pilha da vergonha. */
 function Unplayed({ purchases }: { purchases: PurchaseStats }) {
   return (
-    <div className="space-y-2 border-t-2 border-muted pt-3">
+    <div className="space-y-2 border-t-(length:--rule) border-muted pt-3">
       <p className="text-xs text-muted-foreground">
         {games(purchases.unplayed.length)} comprados e nunca jogados
         {purchases.unplayedCents > 0 && ` (${formatBrl(purchases.unplayedCents)})`}:

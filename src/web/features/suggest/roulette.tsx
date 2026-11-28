@@ -66,7 +66,7 @@ export function Roulette({ pool, picked, onDone }: RouletteProps) {
     <div className="relative h-28 overflow-hidden bg-background pixel-frame" aria-hidden>
       {/* O marcador no meio. */}
       <div
-        className="absolute inset-y-0 left-1/2 z-10 w-[68px] -translate-x-1/2 border-4 border-primary"
+        className="absolute inset-y-0 left-1/2 z-10 w-[68px] -translate-x-1/2 border-(length:--rule-thick) border-primary"
         aria-hidden
       />
       <motion.ul

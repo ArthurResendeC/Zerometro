@@ -1,5 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+/* Temas: cada um sobrescreve os tokens em :root[data-theme="<id>"] (especificidade maior que a do
+   tema base, então a ordem dos arquivos não importa). Registro em src/shared/themes.ts. */
+@import "./themes/minimal.css";
+@import "./themes/ladrao-fantasma.css";
 
 /* Zerômetro — Direção A · Cartucho NES, o tema base. Claro em :root, escuro em [data-mode="dark"]
    (o principal). Contrato de temas: docs/gamificacao/temas-contrato.md. Um tema sobrescreve, em
@@ -168,6 +172,17 @@
   --bevel-size: 4px;
   --sunken-size: 4px;
   --press-translate: 4px 4px;
+  /* Linha de dentro dos dialogs (moldura dupla) */
+  --inner-line: 2px;
+  /* Fundo da página (atrás de tudo) */
+  --page-texture: none;
+  --page-texture-size: auto;
+  /* Foco: sempre visível, fora da moldura */
+  --focus-width: 3px;
+  --focus-offset: 7px;
+  /* Linhas: divisores e bordas (--rule) e as barras grossas do header e das abas (--rule-thick). */
+  --rule: 2px;
+  --rule-thick: 4px;
   /* Espaço fora da caixa que a moldura (gap) e moldura + sombra (drop-gap) ocupam. */
   --frame-gap: 4px;
   --drop-gap: 12px;
@@ -178,6 +193,10 @@
     transparent 0 2px,
     color-mix(in srgb, var(--pixel-shadow) 35%, transparent) 2px 4px
   );
+  /* Ranhuras no topo do card de jogo (o "cartucho") */
+  --card-ridge: repeating-linear-gradient(90deg, var(--border) 0 4px, transparent 4px 8px);
+  /* Espaço entre as células da barra de XP (0 = barra contínua) */
+  --xp-gap: 2px;
   --menu-cursor-width: 10px;
   --menu-cursor-height: 12px;
   --menu-cursor-shape: polygon(
@@ -435,13 +454,14 @@
 @utility frame-inset {
   box-shadow: inset 0 0 0 2px var(--px-ring, var(--foreground));
 }
-/* Aba aberta embaixo: moldura nos três lados e a base da cor do card, colada no painel. */
+/* Aba aberta embaixo: moldura nos três lados e, por cima da barra (--rule-thick), a base da cor
+   do card, colada no painel. A base vem primeiro para ficar por cima também numa moldura em anel. */
 @utility tab-frame {
   box-shadow:
+    0 var(--rule-thick) 0 0 var(--card),
     0 calc(-1 * var(--frame-offset)) 0 var(--frame-spread) var(--border),
     calc(-1 * var(--frame-offset)) 0 0 var(--frame-spread) var(--border),
-    var(--frame-offset) 0 0 var(--frame-spread) var(--border),
-    0 var(--frame-offset) 0 0 var(--card);
+    var(--frame-offset) 0 0 var(--frame-spread) var(--border);
 }
 /* Margem que reserva o espaço da moldura (e da sombra dura), que são box-shadow. */
 @utility frame-space {
@@ -457,12 +477,14 @@
   }
   body {
     @apply bg-background font-sans text-base text-foreground;
+    background-image: var(--page-texture);
+    background-size: var(--page-texture-size);
     caret-color: var(--primary);
   }
   /* Foco: sempre ciano, sólido, fora da moldura. Substitui os focus-visible:ring-* do shadcn. */
   :focus-visible {
-    outline: 3px solid var(--ring);
-    outline-offset: 7px;
+    outline: var(--focus-width) solid var(--ring);
+    outline-offset: var(--focus-offset);
   }
 }
 
