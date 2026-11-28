@@ -88,7 +88,7 @@ export interface Heatmap {
   playedDays: number;
   /** Mínimo diário da ofensiva (o primeiro degrau da escala de cor). */
   streakMinMinutes: number;
-  /** Anos com alguma sessão, mais o atual (para o seletor), do mais recente ao mais antigo. */
+  /** Anos com sessões, conclusões ou compras, mais o atual (para o seletor), do mais recente ao mais antigo. */
   years: number[];
 }
 

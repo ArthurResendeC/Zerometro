@@ -193,6 +193,14 @@ describe("heatmap", () => {
     expect(heatmap(2026).to).toBe("2026-12-31");
     expect(heatmap(2030)).toMatchObject({ days: [], totalMinutes: 0 });
   });
+
+  test("seletor: anos só com conclusões ou compras também entram", () => {
+    play("2026-11-10", 30);
+    markCompleted(ctx, persona, { type: "main", date: "2021-05-01" });
+    updateLibraryEntry(ctx, undertale, { acquiredOn: "2019-07-15" });
+
+    expect(heatmap().years).toEqual([2026, 2021, 2019]);
+  });
 });
 
 describe("detalhamento do período", () => {

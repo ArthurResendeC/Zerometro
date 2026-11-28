@@ -17,7 +17,7 @@ import type {
   WeekStats,
 } from "../../shared/stats";
 import type { UserScope } from "./context";
-import { completions, games, playSessions } from "../db/schema";
+import { completions, games, libraryEntries, playSessions } from "../db/schema";
 import { listLibrary } from "./library";
 import { getSettings } from "./settings";
 
@@ -272,7 +272,7 @@ export function getHeatmap(
     totalMinutes: days.reduce((sum, d) => sum + d.minutes, 0),
     playedDays: days.length,
     streakMinMinutes,
-    years: playedYears(scope, Number(today.slice(0, 4))),
+    years: activeYears(scope, Number(today.slice(0, 4))),
   };
 }
 
@@ -309,12 +309,22 @@ export function genreStats({ db, userId }: UserScope, from: string, to: string):
   `);
 }
 
-function playedYears({ db, userId }: UserScope, currentYear: number): number[] {
-  const rows = db
-    .selectDistinct({ year: sql<string>`substr(${playSessions.playedOn}, 1, 4)` })
-    .from(playSessions)
-    .where(and(eq(playSessions.userId, userId), isNotNull(playSessions.minutes)))
-    .all();
+/**
+ * Anos com algo para mostrar nas estatísticas, mais o atual: sessões, conclusões (zerados,
+ * linha do tempo) e compras. Só sessões deixaria de fora, por exemplo, o ano de um jogo zerado
+ * antes de usar o Zerômetro.
+ */
+function activeYears({ db, userId }: UserScope, currentYear: number): number[] {
+  const rows = db.all<{ year: string }>(sql`
+    select substr(${playSessions.playedOn}, 1, 4) as year from ${playSessions}
+    where ${playSessions.userId} = ${userId} and ${playSessions.minutes} is not null
+    union
+    select substr(${completions.completedOn}, 1, 4) from ${completions}
+    where ${completions.userId} = ${userId}
+    union
+    select substr(${libraryEntries.acquiredOn}, 1, 4) from ${libraryEntries}
+    where ${libraryEntries.userId} = ${userId} and ${libraryEntries.acquiredOn} is not null
+  `);
   return [...new Set([currentYear, ...rows.map((r) => Number(r.year))])].toSorted((a, b) => b - a);
 }
 
