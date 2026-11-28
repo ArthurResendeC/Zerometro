@@ -66,7 +66,8 @@ function plural(count: number, one: string, many: string) {
   return `${count} ${count === 1 ? one : many}`;
 }
 
-export function TimelineSection({ timeline }: { timeline: Timeline }) {
+/** `person`: o nome de quem está sendo visto (sem ele, o texto fala com "você"). */
+export function TimelineSection({ timeline, person }: { timeline: Timeline; person?: string }) {
   const [showAll, setShowAll] = useState(false);
   const tooltip = useMarkTooltip<Mark>();
   const { from, to, today, games } = timeline;
@@ -168,7 +169,7 @@ export function TimelineSection({ timeline }: { timeline: Timeline }) {
         <p className="text-xs text-muted-foreground">
           {games.length === 0
             ? `Nenhuma sessão ${period}.`
-            : `Quando você jogou cada um dos ${plural(games.length, "jogo", "jogos")} ${period}. Mais de ${timeline.pauseDays} dias sem jogar viram uma pausa.`}
+            : `Quando ${person ?? "você"} jogou cada um dos ${plural(games.length, "jogo", "jogos")} ${period}. Mais de ${timeline.pauseDays} dias sem jogar viram uma pausa.`}
         </p>
 
         {games.length > 0 && (

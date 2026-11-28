@@ -56,13 +56,28 @@ const monthDate = (month: string) => new Date(`${month}-01T00:00:00Z`);
 
 const games = (count: number) => `${count} ${count === 1 ? "jogo" : "jogos"}`;
 
-export function PurchasesSection({ purchases }: { purchases: PurchaseStats }) {
+/** `person`: o nome de quem está sendo visto (sem ele, o vazio ensina a registrar compras). */
+export function PurchasesSection({
+  purchases,
+  person,
+}: {
+  purchases: PurchaseStats;
+  person?: string;
+}) {
   return (
     <section className="space-y-4" aria-labelledby="comprei-zerei">
       <h2 id="comprei-zerei" className="display-md">
         Comprei × zerei
       </h2>
-      {purchases.hasPurchases ? <Purchases purchases={purchases} /> : <NoPurchases />}
+      {purchases.hasPurchases ? (
+        <Purchases purchases={purchases} />
+      ) : person ? (
+        <Card>
+          <p className="text-sm text-muted-foreground">{person} não registrou nenhuma compra.</p>
+        </Card>
+      ) : (
+        <NoPurchases />
+      )}
     </section>
   );
 }

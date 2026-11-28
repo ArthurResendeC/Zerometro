@@ -21,7 +21,8 @@ function bucketLabel({ min, max }: (typeof sessionLengthBuckets)[number]): strin
   return `${formatMinutes(min)}–${formatMinutes(max)}`;
 }
 
-export function RhythmSection({ rhythm }: { rhythm: Rhythm }) {
+/** `person`: o nome de quem está sendo visto (sem ele, o texto fala com "você"). */
+export function RhythmSection({ rhythm, person }: { rhythm: Rhythm; person?: string }) {
   const busiest = rhythm.weekdays.reduce((a, b) => (b.avgMinutes > a.avgMinutes ? b : a));
 
   return (
@@ -35,7 +36,7 @@ export function RhythmSection({ rhythm }: { rhythm: Rhythm }) {
             <h3 className="display-xs text-muted-foreground">Média por dia da semana</h3>
             <p className="mt-1 text-xs text-muted-foreground">
               {busiest.avgMinutes > 0
-                ? `${WEEKDAYS[busiest.weekday]![1]} é o dia em que você mais joga.`
+                ? `${WEEKDAYS[busiest.weekday]![1]} é o dia em que ${person ?? "você"} mais joga.`
                 : "Contando os dias em que não jogou."}
             </p>
           </div>
@@ -77,7 +78,9 @@ export function RhythmSection({ rhythm }: { rhythm: Rhythm }) {
             <p className="mt-1 text-xs text-muted-foreground">
               {rhythm.timerSessions > 0
                 ? `Só sessões com timer (${rhythm.timerSessions} nesse período): as registradas à mão não têm horário.`
-                : "Use o timer (Comecei a jogar / Parei) para ver em que horário você joga."}
+                : person
+                  ? `Sem sessões com timer nesse período: só elas dizem em que horário ${person} joga.`
+                  : "Use o timer (Comecei a jogar / Parei) para ver em que horário você joga."}
             </p>
           </div>
           {rhythm.timerSessions > 0 && (

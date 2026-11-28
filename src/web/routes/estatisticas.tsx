@@ -1,14 +1,11 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { genreLabel } from "@shared/genres";
-import type { PeriodBreakdown } from "@shared/stats";
-import { GameCover } from "@/components/game-cover";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { NativeSelect } from "@/components/ui/native-select";
 import { ActivityHeatmap } from "@/features/stats/activity-heatmap";
-import { BarList } from "@/features/stats/bar-list";
+import { GamesCard, GenresCard } from "@/features/stats/breakdown-cards";
 import { RecordsSection } from "@/features/stats/records-section";
 import { PurchasesSection } from "@/features/stats/purchases-section";
 import { RhythmSection } from "@/features/stats/rhythm-section";
@@ -21,8 +18,6 @@ import {
   rhythmQuery,
   timelineQuery,
 } from "@/lib/queries";
-
-const GENRES_SHOWN = 8;
 
 const searchSchema = z.object({
   /** Ano de calendário; sem ano, os últimos 12 meses. */
@@ -124,71 +119,4 @@ function RecapCard() {
       </div>
     </Card>
   );
-}
-
-function GenresCard({ breakdown }: { breakdown: PeriodBreakdown }) {
-  const shown = breakdown.genres.slice(0, GENRES_SHOWN);
-  const hidden = breakdown.genres.length - shown.length;
-  return (
-    <Card className="gap-4">
-      <div>
-        <h2 className="display-xs text-muted-foreground">Gêneros mais jogados</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Tempo em jogos de cada gênero. Um jogo com vários gêneros conta em todos eles.
-        </p>
-      </div>
-      {shown.length === 0 ? (
-        <EmptyPeriod />
-      ) : (
-        <>
-          <BarList
-            items={shown.map((g) => ({
-              key: g.genre,
-              label: genreLabel(g.genre),
-              minutes: g.minutes,
-              hint: `${g.games} ${g.games === 1 ? "jogo" : "jogos"}`,
-            }))}
-          />
-          {hidden > 0 && (
-            <p className="text-xs text-muted-foreground">
-              E mais {hidden} {hidden === 1 ? "gênero" : "gêneros"}.
-            </p>
-          )}
-        </>
-      )}
-    </Card>
-  );
-}
-
-function GamesCard({ breakdown }: { breakdown: PeriodBreakdown }) {
-  return (
-    <Card className="gap-4">
-      <h2 className="display-xs text-muted-foreground">Jogos mais jogados</h2>
-      {breakdown.games.length === 0 ? (
-        <EmptyPeriod />
-      ) : (
-        <BarList
-          color="var(--primary)"
-          items={breakdown.games.map((game) => ({
-            key: game.gameId,
-            igdbId: game.igdbId,
-            label: game.name,
-            minutes: game.minutes,
-            leading: (
-              <GameCover
-                name={game.name}
-                imageId={game.coverImageId}
-                size="thumb"
-                className="w-8 shrink-0"
-              />
-            ),
-          }))}
-        />
-      )}
-    </Card>
-  );
-}
-
-function EmptyPeriod() {
-  return <p className="text-sm text-muted-foreground">Nenhuma sessão nesse período.</p>;
 }

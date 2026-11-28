@@ -21,6 +21,27 @@ export const memberProfileQuery = (handle: string) =>
     staleTime: 60_000,
   });
 
+/** A aba Estatísticas de um amigo, no ano (sem ano, os últimos 12 meses). */
+export const memberStatsQuery = (handle: string, year?: number) =>
+  queryOptions({
+    queryKey: [...groupKey, "member", handle, "stats", year ?? null],
+    queryFn: () =>
+      unwrap(
+        api.group.members[":handle"].stats.$get({
+          param: { handle },
+          query: year ? { year: String(year) } : {},
+        }),
+      ),
+    staleTime: 60_000,
+  });
+
+export const memberGamerProfileQuery = (handle: string) =>
+  queryOptions({
+    queryKey: [...groupKey, "member", handle, "profile"],
+    queryFn: () => unwrap(api.group.members[":handle"].profile.$get({ param: { handle } })),
+    staleTime: 60_000,
+  });
+
 export const gameInGroupQuery = (igdbId: number) =>
   queryOptions({
     queryKey: [...groupKey, "game", igdbId],

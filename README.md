@@ -47,7 +47,7 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 <p align="center">
   <img src="docs/readme/amigo.png" alt="Perfil de uma amiga do grupo: avatar, totais (jogado, zerados, 100%, conquistas, ofensiva e jogos na biblioteca), o que está jogando e o que zerou por último, com o tipo de conclusão, a data e a nota" width="100%">
   <br>
-  <sub><b>Perfil de um amigo</b> · o que está jogando, o que zerou por último (com a nota), os totais e, mais abaixo, gêneros, séries e desenvolvedoras favoritas. Preço, notas das sessões e "onde parei" ficam só com você</sub>
+  <sub><b>Perfil de um amigo</b> · em abas: o resumo (o que está jogando, o que zerou por último, as notas de cada jogo e os totais), as estatísticas (atividade, linha do tempo, ritmo, recordes) e o perfil de gamer. Cada um escolhe nos ajustes, seção por seção, o que os amigos veem; notas das sessões e "onde parei" ficam só com você</sub>
 </p>
 
 <p align="center">
@@ -104,7 +104,7 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 ### Já funciona
 
 - **Perfis por convite:** o admin (quem sobe a instância e entra com o `ZEROMETRO_TOKEN`) cria links de convite, de uso único e válidos por 7 dias, e cada amigo escolhe nome, @apelido, avatar pixel art e senha. Cada perfil tem os próprios dados. O login vale 30 dias por aparelho (renovado com o uso); trocar a senha ou "sair dos outros aparelhos" desconecta o resto, inclusive os conectores de IA, e o admin pode suspender um perfil ou gerar um link de senha nova
-- **Grupo:** ranking entre os amigos por horas, zerados (a primeira vez; replays não contam), conquistas e ofensiva, na semana, no mês, no ano ou desde sempre, com o que cada um está jogando agora e a conquista mais rara do período. O perfil de cada amigo mostra o que está jogando, o que zerou por último (com a nota) e os gêneros, séries e desenvolvedoras favoritos, e a página do jogo mostra quem do grupo também tem o jogo e como está com ele. Preço, notas das sessões e "onde parei" nunca são compartilhados, e quem quiser sai do grupo nos ajustes
+- **Grupo:** ranking entre os amigos por horas, zerados (a primeira vez; replays não contam), conquistas e ofensiva, na semana, no mês, no ano ou desde sempre, com o que cada um está jogando agora e a conquista mais rara do período. O perfil de cada amigo tem três abas: o resumo (o que está jogando, o que zerou por último, a nota de cada jogo e os totais), as estatísticas do ano ou dos últimos 12 meses (atividade, gêneros e jogos mais jogados, linha do tempo, ritmo, recordes e, se a pessoa quiser, comprei × zerei) e o perfil de gamer (o que mais valoriza e os rankings). Cada um escolhe nos ajustes, seção por seção, o que aparece (tudo ligado, menos o que mostra dinheiro), e a página do jogo mostra quem do grupo também tem o jogo e como está com ele. Notas das sessões e "onde parei" nunca são compartilhados, e quem quiser sai do grupo nos ajustes
 - **Biblioteca por status:** jogando, sem fim (multiplayer, live service e outros jogos que não se zeram), zerados, próximos, lista de desejos, pausados e abandonados, ordenada pela última sessão, por quando começou a jogar ou pela sua nota (com o valor num selo no card)
 - **Dados do IGDB:** busca de jogos com capa, plataformas, gêneros, ano e tempo para zerar
 - **Registro de sessões:** manual ("joguei 2h ontem") ou pelo **timer** ("Comecei a jogar" / "Parei"), que roda no servidor e não se perde ao fechar a aba
