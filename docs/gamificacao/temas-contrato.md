@@ -318,9 +318,9 @@ um toast.
 >     (tailwind-merge) sabe que elas conflitam com `m-*`.
 > - **Exceções mantidas:** `recap-slides.tsx` continua em px fixos, porque espelha a imagem do recap
 >   (veja §8). A classificação indicativa e os avatares também ficam como estão.
-> - **Bug pré-existente, mantido de propósito:** em `/grupo`, o card do próprio usuário tem um anel
->   `--primary` que nunca aparece, porque o `pixel-frame` do Card sobrescreve o `box-shadow`. A correção
->   (por exemplo, `[--px-frame-color:var(--primary)]`) muda o visual, então fica para decidir.
+> - **Bug corrigido:** em `/grupo`, o card do próprio usuário tinha um anel `--primary` que nunca aparecia,
+>   porque o `pixel-frame` do Card sobrescrevia o `box-shadow`. Agora a moldura dele é laranja
+>   (`[--px-frame-color:var(--primary)]`). É a única mudança visual da fase.
 > - **Verificação:** capturas de 26 telas e estados, comparando os pixels e os estilos computados de cada
 >   elemento antes e depois. Saiu idêntico, tirando ruído de tempo (timer e carregamento de capas). Um
 >   tema de teste injetado (fonte serifada, anel de 1px, botão em pílula, sombra suave, display em
