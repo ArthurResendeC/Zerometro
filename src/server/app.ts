@@ -10,6 +10,7 @@ import { AppError, type ApiErrorBody } from "./errors";
 import { createAuthRoutes, requireAuth } from "./routes/auth";
 import { createCompletionRoutes } from "./routes/completions";
 import { createFeedRoutes } from "./routes/feeds";
+import { createGroupRoutes } from "./routes/group";
 import { healthRoutes } from "./routes/health";
 import { createIgdbRoutes } from "./routes/igdb";
 import { createLibraryRoutes } from "./routes/library";
@@ -91,6 +92,7 @@ export function createApp(deps: AppDeps) {
       .route("/settings", createSettingsRoutes(deps))
       .route("/steam", createSteamRoutes(deps))
       .route("/timer", createTimerRoutes(deps))
+      .route("/group", createGroupRoutes(deps))
       .route("/me", createMeRoutes(deps))
       .route("/admin", createAdminRoutes(deps))
   );

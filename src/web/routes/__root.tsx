@@ -7,7 +7,7 @@ import {
   useLocation,
 } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ChartIcon, ListIcon, TimerIcon, UserIcon } from "@/components/icons";
+import { ChartIcon, ListIcon, TimerIcon, UserIcon, UsersIcon } from "@/components/icons";
 import { LogSessionDialog } from "@/components/log-session-dialog";
 import { SessionNoteDialog } from "@/components/session-note-dialog";
 import { StartSessionButton } from "@/components/start-session-dialog";
@@ -86,10 +86,10 @@ function SignedInLayout({ session: initial }: { session: AuthSession }) {
           >
             Zer<span className="text-primary">ô</span>metro
           </Link>
-          {/* Sem espaço para o texto, o logo já leva ao início. */}
+          {/* Sem espaço para o texto, o logo já leva ao início (com o Grupo, só cabe a partir de 2xl). */}
           <Link
             to="/"
-            className={`${navLinkClass} hidden lg:inline`}
+            className={`${navLinkClass} hidden 2xl:inline`}
             activeProps={{ className: "text-foreground" }}
             activeOptions={{ exact: true }}
           >
@@ -122,6 +122,15 @@ function SignedInLayout({ session: initial }: { session: AuthSession }) {
           >
             <UserIcon className="lg:hidden" />
             <span className="max-lg:hidden">Perfil</span>
+          </Link>
+          <Link
+            to="/grupo"
+            className={navLinkClass}
+            activeProps={{ className: "text-foreground" }}
+            aria-label="Grupo"
+          >
+            <UsersIcon className="lg:hidden" />
+            <span className="max-lg:hidden">Grupo</span>
           </Link>
           <div className="ml-auto flex items-center">
             <PendingIndicator

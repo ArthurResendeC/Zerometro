@@ -29,6 +29,8 @@ export const settingsSchema = z.object({
     .max(BLEND_WEIGHT.max, "A calculada pesa no máximo 90% na mistura"),
   /** Pesos padrão personalizados (null = os do método). */
   ratingCustomWeights: ratingWeightsSchema.nullable(),
+  /** Aparecer no ranking do grupo e deixar os amigos verem o perfil (padrão: sim). */
+  shareWithGroup: z.boolean(),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
@@ -38,6 +40,7 @@ export const DEFAULT_SETTINGS: Settings = {
   ratingMode: "blend",
   ratingBlendWeight: BLEND_WEIGHT.default,
   ratingCustomWeights: null,
+  shareWithGroup: true,
 };
 
 export const updateSettingsSchema = settingsSchema

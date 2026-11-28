@@ -43,6 +43,7 @@ import {
   MIN_RATED_GAMES,
   type ProfileSection,
   profileSortSchema,
+  type ProfileRow,
   sortProfileRows,
 } from "../../shared/profile";
 import { recapImageFormats, recapPeriods } from "../../shared/recap";
@@ -118,6 +119,8 @@ import { getSettings } from "../services/settings";
 import { importSteamGames, previewSteamImport } from "../services/steam-import";
 import { syncSteamGame, syncSteamLibrary } from "../services/steam-sync";
 import { getProfile } from "../services/profile";
+import { getLeaderboard, getMemberProfile } from "../services/group";
+import { type GroupMemberGame, groupMetrics, groupPeriods } from "../../shared/group";
 import { createRating, getLatestRating, getRatingTemplate, listRatings } from "../services/ratings";
 import { getRecap } from "../services/recap";
 import { renderRecapImage } from "../services/recap-image";
@@ -1671,6 +1674,105 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
       }),
   );
 
+  server.registerTool(
+    "get_group_leaderboard",
+    {
+      title: "Ranking do grupo",
+      description:
+        'O ranking entre os amigos desta instância (quem deixou "Aparecer no grupo" ligado) num período: horas jogadas (pelas sessões; em "all", o total da biblioteca), dias jogados, jogos zerados pela primeira vez, 100%, conquistas desbloqueadas (e a mais rara), ofensiva atual, o mais jogado e o que está jogando agora. Ex.: "quem jogou mais esse mês?", "quem zerou mais esse ano?", "quem pegou mais conquistas na semana?". isMe marca o usuário. meHidden: o usuário saiu do ranking.',
+      inputSchema: z.object({
+        period: z
+          .enum(groupPeriods)
+          .default("month")
+          .describe(
+            "week = semana atual (desde segunda); month = mês atual; year = ano atual; all = sempre",
+          ),
+        sortBy: z
+          .enum(groupMetrics)
+          .default("minutes")
+          .describe(
+            "minutes = horas; finished = zerados; achievements = conquistas; streak = ofensiva",
+          ),
+      }),
+      annotations: readOnly,
+    },
+    ({ period, sortBy }) =>
+      run(() => {
+        const board = getLeaderboard(ctx(), period);
+        return {
+          period,
+          from: board.from,
+          to: board.to,
+          meHidden: board.meHidden,
+          ranking: board.members
+            .toSorted((a, b) => b[sortBy] - a[sortBy])
+            .map((m, i) => ({
+              position: i + 1,
+              name: m.name,
+              handle: m.handle,
+              isMe: m.isMe,
+              hours: minutesToHours(m.minutes),
+              playedDays: m.playedDays,
+              finished: m.finished,
+              fullCompletions: m.fullCompletions,
+              achievements: m.achievements,
+              rarestAchievement: m.rarestAchievement
+                ? `${m.rarestAchievement.title} (${m.rarestAchievement.name}, ${m.rarestAchievement.rarity}% dos jogadores)`
+                : null,
+              streakDays: m.streak,
+              topGame: m.topGame?.name ?? null,
+              playingNow: m.playingNow?.name ?? null,
+            })),
+        };
+      }),
+  );
+
+  server.registerTool(
+    "get_friend_profile",
+    {
+      title: "Perfil de um amigo",
+      description:
+        'O perfil público de alguém do grupo, pelo @apelido (veja get_group_leaderboard): o que está jogando, as últimas conclusões (com a nota), os totais (horas, zerados, 100%, conquistas, ofensiva) e os gêneros, séries e desenvolvedoras favoritos. Ex.: "o que a @ana anda jogando?", "o que o joao zerou por último?".',
+      inputSchema: z.object({
+        handle: z.string().trim().min(1).describe("@apelido do amigo (com ou sem @)"),
+      }),
+      annotations: readOnly,
+    },
+    ({ handle }) =>
+      run(() => {
+        const profile = getMemberProfile(ctx(), handle.replace(/^@/, "").toLowerCase());
+        const game = (g: GroupMemberGame) => ({
+          name: g.name,
+          status: g.status,
+          hours: minutesToHours(g.minutesPlayed),
+          completion: g.completion?.best ?? null,
+          rating: g.rating,
+        });
+        const rows = (list: ProfileRow[], label: (name: string) => string = (n) => n) =>
+          list.map((row) => ({
+            name: label(row.name),
+            hours: minutesToHours(row.minutes),
+            games: row.games,
+          }));
+        const { minutes, ...totals } = profile.totals;
+        return {
+          name: profile.member.name,
+          handle: profile.member.handle,
+          playingNow: profile.playingNow?.name ?? null,
+          totals: { ...totals, hours: minutesToHours(minutes) },
+          playing: profile.playing.map(game),
+          recentlyFinished: profile.recentlyFinished.map((g) => ({
+            ...game(g),
+            type: g.type,
+            completedOn: g.completedOn,
+          })),
+          genres: rows(profile.genres, genreLabel),
+          series: rows(profile.series),
+          developers: rows(profile.developers),
+        };
+      }),
+  );
+
   return server;
 }
 
@@ -1711,6 +1813,9 @@ function criterionAverageSummary(a: CriterionAverage) {
     worst: a.worst && `${a.worst.name}: ${a.worst.score}`,
   };
 }
+
+/** Minutos em horas, com uma casa. */
+const minutesToHours = (minutes: number) => Math.round((minutes / 60) * 10) / 10;
 
 function hours(seconds: number | null): number | null {
   return seconds === null ? null : Math.round((seconds / 3600) * 10) / 10;

@@ -1,0 +1,319 @@
+// O grupo: o ranking entre os perfis da instância e o que cada um deixa os amigos verem. Quem
+// desligou "Aparecer no grupo" ou está suspenso fica de fora. Preço, notas das sessões e "onde
+// parei" nunca saem daqui.
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, min, sql } from "drizzle-orm";
+import { type Avatar, avatars, DEFAULT_AVATAR } from "../../shared/auth";
+import { startOfWeek } from "../../shared/dates";
+import type {
+  GroupGameEntry,
+  GroupGameRef,
+  GroupLeaderboard,
+  GroupMember,
+  GroupMemberGame,
+  GroupMemberProfile,
+  GroupMemberStats,
+  GroupPeriod,
+} from "../../shared/group";
+import type { LibraryItem } from "../../shared/library";
+import type { DbOrTx } from "../db/client";
+import {
+  achievementUnlocks,
+  achievements,
+  completions,
+  games,
+  libraryEntries,
+  playSessions,
+  user,
+  userAchievementSets,
+} from "../db/schema";
+import { NotFoundError } from "../errors";
+import type { ServiceContext, UserScope } from "./context";
+import { getLibraryItem, listLibrary } from "./library";
+import { getProfile } from "./profile";
+import { getSettings } from "./settings";
+import { currentStreak, minutesByDay } from "./stats";
+import { getActiveSession } from "./timer";
+
+const PROFILE_ROWS = 5;
+const PROFILE_GAMES = 12;
+
+const isAvatar = (value: string | null): value is Avatar =>
+  (avatars as readonly string[]).includes(value ?? "");
+
+/** Perfis ativos que aparecem no grupo (com @apelido), na ordem em que entraram. */
+function visibleMembers(db: DbOrTx, viewerId: string): GroupMember[] {
+  return db
+    .select({ id: user.id, name: user.name, handle: user.handle, avatar: user.avatar })
+    .from(user)
+    .where(and(isNull(user.disabledAt), isNotNull(user.handle)))
+    .orderBy(asc(user.createdAt))
+    .all()
+    .filter((row) => getSettings({ db, userId: row.id }).shareWithGroup)
+    .map((row) => ({
+      userId: row.id,
+      name: row.name,
+      handle: row.handle!,
+      avatar: isAvatar(row.avatar) ? row.avatar : DEFAULT_AVATAR,
+      isMe: row.id === viewerId,
+    }));
+}
+
+/** Dias do período no fuso do usuário (o "sempre" começa no ano 0). */
+export function groupPeriodRange(period: GroupPeriod, today: string) {
+  const from =
+    period === "week"
+      ? startOfWeek(today)
+      : period === "month"
+        ? `${today.slice(0, 7)}-01`
+        : period === "year"
+          ? `${today.slice(0, 4)}-01-01`
+          : "0000-01-01";
+  return { from, to: today };
+}
+
+const gameRef = (row: { igdbId: number; name: string; coverImageId: string | null }) => ({
+  igdbId: row.igdbId,
+  name: row.name,
+  coverImageId: row.coverImageId,
+});
+
+const playingNow = (scope: UserScope): GroupGameRef | null => {
+  const active = getActiveSession(scope);
+  return active
+    ? { igdbId: active.igdbId, name: active.gameName, coverImageId: active.coverImageId }
+    : null;
+};
+
+/** Jogos zerados pela primeira vez (e os que chegaram aos 100%) entre `from` e `to`. */
+function completionCounts({ db, userId }: UserScope, from: string, to: string) {
+  const firstOf = (types?: "full") =>
+    db
+      .select({ gameId: completions.gameId, first: min(completions.completedOn) })
+      .from(completions)
+      .where(and(eq(completions.userId, userId), types ? eq(completions.type, types) : undefined))
+      .groupBy(completions.gameId)
+      .all()
+      .filter((row) => row.first !== null && row.first >= from && row.first <= to).length;
+  return { finished: firstOf(), fullCompletions: firstOf("full") };
+}
+
+/**
+ * Conquistas desbloqueadas no período e a mais rara delas. O dia é o do horário em UTC (as
+ * conquistas guardam só o instante): perto da meia-noite, pode cair no dia vizinho.
+ */
+function achievementStats({ db, userId }: UserScope, from: string, to: string) {
+  const day = sql<string>`substr(${achievementUnlocks.unlockedAt}, 1, 10)`;
+  const inPeriod = and(
+    eq(achievementUnlocks.userId, userId),
+    isNull(achievements.removedAt),
+    gte(day, from),
+    lte(day, to),
+  );
+  const count =
+    db
+      .select({ n: sql<number>`count(*)` })
+      .from(achievementUnlocks)
+      .innerJoin(achievements, eq(achievements.id, achievementUnlocks.achievementId))
+      .where(inPeriod)
+      .get()?.n ?? 0;
+  // O jogo da conquista: um da biblioteca da pessoa que segue a lista dela.
+  const rarest = db
+    .select({
+      title: achievements.title,
+      rarity: achievements.rarity,
+      igdbId: games.igdbId,
+      name: games.name,
+      coverImageId: games.coverImageId,
+    })
+    .from(achievementUnlocks)
+    .innerJoin(achievements, eq(achievements.id, achievementUnlocks.achievementId))
+    .innerJoin(
+      userAchievementSets,
+      and(
+        eq(userAchievementSets.setId, achievements.setId),
+        eq(userAchievementSets.userId, userId),
+      ),
+    )
+    .innerJoin(games, eq(games.id, userAchievementSets.gameId))
+    .where(and(inPeriod, isNotNull(achievements.rarity)))
+    .orderBy(asc(achievements.rarity))
+    .limit(1)
+    .get();
+  return {
+    achievements: count,
+    rarestAchievement: rarest
+      ? { ...gameRef(rarest), title: rarest.title, rarity: rarest.rarity! }
+      : null,
+  };
+}
+
+function topGameIn({ db, userId }: UserScope, from: string, to: string) {
+  const minutes = sql<number>`sum(${playSessions.minutes})`;
+  const row = db
+    .select({
+      igdbId: games.igdbId,
+      name: games.name,
+      coverImageId: games.coverImageId,
+      minutes,
+    })
+    .from(playSessions)
+    .innerJoin(games, eq(games.id, playSessions.gameId))
+    .where(
+      and(
+        eq(playSessions.userId, userId),
+        gte(playSessions.playedOn, from),
+        lte(playSessions.playedOn, to),
+        isNotNull(playSessions.minutes),
+      ),
+    )
+    .groupBy(games.id)
+    .orderBy(desc(minutes))
+    .limit(1)
+    .get();
+  return row ? { ...gameRef(row), minutes: row.minutes } : null;
+}
+
+const libraryMinutes = (items: LibraryItem[]) =>
+  items.reduce((sum, item) => sum + item.minutesPlayed, 0);
+
+function memberStats(
+  ctx: ServiceContext,
+  member: GroupMember,
+  period: GroupPeriod,
+  from: string,
+  to: string,
+): GroupMemberStats {
+  const scope: UserScope = { db: ctx.db, userId: member.userId };
+  const daily = minutesByDay(scope, from, to);
+  const sessionMinutes = [...daily.values()].reduce((sum, m) => sum + m, 0);
+  return {
+    ...member,
+    minutes: period === "all" ? libraryMinutes(listLibrary(scope)) : sessionMinutes,
+    playedDays: daily.size,
+    ...completionCounts(scope, from, to),
+    ...achievementStats(scope, from, to),
+    streak: currentStreak(scope, ctx.today),
+    topGame: topGameIn(scope, from, to),
+    playingNow: playingNow(scope),
+  };
+}
+
+/** O ranking do grupo no período: a tela ordena pela métrica escolhida. */
+export function getLeaderboard(ctx: ServiceContext, period: GroupPeriod): GroupLeaderboard {
+  const { from, to } = groupPeriodRange(period, ctx.today);
+  const members = visibleMembers(ctx.db, ctx.userId);
+  return {
+    period,
+    from,
+    to,
+    members: members.map((member) => memberStats(ctx, member, period, from, to)),
+    meHidden: !members.some((member) => member.isMe),
+  };
+}
+
+const memberGame = (item: LibraryItem): GroupMemberGame => ({
+  ...gameRef(item),
+  status: item.status,
+  minutesPlayed: item.minutesPlayed,
+  completion: item.completion
+    ? { best: item.completion.best, lastCompletedOn: item.completion.lastCompletedOn }
+    : null,
+  rating: item.rating,
+});
+
+/** O perfil público de alguém do grupo, pelo @apelido. */
+export function getMemberProfile(ctx: ServiceContext, handle: string): GroupMemberProfile {
+  const member = visibleMembers(ctx.db, ctx.userId).find((m) => m.handle === handle);
+  if (!member) throw new NotFoundError(`@${handle} não está no grupo`);
+  const scope: UserScope = { db: ctx.db, userId: member.userId };
+  const library = listLibrary(scope);
+  const byGameId = new Map(library.map((item) => [item.gameId, item]));
+  const { from, to } = groupPeriodRange("all", ctx.today);
+  const lastPlayed = new Map(
+    ctx.db
+      .select({ gameId: playSessions.gameId, last: sql<string>`max(${playSessions.playedOn})` })
+      .from(playSessions)
+      .where(eq(playSessions.userId, member.userId))
+      .groupBy(playSessions.gameId)
+      .all()
+      .map((row) => [row.gameId, row.last]),
+  );
+
+  const recent = ctx.db
+    .select({
+      gameId: completions.gameId,
+      type: completions.type,
+      completedOn: completions.completedOn,
+    })
+    .from(completions)
+    .where(eq(completions.userId, member.userId))
+    .orderBy(desc(completions.completedOn), desc(completions.id))
+    .limit(PROFILE_GAMES)
+    .all()
+    .flatMap((row) => {
+      const item = byGameId.get(row.gameId);
+      return item ? [{ ...memberGame(item), completedOn: row.completedOn, type: row.type }] : [];
+    });
+
+  const profile = getProfile(scope);
+  return {
+    member,
+    playingNow: playingNow(scope),
+    totals: {
+      minutes: libraryMinutes(library),
+      ...completionCounts(scope, from, to),
+      achievements: achievementStats(scope, from, to).achievements,
+      streak: currentStreak(scope, ctx.today),
+      games: library.length,
+    },
+    playing: library
+      .filter((item) => item.status === "playing")
+      .toSorted((a, b) =>
+        (lastPlayed.get(b.gameId) ?? "").localeCompare(lastPlayed.get(a.gameId) ?? ""),
+      )
+      .slice(0, PROFILE_GAMES)
+      .map(memberGame),
+    recentlyFinished: recent,
+    genres: profile.genres.slice(0, PROFILE_ROWS),
+    series: profile.series.slice(0, PROFILE_ROWS),
+    developers: profile.developers.slice(0, PROFILE_ROWS),
+  };
+}
+
+/** Quem do grupo tem o jogo (pelo id do IGDB), os que mais jogaram primeiro. */
+export function getGameInGroup(ctx: ServiceContext, igdbId: number): GroupGameEntry[] {
+  const game = ctx.db.select({ id: games.id }).from(games).where(eq(games.igdbId, igdbId)).get();
+  if (!game) return [];
+  const members = visibleMembers(ctx.db, ctx.userId);
+  const owners = new Set(
+    ctx.db
+      .select({ userId: libraryEntries.userId })
+      .from(libraryEntries)
+      .where(
+        and(
+          eq(libraryEntries.gameId, game.id),
+          inArray(
+            libraryEntries.userId,
+            members.map((m) => m.userId),
+          ),
+        ),
+      )
+      .all()
+      .map((row) => row.userId),
+  );
+  return members
+    .filter((member) => owners.has(member.userId))
+    .map((member) => {
+      const item = getLibraryItem({ db: ctx.db, userId: member.userId }, game.id);
+      const { completion, ...rest } = memberGame(item);
+      return {
+        member,
+        status: rest.status,
+        minutesPlayed: rest.minutesPlayed,
+        completion,
+        rating: rest.rating,
+        achievements: item.achievements,
+      };
+    })
+    .toSorted((a, b) => b.minutesPlayed - a.minutesPlayed);
+}

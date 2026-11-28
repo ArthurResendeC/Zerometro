@@ -16,8 +16,10 @@ import { Route as BibliotecaRouteImport } from "./routes/biblioteca"
 import { Route as ComoAvaliamosRouteImport } from "./routes/como-avaliamos"
 import { Route as EntrarRouteImport } from "./routes/entrar"
 import { Route as EstatisticasRouteImport } from "./routes/estatisticas"
+import { Route as GrupoRouteImport } from "./routes/grupo"
 import { Route as PerfilRouteImport } from "./routes/perfil"
 import { Route as RecapRouteImport } from "./routes/recap"
+import { Route as AmigoHandleRouteImport } from "./routes/amigo.$handle"
 import { Route as ConviteCodeRouteImport } from "./routes/convite.$code"
 import { Route as JogoIgdbIdRouteImport } from "./routes/jogo.$igdbId"
 import { Route as JogosGameIdRouteImport } from "./routes/jogos.$gameId"
@@ -58,6 +60,11 @@ const EstatisticasRoute = EstatisticasRouteImport.update({
   path: "/estatisticas",
   getParentRoute: () => rootRouteImport,
 } as any)
+const GrupoRoute = GrupoRouteImport.update({
+  id: "/grupo",
+  path: "/grupo",
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PerfilRoute = PerfilRouteImport.update({
   id: "/perfil",
   path: "/perfil",
@@ -66,6 +73,11 @@ const PerfilRoute = PerfilRouteImport.update({
 const RecapRoute = RecapRouteImport.update({
   id: "/recap",
   path: "/recap",
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AmigoHandleRoute = AmigoHandleRouteImport.update({
+  id: "/amigo/$handle",
+  path: "/amigo/$handle",
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConviteCodeRoute = ConviteCodeRouteImport.update({
@@ -97,8 +109,10 @@ export interface FileRoutesByFullPath {
   "/como-avaliamos": typeof ComoAvaliamosRoute
   "/entrar": typeof EntrarRoute
   "/estatisticas": typeof EstatisticasRoute
+  "/grupo": typeof GrupoRoute
   "/perfil": typeof PerfilRoute
   "/recap": typeof RecapRoute
+  "/amigo/$handle": typeof AmigoHandleRoute
   "/convite/$code": typeof ConviteCodeRoute
   "/jogo/$igdbId": typeof JogoIgdbIdRoute
   "/jogos/$gameId": typeof JogosGameIdRoute
@@ -112,8 +126,10 @@ export interface FileRoutesByTo {
   "/como-avaliamos": typeof ComoAvaliamosRoute
   "/entrar": typeof EntrarRoute
   "/estatisticas": typeof EstatisticasRoute
+  "/grupo": typeof GrupoRoute
   "/perfil": typeof PerfilRoute
   "/recap": typeof RecapRoute
+  "/amigo/$handle": typeof AmigoHandleRoute
   "/convite/$code": typeof ConviteCodeRoute
   "/jogo/$igdbId": typeof JogoIgdbIdRoute
   "/jogos/$gameId": typeof JogosGameIdRoute
@@ -128,8 +144,10 @@ export interface FileRoutesById {
   "/como-avaliamos": typeof ComoAvaliamosRoute
   "/entrar": typeof EntrarRoute
   "/estatisticas": typeof EstatisticasRoute
+  "/grupo": typeof GrupoRoute
   "/perfil": typeof PerfilRoute
   "/recap": typeof RecapRoute
+  "/amigo/$handle": typeof AmigoHandleRoute
   "/convite/$code": typeof ConviteCodeRoute
   "/jogo/$igdbId": typeof JogoIgdbIdRoute
   "/jogos/$gameId": typeof JogosGameIdRoute
@@ -145,8 +163,10 @@ export interface FileRouteTypes {
     | "/como-avaliamos"
     | "/entrar"
     | "/estatisticas"
+    | "/grupo"
     | "/perfil"
     | "/recap"
+    | "/amigo/$handle"
     | "/convite/$code"
     | "/jogo/$igdbId"
     | "/jogos/$gameId"
@@ -160,8 +180,10 @@ export interface FileRouteTypes {
     | "/como-avaliamos"
     | "/entrar"
     | "/estatisticas"
+    | "/grupo"
     | "/perfil"
     | "/recap"
+    | "/amigo/$handle"
     | "/convite/$code"
     | "/jogo/$igdbId"
     | "/jogos/$gameId"
@@ -175,8 +197,10 @@ export interface FileRouteTypes {
     | "/como-avaliamos"
     | "/entrar"
     | "/estatisticas"
+    | "/grupo"
     | "/perfil"
     | "/recap"
+    | "/amigo/$handle"
     | "/convite/$code"
     | "/jogo/$igdbId"
     | "/jogos/$gameId"
@@ -191,8 +215,10 @@ export interface RootRouteChildren {
   ComoAvaliamosRoute: typeof ComoAvaliamosRoute
   EntrarRoute: typeof EntrarRoute
   EstatisticasRoute: typeof EstatisticasRoute
+  GrupoRoute: typeof GrupoRoute
   PerfilRoute: typeof PerfilRoute
   RecapRoute: typeof RecapRoute
+  AmigoHandleRoute: typeof AmigoHandleRoute
   ConviteCodeRoute: typeof ConviteCodeRoute
   JogoIgdbIdRoute: typeof JogoIgdbIdRoute
   JogosGameIdRoute: typeof JogosGameIdRoute
@@ -250,6 +276,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof EstatisticasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    "/grupo": {
+      id: "/grupo"
+      path: "/grupo"
+      fullPath: "/grupo"
+      preLoaderRoute: typeof GrupoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     "/perfil": {
       id: "/perfil"
       path: "/perfil"
@@ -262,6 +295,13 @@ declare module "@tanstack/react-router" {
       path: "/recap"
       fullPath: "/recap"
       preLoaderRoute: typeof RecapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    "/amigo/$handle": {
+      id: "/amigo/$handle"
+      path: "/amigo/$handle"
+      fullPath: "/amigo/$handle"
+      preLoaderRoute: typeof AmigoHandleRouteImport
       parentRoute: typeof rootRouteImport
     }
     "/convite/$code": {
@@ -303,8 +343,10 @@ const rootRouteChildren: RootRouteChildren = {
   ComoAvaliamosRoute: ComoAvaliamosRoute,
   EntrarRoute: EntrarRoute,
   EstatisticasRoute: EstatisticasRoute,
+  GrupoRoute: GrupoRoute,
   PerfilRoute: PerfilRoute,
   RecapRoute: RecapRoute,
+  AmigoHandleRoute: AmigoHandleRoute,
   ConviteCodeRoute: ConviteCodeRoute,
   JogoIgdbIdRoute: JogoIgdbIdRoute,
   JogosGameIdRoute: JogosGameIdRoute,

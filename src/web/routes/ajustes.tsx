@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { AudioSettingsCard } from "@/features/audio/audio-settings-card";
 import { RatingSettingsCard } from "@/features/rating/rating-settings-card";
 import { SteamSettingsCard } from "@/features/steam/steam-settings-card";
+import { GroupSettingsCard } from "@/features/group/group-settings-card";
 import { AccountCard } from "@/features/profile/account-card";
 import { PeopleCard } from "@/features/profile/people-card";
 import { formatMinutes } from "@/lib/format";
@@ -33,6 +34,7 @@ function SettingsPage() {
       </div>
       {session && <AccountCard session={session} />}
       {session?.role === "admin" && <PeopleCard />}
+      <GroupSettingsCard settings={settings} />
       <DurationSettingCard
         key={`streak-${settings.streakMinMinutes}`}
         field="streakMinMinutes"

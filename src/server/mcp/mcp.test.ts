@@ -179,7 +179,9 @@ describe("tools", () => {
     expect(readOnly.toSorted()).toEqual([
       "get_active_session",
       "get_feeds",
+      "get_friend_profile",
       "get_game",
+      "get_group_leaderboard",
       "get_period_stats",
       "get_profile",
       "get_rating",
@@ -748,6 +750,33 @@ describe("tools", () => {
     const library = await callJson(client, "list_library");
     expect(library.text).toContain("Undertale");
     expect(library.text).not.toContain("Persona 5 Royal");
+    await client.close();
+  });
+
+  test("ranking do grupo e perfil de um amigo", async () => {
+    await t.request("/api/library", json({ igdbId: 114283, status: "playing" }));
+    await t.request("/api/sessions", json({ gameId: 1, minutes: 90 }));
+    const joao = await t.createMember("joao");
+    await joao.request("/api/library", json({ igdbId: 12517, status: "playing" }));
+    await joao.request("/api/sessions", json({ gameId: 2, minutes: 30 }));
+
+    const client = await connect(t, await authorize(t, joao));
+    const board = await callJson(client, "get_group_leaderboard", { period: "all" });
+    expect(
+      board.data.ranking.map((r: { handle: string; hours: number; isMe: boolean }) => [
+        r.handle,
+        r.hours,
+        r.isMe,
+      ]),
+    ).toEqual([
+      ["owner", 1.5, false],
+      ["joao", 0.5, true],
+    ]);
+    const friend = await callJson(client, "get_friend_profile", { handle: "@owner" });
+    expect(friend.data.playing.map((g: { name: string }) => g.name)).toEqual(["Persona 5 Royal"]);
+    expect((await callJson(client, "get_friend_profile", { handle: "ninguem" })).isError).toBe(
+      true,
+    );
     await client.close();
   });
 

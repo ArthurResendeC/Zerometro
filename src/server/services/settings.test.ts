@@ -13,6 +13,7 @@ describe("settings", () => {
       ratingMode: "blend",
       ratingBlendWeight: 0.7,
       ratingCustomWeights: null,
+      shareWithGroup: true,
     });
   });
 

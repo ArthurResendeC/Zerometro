@@ -9,6 +9,7 @@ import { CompletionBadge, completionAddsInfo, StatusBadge } from "@/components/s
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AboutTab } from "@/features/game/about-tab";
+import { GameInGroup } from "@/features/group/game-in-group";
 import { AchievementsTab } from "@/features/game/achievements-tab";
 import { GameHero, type HeroGame } from "@/features/game/game-hero";
 import { LastNoteBlock } from "@/components/last-note";
@@ -111,6 +112,8 @@ function GamePage() {
       >
         {item && <LastNoteBlock item={item} />}
       </GameHero>
+
+      <GameInGroup igdbId={igdbId} />
 
       {tab === "sessoes" && item ? (
         <MySessions item={item} />
