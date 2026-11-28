@@ -453,6 +453,15 @@ os testes de completude e contraste.
 > - **Exclusivos:** Platina (não se compra; vai ser prêmio de insígnia), Abóbora e Noite Feliz
 >   (sazonais, campo `season`).
 >
+> **Fonte própria (fora do Google Fonts):** o Mesa de Cartas usa a Thin Sans (CC0), hospedada em
+> `src/web/themes/fonts/` com a licença ao lado. O `@font-face` fica no CSS do tema com `url()`
+> relativo: o Bun empacota o arquivo com hash, e o navegador só baixa quando o tema está ativo (o
+> `fontsHref` do registro fica `null`). Fontes de pixel costumam ter métricas fora do padrão; a Thin
+> Sans tem maiúscula de 1,25 em, então o `@font-face` usa `ascent-override`/`descent-override`, a
+> escala de texto do tema é própria (múltiplos de 4px ficam nítidos nas telas de alta densidade)
+> e dois pontos com linha justa ganharam ajuste (rótulos do gráfico e meses do mapa de atividade,
+> com o gancho `data-slot="heatmap-month"`).
+>
 > **Regra de propriedade intelectual:** homenagem é só paleta, forma e atitude. Nada de nome de
 > jogo, logo, arte, personagem, som ou fonte do jogo (fontes sempre do Google Fonts, com licença
 > livre). Exemplo: a Pricedown dos GTAs antigos tem licença desktop gratuita, mas ela proíbe

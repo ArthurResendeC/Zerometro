@@ -148,6 +148,7 @@ export function ActivityHeatmap({ heatmap, actions, stale = false }: ActivityHea
               <span
                 key={`${column}-${label}`}
                 aria-hidden
+                data-slot="heatmap-month"
                 className="text-xs leading-none whitespace-nowrap text-muted-foreground"
                 style={{ gridRow: 1, gridColumn: `${column + 1} / span 3` }}
               >

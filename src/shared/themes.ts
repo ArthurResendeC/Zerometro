@@ -254,13 +254,15 @@ export const themes: Record<ThemeId, ThemeDef> = {
   "mesa-de-cartas": {
     id: "mesa-de-cartas",
     name: "Mesa de Cartas",
-    description: "Feltro verde-azulado, fichas vermelhas e azuis e a curvatura da tela de tubo.",
+    description:
+      "Feltro verde-azulado, naipes de baralho, fichas vermelhas e azuis e fonte de pixel.",
     category: "iconic",
     tier: "complete",
     modes: ["dark"],
     themeColor: { dark: "#16302e" },
     swatch: ["#16302e", "#2a4645", "#fe5f55"],
-    fontsHref: gf("family=Jersey+15&family=Pixelify+Sans:wght@400;500;600;700"),
+    // Fonte própria (Thin Sans, CC0), declarada no CSS do tema: não vem do Google Fonts.
+    fontsHref: null,
   },
   fazendinha: {
     id: "fazendinha",

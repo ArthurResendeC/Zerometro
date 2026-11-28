@@ -1,40 +1,55 @@
 /* Tema Mesa de Cartas (icônico, homenagem aos roguelikes de baralho): feltro verde-azulado com
    granulado e canto escurecido de tela de tubo, cards gordinhos com sombra curta, fichas vermelhas
-   e azuis. Títulos em Jersey 15 e texto em Pixelify Sans. */
+   e azuis. Tudo na Thin Sans (pixel, CC0, hospedada aqui em fonts/; licença em
+   fonts/LICENSE-thin-sans.txt). O navegador só baixa a fonte quando o tema está ativo. */
+
+/* A Thin Sans é desenhada numa grade de 1/8 em: maiúscula de 1,25 em, minúscula de 1 em e
+   descendente de 0,5 em (bem maior que uma fonte comum do mesmo tamanho). Os overrides põem a
+   caixa da linha onde os glifos estão, e por isso o texto centraliza nos botões. Fica nítida em
+   múltiplos de 4px nas telas de alta densidade (e de 8px nas comuns); as linhas precisam de
+   ~2 em para acento e descendente não se encostarem. */
+@font-face {
+  font-family: "Thin Sans";
+  src: url("./fonts/thin-sans.ttf") format("truetype");
+  font-display: block;
+  ascent-override: 140%;
+  descent-override: 50%;
+  line-gap-override: 0%;
+}
 
 :root[data-theme="mesa-de-cartas"] {
-  /* Tipografia */
-  --body-font: "Pixelify Sans", ui-monospace, monospace;
-  --display-font: "Jersey 15", "Pixelify Sans", ui-monospace, monospace;
-  --text-xs: 14px;
-  --text-xs--line-height: 18px;
-  --text-sm: 16px;
-  --text-sm--line-height: 21px;
-  --text-base: 17px;
-  --text-base--line-height: 24px;
-  --text-lg: 20px;
-  --text-lg--line-height: 26px;
-  --text-xl: 23px;
-  --text-xl--line-height: 29px;
-  --text-2xl: 29px;
-  --text-2xl--line-height: 34px;
-  --display-xl: 50px;
-  --display-xl-lh: 48px;
-  --display-lg: 40px;
-  --display-lg-lh: 40px;
-  --display-md: 28px;
-  --display-md-lh: 28px;
-  --display-sm: 22px;
-  --display-sm-lh: 22px;
-  --display-xs: 17px;
-  --display-xs-lh: 18px;
-  --display-xs-tracking: 0.05em;
+  /* Tipografia: escala própria (10px aqui equivale a uns 17px de uma fonte comum) */
+  --body-font: "Thin Sans", ui-monospace, monospace;
+  --display-font: "Thin Sans", ui-monospace, monospace;
+  --text-xs: 8px;
+  --text-xs--line-height: 16px;
+  --text-sm: 10px;
+  --text-sm--line-height: 20px;
+  --text-base: 10px;
+  --text-base--line-height: 20px;
+  --text-lg: 12px;
+  --text-lg--line-height: 24px;
+  --text-xl: 14px;
+  --text-xl--line-height: 26px;
+  --text-2xl: 16px;
+  --text-2xl--line-height: 30px;
+  --display-xl: 32px;
+  --display-xl-lh: 44px;
+  --display-lg: 24px;
+  --display-lg-lh: 34px;
+  --display-md: 16px;
+  --display-md-lh: 26px;
+  --display-sm: 12px;
+  --display-sm-lh: 20px;
+  --display-xs: 8px;
+  --display-xs-lh: 14px;
+  --display-xs-tracking: 0.06em;
   --display-weight: 400;
   --display-style: normal;
-  --btn-sm-size: 20px;
-  --btn-sm-lh: 20px;
-  --btn-lg-size: 26px;
-  --btn-lg-lh: 26px;
+  --btn-sm-size: 10px;
+  --btn-sm-lh: 16px;
+  --btn-lg-size: 16px;
+  --btn-lg-lh: 24px;
 
   /* Forma: canto de 10px, contorno de 2px, bisel embaixo e sombra curta, como carta na mesa */
   --radius: 10px;
@@ -88,6 +103,16 @@
 
 :root[data-theme="mesa-de-cartas"] body {
   background-attachment: fixed;
+}
+
+/* As maiúsculas da Thin Sans passam de 1em: onde a linha é justa, o topo do texto saía cortado.
+   Os rótulos do gráfico podem passar da borda do SVG, e os meses do mapa de atividade ganham a
+   altura da própria fileira (1.25rem) como linha. */
+:root[data-theme="mesa-de-cartas"] [data-slot="chart"] .recharts-surface {
+  overflow: visible;
+}
+:root[data-theme="mesa-de-cartas"] [data-slot="heatmap-month"] {
+  line-height: 1.25rem;
 }
 
 /* Cada card é uma carta do baralho: o naipe no canto de cima e, de ponta-cabeça, no de baixo,
