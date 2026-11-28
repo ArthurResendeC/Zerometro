@@ -1,7 +1,7 @@
 // O que o servidor de autorização entrega, assinado em vez de guardado: um redeploy não
 // desconecta ninguém e não há tabela para limpar. O client_id carrega o que o cliente registrou;
-// access e refresh tokens carregam a concessão. Trocar o ZEROMETRO_TOKEN (de onde sai a chave)
-// revoga todos de uma vez.
+// access e refresh tokens carregam a concessão (e de qual perfil). Trocar a chave (SESSION_SECRET,
+// ou o ZEROMETRO_TOKEN sem ele) revoga todos de uma vez.
 //
 // Portado do my-scratchpad (https://github.com/Levieber/my-scratchpad, src/mcp/oauth/, MIT).
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
@@ -28,6 +28,12 @@ export interface ClientInfo {
 export interface Grant {
   /** Impressão digital do cliente (`fingerprint(client_id)`): o client_id é longo demais para embutir. */
   cid: string;
+  /**
+   * De quem é o acesso (id do perfil) e a versão da sessão dele quando foi aprovado: trocar a
+   * senha revoga. Ausentes nos tokens de antes dos perfis, que valem como o admin.
+   */
+  sub?: string;
+  ver?: number;
   aud: string;
   scope: string;
   /** Segundos desde a época. */

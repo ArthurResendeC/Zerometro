@@ -4,9 +4,11 @@
 // refresh tokens girados a cada uso e access tokens presos ao /mcp desta instância (RFC 8707).
 // Os erros são os do OAuth (`{ error, error_description }`), não os da API: é o que os clientes leem.
 //
-// O "login" do fluxo é o ZEROMETRO_TOKEN, digitado na página de consentimento.
+// O "login" do fluxo é o @apelido e a senha do perfil (ou, para o admin, o ZEROMETRO_TOKEN),
+// digitados na página de consentimento. Cada token sai preso ao perfil que aprovou.
 //
 // Portado do my-scratchpad (https://github.com/Levieber/my-scratchpad, src/mcp/oauth/, MIT).
+import { clientIp, createAttemptLimiter } from "../lib/attempts";
 import { consentHeaders, consentPage, errorPage } from "./consent";
 import {
   ACCESS_TTL_S,
@@ -53,6 +55,8 @@ const NO_STORE = { "cache-control": "no-store", pragma: "no-cache" };
 
 interface Code {
   cid: string;
+  sub: string;
+  ver: number;
   redirectUri: string;
   challenge: string;
   expiresAt: number;
@@ -112,11 +116,30 @@ const guarded =
     }
   };
 
+/** Quem pode aprovar e usar um conector: os perfis da instância. */
+export interface OAuthUsers {
+  /** Confere o que foi digitado na página (@apelido e senha, ou o token do admin). */
+  approve: (
+    handle: string,
+    password: string,
+  ) => Promise<{ id: string; sessionVersion: number } | undefined>;
+  /** Versão da sessão de um perfil ativo; undefined se não existe ou está suspenso. */
+  sessionVersion: (userId: string) => number | undefined;
+  /** O admin: dono dos tokens de antes dos perfis e de quem usa o ZEROMETRO_TOKEN como Bearer. */
+  ownerId: string;
+}
+
+/** O handler protegido recebe o id do perfil dono do acesso. */
+export type ProtectedHandler = (request: Request, userId: string) => Promise<Response>;
+
 export interface OAuthConfig {
   /** Origem pública desta instância: é o emissor, e o recurso é o `/mcp` nela. */
   publicUrl: string;
-  /** ZEROMETRO_TOKEN: o que o dono digita para aprovar um conector, e de onde sai a chave. */
-  ownerToken: string;
+  /** De onde sai a chave que assina clientes e tokens (SESSION_SECRET ou o ZEROMETRO_TOKEN). */
+  secret: string;
+  /** ZEROMETRO_TOKEN: vale como Bearer do admin no /mcp (clientes configurados à mão). */
+  adminToken: string;
+  users: OAuthUsers;
   /** Relógio em ms (injetável nos testes). */
   now?: () => number;
   /** Log de registros e aprovações (silenciado nos testes). */
@@ -125,11 +148,14 @@ export interface OAuthConfig {
 
 export function createOAuthServer({
   publicUrl,
-  ownerToken,
+  secret,
+  adminToken,
+  users,
   now = Date.now,
   log = (message) => console.info(`[oauth] ${message}`),
 }: OAuthConfig) {
-  const signer = makeSigner(ownerToken);
+  const signer = makeSigner(secret);
+  const attempts = createAttemptLimiter({ now });
   const resource = `${publicUrl}${MCP_PATH}`;
   const resourceMetadataUrl = `${publicUrl}/.well-known/oauth-protected-resource${MCP_PATH}`;
   // Códigos vivem poucos minutos e valem uma vez, então memória basta (uma réplica só): um
@@ -360,24 +386,39 @@ export function createOAuthServer({
         state: checked.state,
       });
     }
-    if (!sameSecret(form.get("token") ?? "", ownerToken)) {
-      log(`aprovação recusada (token errado): ${who}`);
-      return html(
+    const handle = (form.get("handle") ?? "").trim().toLowerCase();
+    const ip = `ip:${clientIp(request.headers)}`;
+    const account = `handle:${handle}`;
+    const refuse = (status: number, error: string) =>
+      html(
         consentPage({
           clientName: checked.client.name,
           redirectUri: checked.redirectUri,
           params: checked.params,
-          error: "Esse não é o token desta instância (ZEROMETRO_TOKEN).",
+          handle,
+          error,
         }),
-        401,
+        status,
         consentHeaders(checked.redirectUri),
       );
+    if (!attempts.allowed(ip) || (handle && !attempts.allowed(account))) {
+      return refuse(429, "Muitas tentativas erradas. Espere alguns minutos e tente de novo.");
     }
+    const approved = await users.approve(handle, form.get("password") ?? "");
+    if (!approved) {
+      attempts.fail(ip);
+      if (handle) attempts.fail(account);
+      log(`aprovação recusada (login errado): ${who}`);
+      return refuse(401, "@apelido ou senha incorretos.");
+    }
+    attempts.reset(account);
     const at = now();
     for (const [code, entry] of codes) if (entry.expiresAt <= at) codes.delete(code);
     const code = randomToken();
     codes.set(code, {
       cid: fingerprint(checked.clientId),
+      sub: approved.id,
+      ver: approved.sessionVersion,
       redirectUri: checked.redirectUri,
       challenge: checked.challenge,
       expiresAt: at + CODE_TTL_MS,
@@ -386,10 +427,23 @@ export function createOAuthServer({
     return redirectTo(checked.redirectUri, { code, state: checked.state });
   };
 
-  const tokens = (cid: string, at: number) => {
+  /** Dono do acesso, se o perfil ainda vale (ativo e na mesma versão da sessão). */
+  const ownerOf = (grant: Grant): { sub: string; ver: number } | undefined => {
+    // Token de antes dos perfis: é do admin, e passa a ter dono no próximo refresh.
+    if (grant.sub === undefined) {
+      const ver = users.sessionVersion(users.ownerId);
+      return ver === undefined ? undefined : { sub: users.ownerId, ver };
+    }
+    const ver = users.sessionVersion(grant.sub);
+    return ver !== undefined && ver === grant.ver ? { sub: grant.sub, ver } : undefined;
+  };
+
+  const tokens = (cid: string, who: { sub: string; ver: number }, at: number) => {
     const seconds = Math.floor(at / 1000);
     const grant = (ttl: number): Grant => ({
       cid,
+      sub: who.sub,
+      ver: who.ver,
       aud: resource,
       scope: SCOPE,
       exp: seconds + ttl,
@@ -420,8 +474,8 @@ export function createOAuthServer({
       return oauthError(401, "invalid_client", "Unknown client: connect again", challenge);
     }
     if (client.auth !== "none") {
-      const secret = basic?.secret ?? form.get("client_secret") ?? "";
-      if (!sameSecret(secret, signer.clientSecret(clientId))) {
+      const presented = basic?.secret ?? form.get("client_secret") ?? "";
+      if (!sameSecret(presented, signer.clientSecret(clientId))) {
         return oauthError(401, "invalid_client", "Wrong client secret", challenge);
       }
     }
@@ -449,18 +503,28 @@ export function createOAuthServer({
         ) {
           return oauthError(400, "invalid_grant", "The code is unknown, expired or not yours");
         }
-        return tokens(cid, at);
+        if (users.sessionVersion(entry.sub) !== entry.ver) {
+          return oauthError(400, "invalid_grant", "The account that approved this is gone");
+        }
+        return tokens(cid, entry, at);
       }
       case "refresh_token": {
         const grant = signer.verify("refresh", form.get("refresh_token") ?? "");
-        if (!grant || grant.exp * 1000 <= at || grant.cid !== cid || grant.aud !== resource) {
+        const who = grant && ownerOf(grant);
+        if (
+          !grant ||
+          !who ||
+          grant.exp * 1000 <= at ||
+          grant.cid !== cid ||
+          grant.aud !== resource
+        ) {
           return oauthError(
             400,
             "invalid_grant",
             "The refresh token is unknown, expired or not yours",
           );
         }
-        return tokens(cid, at);
+        return tokens(cid, who, at);
       }
       default:
         return oauthError(
@@ -491,24 +555,26 @@ export function createOAuthServer({
     ].join(", ");
 
   /**
-   * Protege o endpoint MCP. Vale um access token deste servidor para este recurso, ou o próprio
-   * ZEROMETRO_TOKEN (para clientes configurados à mão, ex.: `claude mcp add --header`). Sem
-   * nenhum dos dois: 401 com o desafio que leva o cliente à descoberta (RFC 9728 §5.1).
+   * Protege o endpoint MCP. Vale um access token deste servidor para este recurso, de um perfil
+   * ativo, ou o próprio ZEROMETRO_TOKEN (o admin, para clientes configurados à mão, ex.:
+   * `claude mcp add --header`). Sem nenhum dos dois: 401 com o desafio que leva o cliente à
+   * descoberta (RFC 9728 §5.1).
    */
   const protect =
-    (handler: Handler): Handler =>
+    (handler: ProtectedHandler): Handler =>
     async (request) => {
       const match = /^Bearer\s+(\S+)$/i.exec(request.headers.get("authorization") ?? "");
       const presented = match?.[1];
-      if (presented && sameSecret(presented, ownerToken)) return handler(request);
+      if (presented && sameSecret(presented, adminToken)) return handler(request, users.ownerId);
       const grant = presented ? signer.verify("access", presented) : undefined;
-      if (!grant || grant.exp * 1000 <= now() || grant.aud !== resource) {
+      const who = grant && ownerOf(grant);
+      if (!grant || !who || grant.exp * 1000 <= now() || grant.aud !== resource) {
         return Response.json(
           { error: { code: "unauthorized", message: "Conecte o aplicativo de novo" } },
           { status: 401, headers: { "www-authenticate": challengeFor(match !== null) } },
         );
       }
-      return handler(request);
+      return handler(request, who.sub);
     };
 
   /** Despacha uma requisição para as rotas acima (testes e servidores sem roteador por método). */

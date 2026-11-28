@@ -6,10 +6,13 @@
 // - API por script: `Authorization: Bearer <token>` (vale como o admin).
 // - MCP: OAuth próprio (src/server/oauth), aprovado com o perfil, ou o token como Bearer.
 import { createHmac } from "node:crypto";
-import { createOAuthServer, type OAuthServer } from "./oauth/server";
+import type { Db } from "./db/client";
+import { createOAuthServer, type OAuthServer, type OAuthUsers } from "./oauth/server";
 import { sameSecret } from "./oauth/tokens";
+import { getActiveUser, getOwner, verifyLogin } from "./services/users";
+import { OWNER_ID } from "../shared/auth";
 
-export { OWNER_ID } from "../shared/auth";
+export { OWNER_ID };
 
 export const SESSION_COOKIE = "zerometro_session";
 export const SESSION_DAYS = 30;
@@ -37,6 +40,8 @@ export interface AuthConfig {
   sessionSecret?: string;
   /** URL pública do site (emissor do OAuth; https liga o cookie `Secure`). */
   publicUrl: string;
+  /** Banco dos perfis (aprovar conectores e conferir se o perfil continua ativo). */
+  db: Db;
   /** Relógio em ms (injetável nos testes). */
   now?: () => number;
   /** Log do OAuth (silenciado nos testes). */
@@ -79,10 +84,19 @@ export function createAuth({
   token,
   sessionSecret,
   publicUrl,
+  db,
   now = Date.now,
   log,
 }: AuthConfig): Auth {
   const secret = sessionSecret || token;
+  const isToken = (candidate: string) => sameSecret(candidate, token);
+  const users: OAuthUsers = {
+    // Sem @apelido, a "senha" é o token do admin.
+    approve: async (handle, password) =>
+      handle ? verifyLogin(db, handle, password) : isToken(password) ? getOwner(db) : undefined,
+    sessionVersion: (id) => getActiveUser(db, id)?.sessionVersion,
+    ownerId: OWNER_ID,
+  };
   // Chave própria para as sessões: o cookie nunca vale como outra coisa assinada com o segredo.
   const key = createHmac("sha256", secret).update("zerometro/session/v2").digest();
   const mac = (data: string) => base64url(createHmac("sha256", key).update(data).digest());
@@ -122,7 +136,7 @@ export function createAuth({
   };
 
   return {
-    isToken: (candidate) => sameSecret(candidate, token),
+    isToken,
     issueSession,
     checkSession,
     cookieOptions: (maxAge = SESSION_TTL_S) => ({
@@ -132,7 +146,7 @@ export function createAuth({
       path: "/",
       maxAge,
     }),
-    oauth: createOAuthServer({ publicUrl, ownerToken: token, now, log }),
+    oauth: createOAuthServer({ publicUrl, secret, adminToken: token, users, now, log }),
   };
 }
 

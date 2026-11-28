@@ -56,8 +56,14 @@ async function discover(app: TestApp) {
   return { prm, metadata };
 }
 
-/** Faz o fluxo OAuth inteiro (o dono aprova com o token) e devolve o access token. */
-async function authorize(app: TestApp): Promise<string> {
+/**
+ * Faz o fluxo OAuth inteiro e devolve o access token: o admin aprova com o token, ou um perfil
+ * com o @apelido e a senha.
+ */
+async function authorize(
+  app: TestApp,
+  as: { handle: string; password: string } = { handle: "", password: TEST_TOKEN },
+): Promise<string> {
   const { metadata } = await discover(app);
   const registered = (await (
     await app.fetchRoot(
@@ -83,7 +89,12 @@ async function authorize(app: TestApp): Promise<string> {
   });
   const consent = await app.fetchRoot(metadata.authorization_endpoint ?? "", {
     method: "POST",
-    body: new URLSearchParams([...query, ["decision", "allow"], ["token", TEST_TOKEN]]),
+    body: new URLSearchParams([
+      ...query,
+      ["decision", "allow"],
+      ["handle", as.handle],
+      ["password", as.password],
+    ]),
   });
   const callback = new URL(consent.headers.get("location") ?? "");
   expect(callback.searchParams.get("state")).toBe("estado");
@@ -725,6 +736,18 @@ describe("tools", () => {
       { appId: 504230, name: "Celeste", hours: 0, suggestedStatus: "backlog", ignored: true },
     ]);
 
+    await client.close();
+  });
+
+  test("o conector de um amigo vê e mexe só na biblioteca dele", async () => {
+    await t.request("/api/library", json({ igdbId: 114283, status: "playing" }));
+    const joao = await t.createMember("joao");
+    await joao.request("/api/library", json({ igdbId: 12517, status: "backlog" }));
+
+    const client = await connect(t, await authorize(t, joao));
+    const library = await callJson(client, "list_library");
+    expect(library.text).toContain("Undertale");
+    expect(library.text).not.toContain("Persona 5 Royal");
     await client.close();
   });
 

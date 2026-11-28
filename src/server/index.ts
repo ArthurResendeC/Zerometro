@@ -41,6 +41,7 @@ const auth = createAuth({
   token: env.ZEROMETRO_TOKEN!,
   sessionSecret: env.SESSION_SECRET,
   publicUrl,
+  db,
 });
 
 const igdb = createIgdbFromEnv(db, env);

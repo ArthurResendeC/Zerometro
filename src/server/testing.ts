@@ -399,6 +399,7 @@ export async function createTestApp(
   const auth = createAuth({
     token: TEST_TOKEN,
     publicUrl: TEST_BASE_URL,
+    db,
     now: () => clock.now().getTime(),
     log: () => {},
   });

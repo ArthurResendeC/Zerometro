@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { createAuth, SESSION_COOKIE } from "../auth";
+import { createTestDb } from "../db/client";
 import { games, invites, libraryEntries, user } from "../db/schema";
 import { bumpSessionVersion, createInvite } from "../services/users";
 import {
@@ -61,7 +62,11 @@ describe("login do admin com o token", () => {
   });
 
   test("site com https: o cookie é Secure", async () => {
-    const auth = createAuth({ token: TEST_TOKEN, publicUrl: "https://zerometro.exemplo.com" });
+    const auth = createAuth({
+      token: TEST_TOKEN,
+      publicUrl: "https://zerometro.exemplo.com",
+      db: createTestDb(),
+    });
     expect(auth.cookieOptions().secure).toBe(true);
   });
 });
@@ -97,6 +102,7 @@ describe("acesso à API", () => {
     const other = createAuth({
       token: "outro-token-de-outra-instancia-com-32-chars",
       publicUrl: "http://localhost:3000",
+      db: createTestDb(),
       now: () => clock.now().getTime(),
     }).issueSession({ id: "owner", sessionVersion: 0 });
 
@@ -379,7 +385,11 @@ describe("perfis isolados", () => {
 
 describe("SESSION_SECRET", () => {
   test("com ele, trocar o token não derruba os cookies", () => {
-    const base = { publicUrl: "http://localhost:3000", sessionSecret: "segredo-fixo" };
+    const base = {
+      publicUrl: "http://localhost:3000",
+      sessionSecret: "segredo-fixo",
+      db: createTestDb(),
+    };
     const a = createAuth({ ...base, token: "token-a".repeat(6) });
     const b = createAuth({ ...base, token: "token-b".repeat(6) });
     const cookie = a.issueSession({ id: "owner", sessionVersion: 0 });

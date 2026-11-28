@@ -7,8 +7,8 @@ import {
   type OAuthClientProvider,
   type OAuthTokens,
 } from "@modelcontextprotocol/client";
-import { createOAuthServer, MCP_PATH } from "./server";
-import { ACCESS_TTL_S, makeSigner, s256 } from "./tokens";
+import { createOAuthServer, MCP_PATH, type OAuthUsers } from "./server";
+import { ACCESS_TTL_S, fingerprint as fingerprintOf, makeSigner, s256 } from "./tokens";
 
 // O servidor OAuth como o claude.ai o alcança: por HTTP de verdade, na frente de um /mcp que só
 // ecoa. O cliente de referência do SDK do MCP faz o papel do claude.ai, então descoberta,
@@ -19,6 +19,32 @@ const CALLBACK = "https://claude.ai/api/mcp/auth_callback";
 const verifier = `${"v".repeat(43)}erifier-dos-testes`;
 
 let nowMs = Date.now();
+
+// Os perfis da instância: o admin (sem senha, aprova com o token) e um amigo.
+const profiles = new Map<string, { password?: string; ver: number; disabled?: boolean }>();
+const resetProfiles = () => {
+  profiles.clear();
+  profiles.set("owner", { ver: 0 });
+  profiles.set("joao", { password: "senha-do-joao", ver: 0 });
+};
+resetProfiles();
+const users: OAuthUsers = {
+  approve: async (handle, password) => {
+    if (!handle)
+      return password === TOKEN
+        ? { id: "owner", sessionVersion: profiles.get("owner")!.ver }
+        : undefined;
+    const p = profiles.get(handle);
+    return p?.password && p.password === password && !p.disabled
+      ? { id: handle, sessionVersion: p.ver }
+      : undefined;
+  },
+  sessionVersion: (id) => {
+    const p = profiles.get(id);
+    return p && !p.disabled ? p.ver : undefined;
+  },
+  ownerId: "owner",
+};
 let base: string;
 let server: ReturnType<typeof Bun.serve>;
 
@@ -30,7 +56,9 @@ beforeAll(() => {
   base = `http://127.0.0.1:${port}`;
   const oauth = createOAuthServer({
     publicUrl: base,
-    ownerToken: TOKEN,
+    secret: TOKEN,
+    adminToken: TOKEN,
+    users,
     now: () => nowMs,
     log: () => {},
   });
@@ -38,7 +66,7 @@ beforeAll(() => {
     port,
     routes: {
       ...oauth.routes,
-      [MCP_PATH]: oauth.protect(async () => Response.json({ ok: true })),
+      [MCP_PATH]: oauth.protect(async (_request, userId) => Response.json({ ok: true, userId })),
     },
     fetch: () => new Response("Not found", { status: 404 }),
   });
@@ -79,26 +107,44 @@ const authorizeQuery = (clientId: string, extra: Record<string, string> = {}) =>
     ...extra,
   });
 
-/** Responde o form de consentimento como o dono, sem seguir o redirect. */
-const answer = (query: URLSearchParams, decision: string, token = TOKEN) =>
+/** Responde o form de consentimento (o admin com o token, ou um perfil), sem seguir o redirect. */
+const answer = (
+  query: URLSearchParams,
+  decision: string,
+  password = TOKEN,
+  handle = "",
+  headers: Record<string, string> = {},
+) =>
   fetch(`${base}/authorize`, {
     method: "POST",
     redirect: "manual",
-    body: new URLSearchParams([...query, ["decision", decision], ["token", token]]),
+    headers,
+    body: new URLSearchParams([
+      ...query,
+      ["decision", decision],
+      ["handle", handle],
+      ["password", password],
+    ]),
   });
 
 const location = (res: Response) => new URL(res.headers.get("location") ?? "");
 
-const codeFor = async (clientId: string, extra: Record<string, string> = {}) =>
-  location(await answer(authorizeQuery(clientId, extra), "allow")).searchParams.get("code") ?? "";
+const codeFor = async (
+  clientId: string,
+  extra: Record<string, string> = {},
+  as: { handle: string; password: string } = { handle: "", password: TOKEN },
+) =>
+  location(
+    await answer(authorizeQuery(clientId, extra), "allow", as.password, as.handle),
+  ).searchParams.get("code") ?? "";
 
 const tokenRequest = (params: Record<string, string>, headers: Record<string, string> = {}) =>
   fetch(`${base}/token`, { method: "POST", headers, body: new URLSearchParams(params) });
 
-const tokensFor = async (clientId: string) => {
+const tokensFor = async (clientId: string, as?: { handle: string; password: string }) => {
   const res = await tokenRequest({
     grant_type: "authorization_code",
-    code: await codeFor(clientId),
+    code: await codeFor(clientId, {}, as),
     code_verifier: verifier,
     client_id: clientId,
     redirect_uri: CALLBACK,
@@ -306,7 +352,7 @@ describe("autorização", () => {
     expect(location(other).searchParams.get("error")).toBe("invalid_target");
   });
 
-  test("token errado mostra a página de novo sem código; cancelar manda access_denied", async () => {
+  test("senha ou token errado mostra a página de novo sem código; cancelar manda access_denied", async () => {
     const clientId = await publicClient();
     const wrong = await answer(authorizeQuery(clientId), "allow", "nao-e-o-token");
     expect(wrong.status).toBe(401);
@@ -451,8 +497,100 @@ describe("/mcp", () => {
   });
 
   test("rotas desconhecidas e métodos errados", async () => {
-    const oauth = createOAuthServer({ publicUrl: base, ownerToken: TOKEN, log: () => {} });
+    const oauth = createOAuthServer({
+      publicUrl: base,
+      secret: TOKEN,
+      adminToken: TOKEN,
+      users,
+      log: () => {},
+    });
     expect((await oauth.fetch(new Request(`${base}/nada`))).status).toBe(404);
     expect((await oauth.fetch(new Request(`${base}/token`))).status).toBe(405);
+  });
+});
+
+/** De quem o /mcp acha que é o token (ou o status, se recusou). */
+const mcpAs = async (access: string) => {
+  const res = await postMcp({ authorization: `Bearer ${access}` });
+  return res.status === 200 ? ((await res.json()) as { userId: string }).userId : res.status;
+};
+describe("perfis", () => {
+  const joao = { handle: "joao", password: "senha-do-joao" };
+
+  test("cada perfil aprova com a própria senha, e o /mcp sabe de quem é o token", async () => {
+    resetProfiles();
+    const clientId = await publicClient();
+    const mine = await tokensFor(clientId);
+    const his = await tokensFor(clientId, joao);
+    expect(await mcpAs(mine.access_token)).toBe("owner");
+    expect(await mcpAs(his.access_token)).toBe("joao");
+    expect(await mcpAs(TOKEN)).toBe("owner");
+  });
+
+  test("a página mantém o @apelido digitado quando a senha erra", async () => {
+    resetProfiles();
+    const clientId = await publicClient();
+    const wrong = await answer(authorizeQuery(clientId), "allow", "errada", "joao");
+    expect(wrong.status).toBe(401);
+    expect(await wrong.text()).toContain('value="joao"');
+  });
+
+  test("trocar a senha (versão nova) ou suspender o perfil corta access e refresh", async () => {
+    resetProfiles();
+    const clientId = await publicClient();
+    const his = await tokensFor(clientId, joao);
+    const refresh = () =>
+      tokenRequest({
+        grant_type: "refresh_token",
+        refresh_token: his.refresh_token ?? "",
+        client_id: clientId,
+      });
+
+    profiles.get("joao")!.ver = 1;
+    expect(await mcpAs(his.access_token)).toBe(401);
+    expect((await refresh()).status).toBe(400);
+
+    profiles.get("joao")!.ver = 0;
+    profiles.get("joao")!.disabled = true;
+    expect(await mcpAs(his.access_token)).toBe(401);
+    expect((await refresh()).status).toBe(400);
+    resetProfiles();
+  });
+
+  test("token de antes dos perfis (sem sub) vale como o admin, e o refresh dá um dono", async () => {
+    resetProfiles();
+    const clientId = await publicClient();
+    const signer = makeSigner(TOKEN);
+    const grant = (exp: number) => ({
+      cid: fingerprintOf(clientId),
+      aud: `${base}${MCP_PATH}`,
+      scope: "zerometro",
+      exp,
+      jti: "legado",
+    });
+    const at = Math.floor(nowMs / 1000);
+    expect(await mcpAs(signer.sign("access", grant(at + 60)))).toBe("owner");
+    const res = await tokenRequest({
+      grant_type: "refresh_token",
+      refresh_token: signer.sign("refresh", grant(at + 3600)),
+      client_id: clientId,
+    });
+    expect(res.status).toBe(200);
+    const fresh = (await res.json()) as OAuthTokens;
+    expect(signer.verify("access", fresh.access_token)).toMatchObject({ sub: "owner", ver: 0 });
+  });
+
+  test("10 senhas erradas seguidas no mesmo perfil: 429", async () => {
+    resetProfiles();
+    const clientId = await publicClient();
+    await Promise.all(
+      Array.from({ length: 10 }, (_, i) =>
+        answer(authorizeQuery(clientId), "allow", "errada", "joao", {
+          "x-forwarded-for": `10.1.0.${i}`,
+        }),
+      ),
+    );
+    const blocked = await answer(authorizeQuery(clientId), "allow", joao.password, "joao");
+    expect(blocked.status).toBe(429);
   });
 });
