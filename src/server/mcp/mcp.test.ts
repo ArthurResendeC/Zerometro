@@ -189,6 +189,7 @@ describe("tools", () => {
       "get_recap",
       "get_stats",
       "get_timeline",
+      "get_wallet",
       "list_achievements",
       "list_library",
       "list_objectives",

@@ -14,6 +14,7 @@ import { SteamSettingsCard } from "@/features/steam/steam-settings-card";
 import { GroupSettingsCard } from "@/features/group/group-settings-card";
 import { AccountCard } from "@/features/profile/account-card";
 import { AppearanceCard } from "@/features/theme/appearance-card";
+import { CoinBalance } from "@/features/wallet/coin-balance";
 import { ThemePreviewCard } from "@/features/theme/theme-preview-card";
 import { PeopleCard } from "@/features/profile/people-card";
 import { formatMinutes } from "@/lib/format";
@@ -34,6 +35,8 @@ function SettingsPage() {
         <h1 className="display-lg">Ajustes</h1>
         <p className="mt-2 text-muted-foreground">A sua conta e as preferências do Zerômetro.</p>
       </div>
+      {/* No celular o saldo não cabe no menu: a carteira fica aqui (o avatar do menu traz para cá). */}
+      <CoinBalance className="-my-2 w-fit sm:hidden" />
       {session && <AccountCard session={session} />}
       {session?.role === "admin" && <PeopleCard />}
       <GroupSettingsCard settings={settings} />

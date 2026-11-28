@@ -22,6 +22,7 @@ import { useSteamAutoSync } from "@/features/steam/use-steam-auto-sync";
 import { ProfileAvatar } from "@/features/profile/avatars";
 import type { AuthSession } from "@/lib/auth";
 import { ThemeSync } from "@/features/theme/theme-sync";
+import { CoinBalance } from "@/features/wallet/coin-balance";
 import { sessionQuery } from "@/lib/queries";
 import { useLogSessionDialog } from "@/stores/log-session-dialog";
 
@@ -140,6 +141,7 @@ function SignedInLayout({ session: initial }: { session: AuthSession }) {
               className="max-sm:h-8 max-sm:gap-0.5 max-sm:px-0.5 sm:mr-1"
             />
             <SoundToggle className="max-sm:size-8 sm:mr-2" />
+            <CoinBalance className="max-sm:hidden sm:mr-1" />
             <Link
               to="/ajustes"
               aria-label={`Ajustes (${session.name})`}

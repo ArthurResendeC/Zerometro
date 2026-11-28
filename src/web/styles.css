@@ -78,6 +78,7 @@
   --heat-4: #6e2a00;
   --flame: #b34700;
   --flame-core: #e8b416;
+  --coin: #8a6a00;
 }
 
 [data-mode="dark"] {
@@ -135,6 +136,7 @@
   --heat-4: #ffb070;
   --flame: #ff7a1a;
   --flame-core: #ffd23f;
+  --coin: #ffd23f;
 }
 
 /* ---------- Tema base: tokens que não dependem do modo claro/escuro ---------- */
@@ -290,6 +292,7 @@
   --color-heat-4: var(--heat-4);
   --color-flame: var(--flame);
   --color-flame-core: var(--flame-core);
+  --color-coin: var(--coin);
   /* compatibilidade: o app usa bg-brand / text-brand hoje */
   --color-brand: var(--primary);
   --color-brand-foreground: var(--primary-foreground);

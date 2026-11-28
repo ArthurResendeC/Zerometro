@@ -116,6 +116,7 @@ import {
 } from "../services/objectives";
 import { listSessions, logSession, noteLastSession } from "../services/sessions";
 import { getSettings } from "../services/settings";
+import { getWallet } from "../services/economy";
 import { importSteamGames, previewSteamImport } from "../services/steam-import";
 import {
   getSteamLibrarySyncRun,
@@ -466,6 +467,18 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
         });
         return stats;
       }),
+  );
+
+  server.registerTool(
+    "get_wallet",
+    {
+      title: "Carteira de moedas",
+      description:
+        "Saldo de moedas e os lançamentos mais recentes. Moedas vêm de horas jogadas (10 por hora, até 6h por dia) e de conquistas da Steam sincronizadas (5 a 50 pela raridade), só a partir do cadastro do perfil. Servem para comprar temas e sons (em breve, na loja).",
+      inputSchema: z.object({}),
+      annotations: readOnly,
+    },
+    () => run(() => getWallet(ctx())),
   );
 
   server.registerTool(
