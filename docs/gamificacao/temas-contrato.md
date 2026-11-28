@@ -435,6 +435,10 @@ os testes de completude e contraste.
 
 **Fase 4: loja v1** (depende da economia), com pré-visualização e cerca de 6 temas.
 
+> **Fase 4: feita**, com os 2 temas que já existiam, mais os pacotes de som avulsos. Detalhes em
+> `docs/gamificacao/economia.md` (seção Loja). Mais temas do catálogo do §4 entram aos poucos:
+> cada um é um CSS, uma entrada no registro e um preço.
+
 **Fase 5: camadas ricas** (`ThemeCopy` e celebrações) nos temas Lendários.
 
 ## 8. Fora de escopo por enquanto

@@ -474,7 +474,7 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     {
       title: "Carteira de moedas",
       description:
-        "Saldo de moedas e os lançamentos mais recentes. Moedas vêm de horas jogadas (10 por hora, até 6h por dia) e de conquistas da Steam sincronizadas (5 a 50 pela raridade), só a partir do cadastro do perfil. Servem para comprar temas e sons (em breve, na loja).",
+        "Saldo de moedas e os lançamentos mais recentes. Moedas vêm de horas jogadas (10 por hora, até 6h por dia) e de conquistas da Steam sincronizadas (5 a 50 pela raridade), só a partir do cadastro do perfil. Servem para comprar temas e sons na loja do site.",
       inputSchema: z.object({}),
       annotations: readOnly,
     },

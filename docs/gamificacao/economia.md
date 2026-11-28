@@ -52,13 +52,41 @@ como ajuste para todo mundo.
 - **`/carteira`:** saldo, quanto veio de horas e de conquistas, "rendendo desde", como ganhar (gerado
   das mesmas regras) e o histórico, com os ajustes descritos.
 
+## Loja (v1)
+
+- **Preços** em `shared/items.ts` (`themePrices`, `soundPackPrices`). `null` quer dizer que o item
+  não está à venda (grátis ou exclusivo).
+
+  | Item                 | Preço |
+  | -------------------- | ----- |
+  | Minimal              | 250   |
+  | Ladrão Fantasma      | 400   |
+  | Pacote de som avulso | 80    |
+
+  Referência: no ritmo do demo rende ~18 moedas por dia, então 250 é cerca de duas semanas.
+
+- **Compra** (`services/shop.ts`, `POST /api/shop/purchase`):
+  - acerta a carteira, confere o preço, a posse e o saldo;
+  - numa transação só, lança o débito (`reason: "purchase"`, `ref_key` `theme:minimal`) e concede
+    o item com `grantItemIn(..., "purchase")`. Um tema traz o pacote de som dele;
+  - erros: `insufficient_coins` (409, a mensagem diz quanto falta) e `conflict` (já tem ou não
+    está à venda).
+- **Vitrine:** `GET /api/shop` devolve os itens à venda, mais o que o perfil já tem, e o saldo.
+- **Interface:**
+  - `/loja` tem cards de tema com amostra de cores (`swatch` no registro), **Experimentar**
+    (a prévia), **Comprar** (com confirmação; sem saldo, mostra "Faltam N") e **Usar/Em uso**.
+    Os pacotes de som têm **Ouvir**, que toca um som do pacote sem trocar o ativo;
+  - durante a prévia, uma **faixa fixa** acompanha a navegação pelo app inteiro com
+    "Comprar" e "Voltar ao meu tema";
+  - um tema comprado entra em uso na hora. Isso fica no `usePurchase`, não no botão: o botão some
+    quando o item vira "seu", e callbacks de componente desmontado não rodam;
+  - a `/carteira` liga para a loja, e o card Aparência sempre aparece, com link para a loja.
+
 ## Próximos passos
 
-1. **Loja v1** (fase 4 dos temas): preço por tema e pacote, compra (débito mais posse numa
-   transação) e a prévia que já existe.
-2. **Insígnias e bônus simbólico do passado:** Platinador Veterano, Arqueólogo e Fundador.
-3. **Proteção de ofensiva:** congelamento comprado com moedas, com estoque máximo de 2.
-4. **A decidir:**
+1. **Insígnias e bônus simbólico do passado:** Platinador Veterano, Arqueólogo e Fundador.
+2. **Proteção de ofensiva:** congelamento comprado com moedas, com estoque máximo de 2.
+3. **A decidir:**
    - bônus por zerar (proporcional às horas do jogo, para não valer a pena fraudar);
    - peso menor para sessões manuais ou via MCP, se o teto diário não bastar;
    - incluir o RetroAchievements, que também é verificável pela API.

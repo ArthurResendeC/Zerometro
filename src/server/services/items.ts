@@ -9,6 +9,7 @@ import {
   themeSoundPack,
 } from "../../shared/items";
 import { DEFAULT_THEME, isThemeId } from "../../shared/themes";
+import type { DbOrTx } from "../db/client";
 import { user, userItems } from "../db/schema";
 import { NotFoundError } from "../errors";
 import { logActivity } from "./activity";
@@ -61,8 +62,8 @@ export function ownedIds(scope: UserScope, kind: ItemKind): Set<string> {
 }
 
 /**
- * Dá um item a `targetUserId` (o admin concedendo, ou a loja/insígnias no futuro). Idempotente:
- * quem já tem não ganha de novo (`created: false`). Um tema traz o pacote de som dele.
+ * Dá um item a `targetUserId` (o admin concedendo, a loja, as insígnias). Idempotente: quem já tem
+ * não ganha de novo (`created: false`). Um tema traz o pacote de som dele.
  */
 export function grantItem(
   ctx: ServiceContext,
@@ -70,7 +71,18 @@ export function grantItem(
   input: GrantItemInput,
   source: ItemSource,
 ): { created: boolean } {
-  const target = ctx.db.select({ id: user.id }).from(user).where(eq(user.id, targetUserId)).get();
+  return ctx.db.transaction((tx) => grantItemIn(tx, ctx, targetUserId, input, source));
+}
+
+/** O mesmo que `grantItem`, dentro de uma transação que já existe (ex.: a compra, com o débito). */
+export function grantItemIn(
+  tx: DbOrTx,
+  who: Pick<ServiceContext, "actor" | "userId" | "now">,
+  targetUserId: string,
+  input: GrantItemInput,
+  source: ItemSource,
+): { created: boolean } {
+  const target = tx.select({ id: user.id }).from(user).where(eq(user.id, targetUserId)).get();
   if (!target) throw new NotFoundError("Perfil não encontrado");
 
   const grants: { kind: ItemKind; itemId: string }[] = [input];
@@ -79,26 +91,22 @@ export function grantItem(
   }
 
   let created = false;
-  ctx.db.transaction((tx) => {
-    for (const grant of grants) {
-      if (isFreeItem(grant.kind, grant.itemId)) continue;
-      const inserted = tx
-        .insert(userItems)
-        .values({
-          userId: targetUserId,
-          kind: grant.kind,
-          itemId: grant.itemId,
-          source,
-          acquiredAt: ctx.now.toISOString(),
-        })
-        .onConflictDoNothing()
-        .returning({ id: userItems.id })
-        .all();
-      if (inserted.length > 0 && grant === input) created = true;
-    }
-    if (created) {
-      logActivity(tx, ctx, "item.grant", { targetUserId, ...input, source });
-    }
-  });
+  for (const grant of grants) {
+    if (isFreeItem(grant.kind, grant.itemId)) continue;
+    const inserted = tx
+      .insert(userItems)
+      .values({
+        userId: targetUserId,
+        kind: grant.kind,
+        itemId: grant.itemId,
+        source,
+        acquiredAt: who.now.toISOString(),
+      })
+      .onConflictDoNothing()
+      .returning({ id: userItems.id })
+      .all();
+    if (inserted.length > 0 && grant === input) created = true;
+  }
+  if (created) logActivity(tx, who, "item.grant", { targetUserId, ...input, source });
   return { created };
 }

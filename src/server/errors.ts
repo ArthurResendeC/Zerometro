@@ -55,6 +55,20 @@ export class ItemNotOwnedError extends AppError {
   }
 }
 
+/** Saldo insuficiente para a compra. */
+export class InsufficientCoinsError extends AppError {
+  constructor(
+    readonly price: number,
+    readonly balance: number,
+  ) {
+    super(
+      409,
+      "insufficient_coins",
+      `Faltam ${price - balance} moedas: o item custa ${price} e você tem ${balance}`,
+    );
+  }
+}
+
 export class IgdbError extends AppError {
   constructor(message: string, options?: ErrorOptions) {
     super(502, "igdb_error", message, options);

@@ -23,6 +23,7 @@ import { ProfileAvatar } from "@/features/profile/avatars";
 import type { AuthSession } from "@/lib/auth";
 import { ThemeSync } from "@/features/theme/theme-sync";
 import { CoinBalance } from "@/features/wallet/coin-balance";
+import { PreviewBar } from "@/features/shop/preview-bar";
 import { sessionQuery } from "@/lib/queries";
 import { useLogSessionDialog } from "@/stores/log-session-dialog";
 
@@ -173,6 +174,7 @@ function SignedInLayout({ session: initial }: { session: AuthSession }) {
       <main className="mx-auto max-w-6xl px-4 py-8 sm:py-12">
         <Outlet />
       </main>
+      <PreviewBar />
       <LogSessionDialog />
       <SessionNoteDialog />
       <Toaster position="bottom-right" />

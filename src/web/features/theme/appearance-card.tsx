@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { useId } from "react";
 import { isSoundPackId, soundPacks, themeSoundPack } from "@shared/items";
 import type { Settings } from "@shared/settings";
@@ -9,10 +10,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { itemsQuery, useUpdateSettings } from "@/lib/queries";
 import { ThemeOption } from "./theme-option";
 
-/**
- * Aparência: o tema e o pacote de sons da conta, entre os que o perfil tem. Some enquanto só há
- * o tema base (até a loja abrir, só o admin concede outros).
- */
+/** Aparência: o tema e o pacote de sons da conta, entre os que o perfil tem; mais na loja. */
 export function AppearanceCard({ settings }: { settings: Settings }) {
   const { data: items = [] } = useQuery(itemsQuery());
   const update = useUpdateSettings();
@@ -24,7 +22,6 @@ export function AppearanceCard({ settings }: { settings: Settings }) {
   const ownedPacks = items.flatMap((i) =>
     i.kind === "sound_pack" && isSoundPackId(i.itemId) ? [i.itemId] : [],
   );
-  if (ownedThemes.length <= 1 && ownedPacks.length <= 1) return null;
 
   const themePack = soundPacks[themeSoundPack[settings.themeId]];
 
@@ -33,7 +30,11 @@ export function AppearanceCard({ settings }: { settings: Settings }) {
       <div className="space-y-1">
         <h2 className="display-xs">🎨 Aparência</h2>
         <p className="text-sm text-muted-foreground">
-          O tema e os sons da sua conta, em todos os aparelhos.
+          O tema e os sons da sua conta, em todos os aparelhos.{" "}
+          <Link to="/loja" className="text-primary underline-offset-4 hover:underline">
+            Mais temas na loja
+          </Link>
+          .
         </p>
       </div>
       <ul className="grid gap-3 sm:grid-cols-3">

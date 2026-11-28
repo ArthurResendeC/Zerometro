@@ -125,3 +125,23 @@ export function playSound(name: SoundName, volume: number): void {
     reportAudioError(error);
   }
 }
+
+/**
+ * Toca um som de um pacote sem trocar o pacote ativo (o "ouvir" da loja). Sintetiza na hora,
+ * sem cache: é raro. Nunca lança.
+ */
+export async function previewSound(pack: SoundPackId, name: SoundName, volume: number) {
+  try {
+    const audio = getOutput();
+    if (!audio) return;
+    const packDefinitions = await soundPackLoaders[pack]();
+    const { context, master } = audio;
+    if (context.state !== "running") await context.resume();
+    master.gain.setValueAtTime(volume, context.currentTime);
+    const source = sfxr.toWebAudio(packDefinitions[name], context);
+    source.connect(master);
+    source.start();
+  } catch (error) {
+    reportAudioError(error);
+  }
+}

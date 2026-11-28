@@ -21,10 +21,10 @@ export interface ThemeDef {
   modes: readonly ThemeMode[];
   /** Cor da barra do navegador (<meta name="theme-color">) em cada modo. */
   themeColor: Partial<Record<ThemeMode, string>>;
+  /** Amostra para a loja: fundo, superfície e destaque. */
+  swatch: readonly [string, string, string];
   /** Folha de fontes (Google Fonts) carregada só quando o tema está ativo; null = as do tema base. */
   fontsHref: string | null;
-  /** Ainda sem loja: só aparece na prévia de desenvolvimento. */
-  devOnly: boolean;
 }
 
 export const themes: Record<ThemeId, ThemeDef> = {
@@ -37,8 +37,8 @@ export const themes: Record<ThemeId, ThemeDef> = {
     tier: "complete",
     modes: ["dark", "light"],
     themeColor: { dark: "#0f0e17", light: "#f6efdf" },
+    swatch: ["#0f0e17", "#7a7396", "#ff7a1a"],
     fontsHref: null,
-    devOnly: false,
   },
   minimal: {
     id: "minimal",
@@ -48,9 +48,9 @@ export const themes: Record<ThemeId, ThemeDef> = {
     tier: "complete",
     modes: ["dark"],
     themeColor: { dark: "#0e0f13" },
+    swatch: ["#0e0f13", "#2e323c", "#7b88ff"],
     fontsHref:
       "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap",
-    devOnly: true,
   },
   "ladrao-fantasma": {
     id: "ladrao-fantasma",
@@ -60,9 +60,9 @@ export const themes: Record<ThemeId, ThemeDef> = {
     tier: "legendary",
     modes: ["dark"],
     themeColor: { dark: "#0a0a0a" },
+    swatch: ["#0b0b0b", "#f4f4f4", "#e5191c"],
     fontsHref:
       "https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Semi+Condensed:wght@400;500;600;700&display=swap",
-    devOnly: true,
   },
 };
 
