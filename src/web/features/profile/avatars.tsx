@@ -192,7 +192,7 @@ export function ProfileAvatar({
   return (
     <span
       className={cn(
-        "inline-flex size-8 shrink-0 items-center justify-center bg-muted shadow-[0_0_0_2px_var(--border)]",
+        "inline-flex size-8 shrink-0 items-center justify-center bg-muted frame-ring frame-ring-border",
         className,
       )}
       role={label ? "img" : undefined}
@@ -237,7 +237,7 @@ export function AvatarPicker({
           />
           <ProfileAvatar
             avatar={id}
-            className={cn("size-10", value === id && "shadow-[0_0_0_2px_var(--primary)]")}
+            className={cn("size-10", value === id && "frame-ring frame-ring-primary")}
           />
         </label>
       ))}

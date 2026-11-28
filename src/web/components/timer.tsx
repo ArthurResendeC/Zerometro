@@ -104,7 +104,7 @@ export function TimerBar() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 pb-3">
-      <div className="m-1 mr-3 mb-3 flex items-center gap-3 bg-card py-1 pr-1 pl-3 pixel-frame pixel-drop sm:gap-4">
+      <div className="frame-space-drop flex items-center gap-3 bg-card py-1 pr-1 pl-3 pixel-frame pixel-drop sm:gap-4">
         <span className="size-2 shrink-0 animate-blink bg-destructive" aria-hidden />
         <GameCover
           name={active.gameName}

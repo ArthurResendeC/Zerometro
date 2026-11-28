@@ -194,7 +194,7 @@ function MemberRow({
   ].filter(Boolean);
 
   return (
-    <Card className={member.isMe ? "shadow-[0_0_0_2px_var(--primary)]" : undefined}>
+    <Card className={member.isMe ? "[--px-frame-color:var(--primary)]" : undefined}>
       <div className="flex items-center gap-3">
         <span className="w-8 shrink-0 text-center font-pixel text-sm" aria-label={`${position}º`}>
           {medal ?? `${position}º`}

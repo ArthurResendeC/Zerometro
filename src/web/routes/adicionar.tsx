@@ -58,7 +58,7 @@ function AddGamePage() {
       ) : (
         <ul
           className={cn(
-            "m-1 bg-card pixel-frame [&>li+li]:border-t-2 [&>li+li]:border-dashed [&>li+li]:border-muted",
+            "frame-space bg-card pixel-frame [&>li+li]:border-t-2 [&>li+li]:border-dashed [&>li+li]:border-muted",
             search.isFetching && "opacity-60",
           )}
         >
@@ -131,7 +131,7 @@ function ResultRow({ game, existing }: { game: IgdbGameSummary; existing?: Libra
 
 function ResultsSkeleton() {
   return (
-    <div className="m-1 bg-card pixel-frame">
+    <div className="frame-space bg-card pixel-frame">
       {Array.from({ length: 5 }, (_, i) => (
         <div key={i} className="flex items-center gap-4 p-3">
           <Skeleton className="aspect-3/4 w-12" />

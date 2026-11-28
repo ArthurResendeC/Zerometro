@@ -158,7 +158,7 @@ function LibraryPage() {
               className={cn(
                 "relative flex shrink-0 items-center gap-2 px-4 pt-3.5 pb-3 display-xs",
                 active
-                  ? "mx-1 bg-card text-foreground shadow-[0_-4px_0_0_var(--border),-4px_0_0_0_var(--border),4px_0_0_0_var(--border),0_4px_0_0_var(--card)] after:absolute after:inset-x-0 after:top-0 after:h-1 after:bg-primary"
+                  ? "mx-1 bg-card text-foreground tab-frame after:absolute after:inset-x-0 after:top-0 after:h-1 after:bg-primary"
                   : "text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
             >

@@ -29,7 +29,7 @@ export function SegmentedToggle<T extends string>({
   return (
     <fieldset
       className={cn(
-        "mt-1 mr-3 mb-3 ml-1 inline-flex bg-background pixel-frame pixel-frame-ink pixel-drop",
+        "frame-space-drop inline-flex bg-background pixel-frame pixel-frame-ink pixel-drop",
         className,
       )}
     >

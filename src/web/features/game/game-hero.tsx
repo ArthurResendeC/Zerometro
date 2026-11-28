@@ -45,7 +45,7 @@ export function GameHero({ game, badges, children }: GameHeroProps) {
       </div>
 
       <div className="mt-5 space-y-2 text-center md:mt-6 md:text-left">
-        <h1 className="text-[32px] leading-9 text-balance">{game.name}</h1>
+        <h1 className="text-2xl text-balance">{game.name}</h1>
         {meta && <p className="text-muted-foreground">{meta}</p>}
         {studios && <p className="text-sm text-muted-foreground">{studios}</p>}
         <div className="flex flex-wrap justify-center gap-1 pt-1 md:justify-start">
@@ -85,7 +85,7 @@ function Banner({ game }: { game: HeroGame }) {
           className={
             image.blurred
               ? "absolute inset-0 size-full scale-125 object-cover opacity-50 blur-2xl"
-              : "absolute inset-0 size-full object-cover object-[center_30%] motion-safe:animate-in motion-safe:fade-in-0 motion-safe:[animation-timing-function:steps(4)]"
+              : "absolute inset-0 size-full object-cover object-[center_30%] motion-safe:animate-in motion-safe:fade-in-0 motion-safe:[animation-timing-function:var(--ease-reveal)]"
           }
         />
       )}

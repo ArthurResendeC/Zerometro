@@ -1,16 +1,17 @@
 import { Toaster as Sonner, type ToasterProps } from "sonner";
+import { currentMode } from "@/lib/theme";
 
 /** Avisos com moldura pixelada e sombra dura (sem blur, sem cantos arredondados). */
 function Toaster(props: ToasterProps) {
   return (
     <Sonner
-      theme="dark"
+      theme={currentMode()}
       className="toaster group"
       toastOptions={{
         unstyled: true,
         classNames: {
           toast:
-            "flex w-[360px] max-w-full items-start gap-3 m-1 mr-3 mb-3 px-4 py-3.5 bg-popover text-popover-foreground pixel-frame pixel-drop font-sans",
+            "flex w-[360px] max-w-full items-start gap-3 frame-space-drop px-4 py-3.5 bg-popover text-popover-foreground pixel-frame pixel-drop font-sans",
           title: "display-sm",
           description: "text-sm text-muted-foreground",
           icon: "size-6 grid shrink-0 place-items-center",

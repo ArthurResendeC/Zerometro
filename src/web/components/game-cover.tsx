@@ -20,7 +20,7 @@ export function GameCover({ name, imageId, size = "cover_big", className }: Game
     return (
       <div
         className={cn(
-          "@container flex aspect-3/4 w-full items-center justify-center overflow-hidden bg-muted shadow-[0_0_0_2px_var(--pixel-shadow)]",
+          "@container flex aspect-3/4 w-full items-center justify-center overflow-hidden bg-muted frame-ring",
           "bg-[linear-gradient(45deg,var(--card)_25%,transparent_25%,transparent_75%,var(--card)_75%),linear-gradient(45deg,var(--card)_25%,transparent_25%,transparent_75%,var(--card)_75%)] bg-[length:8px_8px] bg-[position:0_0,4px_4px]",
           className,
         )}
@@ -41,10 +41,7 @@ export function GameCover({ name, imageId, size = "cover_big", className }: Game
       alt={`Capa de ${name}`}
       loading="lazy"
       onError={() => setFailedId(imageId)}
-      className={cn(
-        "aspect-3/4 w-full bg-muted object-cover shadow-[0_0_0_2px_var(--pixel-shadow)]",
-        className,
-      )}
+      className={cn("aspect-3/4 w-full bg-muted object-cover frame-ring", className)}
     />
   );
 }

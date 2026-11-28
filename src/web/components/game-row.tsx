@@ -87,7 +87,7 @@ function GameRowCardBody({ game, tag, meta, footer }: GameRowCardProps) {
         params={{ igdbId: game.igdbId }}
         className="group flex flex-col gap-2 focus-visible:outline-none"
       >
-        <div className="m-1 bg-card p-2 pixel-frame transition-transform ease-[steps(2)] group-hover:-translate-y-1 group-hover:pixel-drop group-focus-visible:-translate-y-1 group-focus-visible:outline-[3px] group-focus-visible:outline-offset-[7px] group-focus-visible:outline-ring group-focus-visible:outline-solid">
+        <div className="frame-space bg-card p-2 pixel-frame transition-transform ease-(--ease-ui) group-hover:-translate-y-1 group-hover:pixel-drop group-focus-visible:-translate-y-1 group-focus-visible:outline-[3px] group-focus-visible:outline-offset-[7px] group-focus-visible:outline-ring group-focus-visible:outline-solid">
           <div className="relative">
             <GameCover name={game.name} imageId={game.coverImageId} />
             {tag}

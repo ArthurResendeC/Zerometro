@@ -126,11 +126,13 @@ export function ShareRecapDialog({
                   ? `Prévia da imagem do slide ${slideTitles[slide]}`
                   : "Prévia da imagem do recap"
               }
-              className="size-full object-contain shadow-[0_0_0_2px_var(--pixel-shadow)]"
+              className="size-full object-contain frame-ring"
             />
           )}
           {image.isPending && (
-            <p className="animate-blink font-pixel text-[10px] text-muted-foreground">Gerando…</p>
+            <p className="animate-blink font-pixel text-(length:--display-xs) text-muted-foreground">
+              Gerando…
+            </p>
           )}
           {image.isError && !image.data && (
             <p className="p-4 text-center text-muted-foreground">

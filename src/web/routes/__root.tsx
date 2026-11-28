@@ -82,7 +82,7 @@ function SignedInLayout({ session: initial }: { session: AuthSession }) {
         <nav className="mx-auto flex max-w-6xl items-center px-4 py-2 sm:gap-2">
           <Link
             to="/"
-            className="mr-0.5 font-pixel text-[12px] whitespace-nowrap sm:mr-4 sm:text-[16px]"
+            className="mr-0.5 font-pixel text-(length:--display-sm) whitespace-nowrap sm:mr-4 sm:text-(length:--display-md)"
           >
             Zer<span className="text-primary">ô</span>metro
           </Link>
@@ -146,7 +146,7 @@ function SignedInLayout({ session: initial }: { session: AuthSession }) {
             >
               <ProfileAvatar
                 avatar={session.avatar}
-                className="size-8 group-hover:shadow-[0_0_0_2px_var(--foreground)] group-aria-[current=page]:shadow-[0_0_0_2px_var(--primary)]"
+                className="size-8 group-hover:frame-ring group-hover:frame-ring-foreground group-aria-[current=page]:frame-ring group-aria-[current=page]:frame-ring-primary"
               />
             </Link>
             <StartSessionButton className="max-sm:mr-2 max-xl:px-2.5" />
