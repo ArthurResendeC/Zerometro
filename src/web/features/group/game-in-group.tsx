@@ -17,9 +17,11 @@ export function GameInGroup({ igdbId }: { igdbId: number }) {
     <section>
       <Card className="gap-3">
         <h2 className="display-xs text-muted-foreground">No grupo</h2>
-        <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {/* minmax(0, 1fr) e min-w-0: sem isso a coluna cresce até o resumo mais longo e a
+            página ganha rolagem lateral no celular. */}
+        <ul className="grid grid-cols-[minmax(0,1fr)] gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {data.map((entry) => (
-            <li key={entry.member.userId}>
+            <li key={entry.member.userId} className="min-w-0">
               <Link
                 to="/amigo/$handle"
                 params={{ handle: entry.member.handle }}
@@ -31,7 +33,7 @@ export function GameInGroup({ igdbId }: { igdbId: number }) {
                     {entry.member.name}
                     {entry.member.isMe && <span className="text-muted-foreground"> (você)</span>}
                   </p>
-                  <p className="truncate text-xs text-muted-foreground">{summary(entry)}</p>
+                  <p className="text-xs text-pretty text-muted-foreground">{summary(entry)}</p>
                 </div>
               </Link>
             </li>
@@ -42,14 +44,15 @@ export function GameInGroup({ igdbId }: { igdbId: number }) {
   );
 }
 
+/** "Jogando · 62h 25min · 🏆 49/53 · ★ 8": quebra de linha só entre os itens (\u00a0 dentro deles). */
 function summary(entry: GroupGameEntry): string {
   return [
     entry.completion ? completionTypeLabels[entry.completion.best] : gameStatusLabels[entry.status],
-    entry.minutesPlayed > 0 && formatMinutes(entry.minutesPlayed),
+    entry.minutesPlayed > 0 && formatMinutes(entry.minutesPlayed).replace(" ", "\u00a0"),
     entry.achievements &&
       entry.achievements.total > 0 &&
-      `🏆 ${entry.achievements.unlocked}/${entry.achievements.total}`,
-    entry.rating !== null && `★ ${entry.rating.toLocaleString("pt-BR")}`,
+      `🏆\u00a0${entry.achievements.unlocked}/${entry.achievements.total}`,
+    entry.rating !== null && `★\u00a0${entry.rating.toLocaleString("pt-BR")}`,
   ]
     .filter(Boolean)
     .join(" · ");

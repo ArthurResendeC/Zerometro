@@ -52,7 +52,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 // A fonte pixel é larga: o menu só cabe por extenso a partir de lg (texto nos links) e xl (texto
 // nos botões). Abaixo disso vira ícone, senão o cabeçalho estoura a janela e cria scroll lateral.
 const navLinkClass =
-  "menu-cursor py-2 pr-2 display-xs max-lg:px-1 max-sm:px-0.5 max-lg:before:hidden text-muted-foreground hover:bg-accent hover:text-foreground aria-[current=page]:text-foreground";
+  "menu-cursor py-2 pr-2 display-xs max-lg:px-1 max-sm:px-0.5 max-xs:px-0 max-lg:before:hidden text-muted-foreground hover:bg-accent hover:text-foreground aria-[current=page]:text-foreground";
 
 function RootLayout() {
   const { session } = Route.useRouteContext();
@@ -82,10 +82,10 @@ function SignedInLayout({ session: initial }: { session: AuthSession }) {
     <div className="min-h-dvh">
       <ThemeSync />
       <header className="sticky top-0 z-40 border-b-(length:--rule-thick) border-border bg-background">
-        <nav className="mx-auto flex max-w-6xl items-center px-4 py-2 sm:gap-2">
+        <nav className="mx-auto flex max-w-6xl items-center px-4 py-2 max-sm:px-3 sm:gap-2">
           <Link
             to="/"
-            className="mr-0.5 font-pixel text-(length:--display-sm) whitespace-nowrap sm:mr-4 sm:text-(length:--display-md)"
+            className="mr-0.5 font-pixel text-(length:--display-sm) whitespace-nowrap max-xs:text-(length:--display-xs) sm:mr-4 sm:text-(length:--display-md)"
           >
             Zer<span className="text-primary">ô</span>metro
           </Link>
@@ -146,19 +146,21 @@ function SignedInLayout({ session: initial }: { session: AuthSession }) {
               to="/ajustes"
               aria-label={`Ajustes (${session.name})`}
               title={session.name}
-              className="group mr-1 flex size-9 items-center justify-center sm:mr-3"
+              className="group mr-1 flex size-9 items-center justify-center max-sm:mr-0.5 max-sm:size-8 sm:mr-3"
             >
               <ProfileAvatar
                 avatar={session.avatar}
                 className="size-8 group-hover:frame-ring group-hover:frame-ring-foreground group-aria-[current=page]:frame-ring group-aria-[current=page]:frame-ring-primary"
               />
             </Link>
-            <StartSessionButton className="max-sm:mr-2 max-xl:px-2.5" />
+            {/* No celular, botões mais estreitos e a sombra do último no respiro do menu: senão
+                o menu passa da tela abaixo de ~400px. */}
+            <StartSessionButton className="max-xl:px-2.5 max-sm:mr-1.5 max-sm:px-2" />
             <Button
               size="sm"
               onClick={() => openLogSession()}
               aria-label="Registrar sessão"
-              className="max-sm:mr-2 max-xl:px-2.5"
+              className="max-xl:px-2.5 max-sm:mr-0 max-sm:px-2"
             >
               <TimerIcon />
               <span className="hidden xl:inline">Registrar sessão</span>
