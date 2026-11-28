@@ -22,6 +22,7 @@ import {
 import { inviteKinds, userRoles } from "../../shared/auth";
 import { achievementSources, achievementUnlockOrigins } from "../../shared/achievements";
 import { progressGoals } from "../../shared/completions";
+import { type CoinEntryDetails, coinReasons } from "../../shared/economy";
 import { itemKinds, itemSources } from "../../shared/items";
 import type { CriterionWeights } from "../../shared/rating-criteria";
 import { ratingPresets } from "../../shared/rating-criteria";
@@ -495,6 +496,29 @@ export const userItems = sqliteTable(
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("user_items_user_kind_item_idx").on(t.userId, t.kind, t.itemId)],
+);
+
+/**
+ * Livro-razão das moedas: só inserção. O saldo é a soma. Os ganhos derivados (horas, conquistas)
+ * são recalculados a partir dos dados e a diferença entra como ajuste (`ref_key` identifica o que
+ * originou: `day:2026-11-27`, `achievement:123`), então editar uma sessão nunca apaga histórico.
+ */
+export const coinLedger = sqliteTable(
+  "coin_ledger",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: userId(),
+    amount: integer("amount").notNull(),
+    reason: text("reason", { enum: coinReasons }).notNull(),
+    refKey: text("ref_key").notNull(),
+    details: text("details", { mode: "json" }).$type<CoinEntryDetails>().notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("coin_ledger_user_created_idx").on(t.userId, t.createdAt),
+    index("coin_ledger_user_ref_idx").on(t.userId, t.reason, t.refKey),
+    check("coin_ledger_amount_not_zero", sql`${t.amount} <> 0`),
+  ],
 );
 
 /** Chave-valor para estado interno (token do IGDB, ajustes por usuário em `settings:<userId>`). */

@@ -424,6 +424,16 @@ export function useDeleteSession() {
 
 export const statsKeys = { all: ["stats"] as const };
 
+/**
+ * Carteira de moedas. A chave fica debaixo de `statsKeys`: tudo que mexe nas estatísticas
+ * (sessões, conquistas sincronizadas) também mexe no saldo, e já invalida os dois.
+ */
+export const walletQuery = () =>
+  queryOptions({
+    queryKey: [...statsKeys.all, "wallet"] as const,
+    queryFn: () => unwrap(api.wallet.$get()),
+  });
+
 // ---------------------------------------------------------------------------
 // Conclusões (zerei a história, + extras, 100%)
 

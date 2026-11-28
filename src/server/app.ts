@@ -18,6 +18,7 @@ import { createObjectiveRoutes } from "./routes/objectives";
 import { createRatingRoutes } from "./routes/ratings";
 import { createSessionRoutes } from "./routes/sessions";
 import { createSettingsRoutes } from "./routes/settings";
+import { createWalletRoutes } from "./routes/wallet";
 import { createStatsRoutes } from "./routes/stats";
 import { createProfileRoutes } from "./routes/profile";
 import { createSteamRoutes } from "./routes/steam";
@@ -90,6 +91,7 @@ export function createApp(deps: AppDeps) {
       .route("/stats", createStatsRoutes(deps))
       .route("/profile", createProfileRoutes(deps))
       .route("/settings", createSettingsRoutes(deps))
+      .route("/wallet", createWalletRoutes(deps))
       .route("/steam", createSteamRoutes(deps))
       .route("/timer", createTimerRoutes(deps))
       .route("/group", createGroupRoutes(deps))

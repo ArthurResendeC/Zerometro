@@ -33,6 +33,12 @@ export const PlayIcon = pixelIcon(
   "PlayIcon",
 );
 export const StopIcon = pixelIcon(r(1, 1, 6, 6), "StopIcon");
+/** Moeda da economia (com a ranhura no meio). */
+export const CoinIcon = pixelIcon(
+  r(2, 0, 4) + r(1, 1, 6) + r(0, 2, 8, 4) + r(1, 6, 6) + r(2, 7, 4) + r(3, 2, 2, 4),
+  "CoinIcon",
+  "evenodd",
+);
 export const PauseIcon = pixelIcon(r(1, 1, 2, 6) + r(5, 1, 2, 6), "PauseIcon");
 export const CloseIcon = pixelIcon(
   [0, 1, 2, 3, 4, 5].map((i) => r(i + 1, i + 1) + r(6 - i, i + 1)).join(""),

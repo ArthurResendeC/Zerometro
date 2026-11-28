@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from "./routes/index"
 import { Route as AdicionarRouteImport } from "./routes/adicionar"
 import { Route as AjustesRouteImport } from "./routes/ajustes"
 import { Route as BibliotecaRouteImport } from "./routes/biblioteca"
+import { Route as CarteiraRouteImport } from "./routes/carteira"
 import { Route as ComoAvaliamosRouteImport } from "./routes/como-avaliamos"
 import { Route as EntrarRouteImport } from "./routes/entrar"
 import { Route as EstatisticasRouteImport } from "./routes/estatisticas"
@@ -43,6 +44,11 @@ const AjustesRoute = AjustesRouteImport.update({
 const BibliotecaRoute = BibliotecaRouteImport.update({
   id: "/biblioteca",
   path: "/biblioteca",
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CarteiraRoute = CarteiraRouteImport.update({
+  id: "/carteira",
+  path: "/carteira",
   getParentRoute: () => rootRouteImport,
 } as any)
 const ComoAvaliamosRoute = ComoAvaliamosRouteImport.update({
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   "/adicionar": typeof AdicionarRoute
   "/ajustes": typeof AjustesRoute
   "/biblioteca": typeof BibliotecaRoute
+  "/carteira": typeof CarteiraRoute
   "/como-avaliamos": typeof ComoAvaliamosRoute
   "/entrar": typeof EntrarRoute
   "/estatisticas": typeof EstatisticasRoute
@@ -123,6 +130,7 @@ export interface FileRoutesByTo {
   "/adicionar": typeof AdicionarRoute
   "/ajustes": typeof AjustesRoute
   "/biblioteca": typeof BibliotecaRoute
+  "/carteira": typeof CarteiraRoute
   "/como-avaliamos": typeof ComoAvaliamosRoute
   "/entrar": typeof EntrarRoute
   "/estatisticas": typeof EstatisticasRoute
@@ -141,6 +149,7 @@ export interface FileRoutesById {
   "/adicionar": typeof AdicionarRoute
   "/ajustes": typeof AjustesRoute
   "/biblioteca": typeof BibliotecaRoute
+  "/carteira": typeof CarteiraRoute
   "/como-avaliamos": typeof ComoAvaliamosRoute
   "/entrar": typeof EntrarRoute
   "/estatisticas": typeof EstatisticasRoute
@@ -160,6 +169,7 @@ export interface FileRouteTypes {
     | "/adicionar"
     | "/ajustes"
     | "/biblioteca"
+    | "/carteira"
     | "/como-avaliamos"
     | "/entrar"
     | "/estatisticas"
@@ -177,6 +187,7 @@ export interface FileRouteTypes {
     | "/adicionar"
     | "/ajustes"
     | "/biblioteca"
+    | "/carteira"
     | "/como-avaliamos"
     | "/entrar"
     | "/estatisticas"
@@ -194,6 +205,7 @@ export interface FileRouteTypes {
     | "/adicionar"
     | "/ajustes"
     | "/biblioteca"
+    | "/carteira"
     | "/como-avaliamos"
     | "/entrar"
     | "/estatisticas"
@@ -212,6 +224,7 @@ export interface RootRouteChildren {
   AdicionarRoute: typeof AdicionarRoute
   AjustesRoute: typeof AjustesRoute
   BibliotecaRoute: typeof BibliotecaRoute
+  CarteiraRoute: typeof CarteiraRoute
   ComoAvaliamosRoute: typeof ComoAvaliamosRoute
   EntrarRoute: typeof EntrarRoute
   EstatisticasRoute: typeof EstatisticasRoute
@@ -253,6 +266,13 @@ declare module "@tanstack/react-router" {
       path: "/biblioteca"
       fullPath: "/biblioteca"
       preLoaderRoute: typeof BibliotecaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    "/carteira": {
+      id: "/carteira"
+      path: "/carteira"
+      fullPath: "/carteira"
+      preLoaderRoute: typeof CarteiraRouteImport
       parentRoute: typeof rootRouteImport
     }
     "/como-avaliamos": {
@@ -340,6 +360,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdicionarRoute: AdicionarRoute,
   AjustesRoute: AjustesRoute,
   BibliotecaRoute: BibliotecaRoute,
+  CarteiraRoute: CarteiraRoute,
   ComoAvaliamosRoute: ComoAvaliamosRoute,
   EntrarRoute: EntrarRoute,
   EstatisticasRoute: EstatisticasRoute,
