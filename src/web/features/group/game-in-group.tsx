@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { completionTypeLabels, gameStatusLabels } from "@shared/domain";
 import type { GroupGameEntry } from "@shared/group";
+import { formatScore } from "@shared/ratings";
 import { Card } from "@/components/ui/card";
 import { ProfileAvatar } from "@/features/profile/avatars";
 import { formatMinutes } from "@/lib/format";
@@ -52,7 +53,7 @@ function summary(entry: GroupGameEntry): string {
     entry.achievements &&
       entry.achievements.total > 0 &&
       `🏆\u00a0${entry.achievements.unlocked}/${entry.achievements.total}`,
-    entry.rating !== null && `★\u00a0${entry.rating.toLocaleString("pt-BR")}`,
+    entry.rating !== null && `★\u00a0${formatScore(entry.rating)}`,
   ]
     .filter(Boolean)
     .join(" · ");
