@@ -16,38 +16,38 @@ O ponto de partida é o `src/web/styles.css` atual, na "Direção A · Cartucho 
 
 Um tema é uma **skin** com até 8 camadas. Só a primeira é obrigatória.
 
-| # | Camada | Onde vive | Obrigatória |
-|---|---|---|---|
-| 1 | Cores | CSS: `[data-theme="x"]` | sim |
-| 2 | Tipografia | CSS (tokens) e `@fontsource` sob demanda | não (herda) |
-| 3 | Forma (moldura, raio, sombra, bisel) | CSS (tokens) | não (herda) |
-| 4 | Textura (fundo, overlay, cursor de menu) | CSS (tokens) | não |
-| 5 | Movimento (curva, duração, "press") | CSS (tokens) | não (herda) |
-| 6 | Sons | JSON jsfxr com as mesmas chaves de `zerometro-sfx.json` | não (herda) |
-| 7 | Microtexto | `ThemeCopy` em TS (≈ 15 chaves) | não |
-| 8 | Celebração | componente React registrado por evento | não |
+| #   | Camada                                   | Onde vive                                               | Obrigatória |
+| --- | ---------------------------------------- | ------------------------------------------------------- | ----------- |
+| 1   | Cores                                    | CSS: `[data-theme="x"]`                                 | sim         |
+| 2   | Tipografia                               | CSS (tokens) e `@fontsource` sob demanda                | não (herda) |
+| 3   | Forma (moldura, raio, sombra, bisel)     | CSS (tokens)                                            | não (herda) |
+| 4   | Textura (fundo, overlay, cursor de menu) | CSS (tokens)                                            | não         |
+| 5   | Movimento (curva, duração, "press")      | CSS (tokens)                                            | não (herda) |
+| 6   | Sons                                     | JSON jsfxr com as mesmas chaves de `zerometro-sfx.json` | não (herda) |
+| 7   | Microtexto                               | `ThemeCopy` em TS (≈ 15 chaves)                         | não         |
+| 8   | Celebração                               | componente React registrado por evento                  | não         |
 
 "Herda" significa que a camada usa o valor do tema base, o Cartucho atual. Um tema de nível **Paleta**
 define só a camada 1. Um **Completo** define de 1 a 6. Um **Lendário** define todas.
 
 ## 2. O que existe hoje
 
-| Item | Situação | Impacto |
-|---|---|---|
-| Tokens de cor (`--primary`, `--status-*`, `--heat-*`, `--chart-*`, `--flame*`) | Bem feitos e usados de forma consistente | Cores já funcionam por tema |
-| `<html class="dark">` fixo em `index.html` | O app só roda em modo escuro; o modo claro em `:root` não é usado | Precisa virar `data-theme` + `data-mode` |
-| `sonner.tsx` com `theme="dark"` e `<meta theme-color="#0f0e17">` | Fixos | Precisam seguir o tema |
-| `--radius: 0px`, mas 12 componentes de `ui/` usam `rounded-none` | Ignoram o token | Trocar por `rounded-md` (que já aponta para `var(--radius)`) |
-| `pixel-frame`, `-thin`, `-ink`, `pixel-drop`, `-bevel`, `-sunken`, `-press`, `-disabled` | Usados em 36, 18, 7, 15, 2, 2, 2 e 2 arquivos | Ótimo: só mudar a implementação, sem tocar nos componentes |
-| Margens de reserva da moldura (`mt-1 ml-1 mr-3 mb-3` no Button, `m-1` no Card) | Presas a 4px de moldura e 8px de sombra | Virar token (veja 3.3) |
-| Escala de texto recalibrada para a VT323 (`text-sm` = 20px) | Global no `@theme` | Uma fonte normal a 20px fica enorme: a escala tem que ser do tema |
-| `display-*` com tamanhos fixos para Press Start 2P | 5 utilitários, mais de 140 usos | Mudar só os utilitários |
-| `text-[Npx]` soltos | `recap-slides.tsx` (9), `__root.tsx` (2), `button.tsx` (2), `share-recap-dialog.tsx`, `game-hero.tsx` | Trocar por tokens |
-| `shadow-[...]` fixos | `game-cover`, `activity-heatmap`, `avatars`, `my-sessions`, `biblioteca`, `share-recap-dialog`, `recap-slides`, `__root`, `grupo` | Virar `frame-ring` e `tab-frame` (veja 3.3) |
-| `steps()` em animações | 9 arquivos (`progress`, `dialog`, `alert-dialog`, `switch`, `game-row`, `game-card`, `game-hero`…) | Token de curva |
-| Hex fixos | `game-details.tsx` (cores da classificação indicativa) e `avatars.tsx` (paleta dos avatares) | **Ficam como estão**: as cores da classificação são oficiais e o avatar é identidade, igual em qualquer tema |
-| Gráficos (`recharts`) | Já usam `var(--chart-*)` | Funcionam |
-| Imagem do recap (satori, no servidor) | Cores da marca | Fica com a marca por enquanto; por tema numa fase futura |
+| Item                                                                                     | Situação                                                                                                                          | Impacto                                                                                                      |
+| ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Tokens de cor (`--primary`, `--status-*`, `--heat-*`, `--chart-*`, `--flame*`)           | Bem feitos e usados de forma consistente                                                                                          | Cores já funcionam por tema                                                                                  |
+| `<html class="dark">` fixo em `index.html`                                               | O app só roda em modo escuro; o modo claro em `:root` não é usado                                                                 | Precisa virar `data-theme` + `data-mode`                                                                     |
+| `sonner.tsx` com `theme="dark"` e `<meta theme-color="#0f0e17">`                         | Fixos                                                                                                                             | Precisam seguir o tema                                                                                       |
+| `--radius: 0px`, mas 12 componentes de `ui/` usam `rounded-none`                         | Ignoram o token                                                                                                                   | Trocar por `rounded-md` (que já aponta para `var(--radius)`)                                                 |
+| `pixel-frame`, `-thin`, `-ink`, `pixel-drop`, `-bevel`, `-sunken`, `-press`, `-disabled` | Usados em 36, 18, 7, 15, 2, 2, 2 e 2 arquivos                                                                                     | Ótimo: só mudar a implementação, sem tocar nos componentes                                                   |
+| Margens de reserva da moldura (`mt-1 ml-1 mr-3 mb-3` no Button, `m-1` no Card)           | Presas a 4px de moldura e 8px de sombra                                                                                           | Virar token (veja 3.3)                                                                                       |
+| Escala de texto recalibrada para a VT323 (`text-sm` = 20px)                              | Global no `@theme`                                                                                                                | Uma fonte normal a 20px fica enorme: a escala tem que ser do tema                                            |
+| `display-*` com tamanhos fixos para Press Start 2P                                       | 5 utilitários, mais de 140 usos                                                                                                   | Mudar só os utilitários                                                                                      |
+| `text-[Npx]` soltos                                                                      | `recap-slides.tsx` (9), `__root.tsx` (2), `button.tsx` (2), `share-recap-dialog.tsx`, `game-hero.tsx`                             | Trocar por tokens                                                                                            |
+| `shadow-[...]` fixos                                                                     | `game-cover`, `activity-heatmap`, `avatars`, `my-sessions`, `biblioteca`, `share-recap-dialog`, `recap-slides`, `__root`, `grupo` | Virar `frame-ring` e `tab-frame` (veja 3.3)                                                                  |
+| `steps()` em animações                                                                   | 9 arquivos (`progress`, `dialog`, `alert-dialog`, `switch`, `game-row`, `game-card`, `game-hero`…)                                | Token de curva                                                                                               |
+| Hex fixos                                                                                | `game-details.tsx` (cores da classificação indicativa) e `avatars.tsx` (paleta dos avatares)                                      | **Ficam como estão**: as cores da classificação são oficiais e o avatar é identidade, igual em qualquer tema |
+| Gráficos (`recharts`)                                                                    | Já usam `var(--chart-*)`                                                                                                          | Funcionam                                                                                                    |
+| Imagem do recap (satori, no servidor)                                                    | Cores da marca                                                                                                                    | Fica com a marca por enquanto; por tema numa fase futura                                                     |
 
 ## 3. Tokens novos
 
@@ -56,11 +56,10 @@ As convenções são as mesmas de hoje: variáveis cruas em `[data-theme]` e map
 ### 3.1 Cores (existentes, mais estas)
 
 ```css
---surface-2:        /* segundo nível de card (hoje alguns lugares usam --secondary para isso) */
---overlay:          /* fundo do dialog; hoje é fixo no componente */
+--surface-2:        /* segundo nível de card (hoje alguns lugares usam --secondary para isso) */ --overlay:          /* fundo do dialog; hoje é fixo no componente */
 --selection:        /* ::selection */
 --coin: --coin-foreground:   /* moeda da economia: chip de saldo e preço na loja */
---freeze:           /* dia protegido por congelamento no heatmap */
+--freeze:; /* dia protegido por congelamento no heatmap */
 ```
 
 O contrato exige o conjunto completo. Um tema que deixe um token de fora quebra o teste do §6.
@@ -68,8 +67,7 @@ O contrato exige o conjunto completo. Um tema que deixe um token de fora quebra 
 ### 3.2 Tipografia
 
 ```css
---font-body:            /* hoje VT323 */
---font-display:         /* hoje Press Start 2P (substitui --font-pixel; manter um alias) */
+--font-body:            /* hoje VT323 */ --font-display:         /* hoje Press Start 2P (substitui --font-pixel; manter um alias) */
 --font-numeric:         /* números de estatística e timer (pode ser igual a --font-display) */
 
 /* Escala de corpo: o @theme passa a ler daqui */
@@ -89,7 +87,7 @@ O contrato exige o conjunto completo. Um tema que deixe um token de fora quebra 
 --display-tracking:     /* 0.04em hoje */
 --display-case:         /* uppercase | none, para display-xs e títulos */
 --display-weight:       /* 400 na pixel; 800 num tema tipo Grove */
---display-style:        /* normal | italic (o Ladrão Fantasma quer itálico) */
+--display-style:; /* normal | italic (o Ladrão Fantasma quer itálico) */
 ```
 
 No `@theme` atual, `--text-sm: 20px` vira `--text-sm: var(--fs-sm)`, e assim por diante. Tailwind v4 aceita
@@ -101,8 +99,7 @@ O ponto central: hoje **toda moldura é box-shadow**, e isso é bom, porque um b
 acompanha a curva. Basta o tema trocar a receita das sombras.
 
 ```css
---radius:               /* já existe; 0 no Cartucho, 12px no Moderno */
---radius-control:       /* botão e input (pode diferir do card) */
+--radius:               /* já existe; 0 no Cartucho, 12px no Moderno */ --radius-control:       /* botão e input (pode diferir do card) */
 
 --frame-w:              /* espessura da moldura: 4px */
 --frame-thin-w:         /* 2px */
@@ -119,7 +116,7 @@ acompanha a curva. Basta o tema trocar a receita das sombras.
 
 /* Recorte da superfície (temas com painéis inclinados) */
 --panel-clip:           /* none | polygon(...) */
---panel-skew:           /* 0deg | -4deg */
+--panel-skew:; /* 0deg | -4deg */
 ```
 
 **Como os utilitários passam a funcionar.** Os nomes continuam os mesmos, então nenhum componente muda.
@@ -130,8 +127,12 @@ acompanha a curva. Basta o tema trocar a receita das sombras.
   box-shadow: var(--frame-recipe), var(--px-inset, 0 0 #0000), var(--px-drop, 0 0 #0000);
 }
 /* cada tema (ou o base) define --frame-recipe usando --px-c e --frame-w */
-[data-frame-shape="stepped"] { --frame-recipe: 0 calc(-1*var(--frame-w)) 0 0 var(--px-c), ...; }
-[data-frame-shape="ring"]    { --frame-recipe: 0 0 0 var(--frame-w) var(--px-c); }
+[data-frame-shape="stepped"] {
+  --frame-recipe: 0 calc(-1*var(--frame-w)) 0 0 var(--px-c), ...;
+}
+[data-frame-shape="ring"] {
+  --frame-recipe: 0 0 0 var(--frame-w) var(--px-c);
+}
 ```
 
 Um ponto em aberto: com `@property … inherits: false` nas variáveis `--px-*` (decisão correta, que deve
@@ -146,31 +147,29 @@ fica reto por cima. É a única mudança estrutural, e ela fica restrita a `card
 
 **Utilitários novos, para substituir os `shadow-[...]` fixos:**
 
-| Novo | Substitui |
-|---|---|
+| Novo                                                   | Substitui                                                                                                                                          |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `frame-ring` / `frame-ring-primary` / `frame-ring-ink` | `shadow-[0_0_0_2px_var(--pixel-shadow \| --primary \| --foreground \| --border)]` em game-cover, avatars, share-recap, recap-slides, __root, grupo |
-| `frame-ring-inset` | `shadow-[inset_0_0_0_2px_var(--foreground)]` no heatmap |
-| `tab-frame` | a aba "aberta embaixo" duplicada em `my-sessions.tsx:165` e `biblioteca.tsx:161` |
-| `frame-space` / `frame-space-drop` | `m-1` e `mt-1 ml-1 mr-3 mb-3`, que passam a usar `--frame-gap` e `--drop-gap` |
+| `frame-ring-inset`                                     | `shadow-[inset_0_0_0_2px_var(--foreground)]` no heatmap                                                                                            |
+| `tab-frame`                                            | a aba "aberta embaixo" duplicada em `my-sessions.tsx:165` e `biblioteca.tsx:161`                                                                   |
+| `frame-space` / `frame-space-drop`                     | `m-1` e `mt-1 ml-1 mr-3 mb-3`, que passam a usar `--frame-gap` e `--drop-gap`                                                                      |
 
 ### 3.4 Textura
 
 ```css
---bg-texture:           /* background-image do body: none | scanlines | pergaminho (SVG inline) | grade */
---bg-texture-size:
+--bg-texture:           /* background-image do body: none | scanlines | pergaminho (SVG inline) | grade */ --bg-texture-size:
 --overlay-texture:      /* o que bg-scanlines desenha hoje: vira token, e o utilitário só o aplica */
 --menu-cursor-clip:     /* o ▶ pixelado do .menu-cursor; outro tema troca por ★, ◆, › */
 --menu-cursor-size:
---cursor:               /* cursor do mouse: auto | url(data:...) */
+--cursor:; /* cursor do mouse: auto | url(data:...) */
 ```
 
 ### 3.5 Movimento
 
 ```css
---ease:                 /* steps(2) no Cartucho; cubic-bezier(.2,.8,.2,1) no Moderno */
---ease-enter:
+--ease:                 /* steps(2) no Cartucho; cubic-bezier(.2,.8,.2,1) no Moderno */ --ease-enter:
 --dur-fast:  --dur-base:  --dur-slow:
---blink:                /* animação do cursor; none em temas sóbrios */
+--blink:; /* animação do cursor; none em temas sóbrios */
 ```
 
 Os 9 arquivos com `steps(...)` passam a usar `var(--ease)`. A regra de `prefers-reduced-motion` continua
@@ -196,17 +195,17 @@ export const themeTiers = ["palette", "complete", "legendary"] as const;
 export const themeCategories = ["retro", "modern", "iconic", "exclusive"] as const;
 
 export interface ThemeDef {
-  id: string;                     // "cartucho", "tijolinho-verde", "ladrao-fantasma"
+  id: string; // "cartucho", "tijolinho-verde", "ladrao-fantasma"
   name: string;
   category: (typeof themeCategories)[number];
   tier: (typeof themeTiers)[number];
-  price: number | null;           // null = não se compra (Fundador, insígnias)
-  unlockedBy?: string;            // id da insígnia
+  price: number | null; // null = não se compra (Fundador, insígnias)
+  unlockedBy?: string; // id da insígnia
   modes: readonly ("dark" | "light")[];
   frameShape: "stepped" | "ring";
   swatch: [string, string, string]; // prévia na loja, sem carregar o CSS
   themeColor: Record<"dark" | "light", string>; // <meta theme-color>
-  fonts?: readonly string[];      // pacotes @fontsource para importar sob demanda
+  fonts?: readonly string[]; // pacotes @fontsource para importar sob demanda
   soundPack?: string;
   copy?: string;
   celebrations?: string;
@@ -219,9 +218,9 @@ Não é i18n do app inteiro. São só os **momentos** em que o tema aparece.
 
 ```ts
 export interface ThemeCopy {
-  gameFinished: string;        // "Zerado!" → "Missão cumprida" / "Golpe concluído"
-  sessionStart: string;        // "Bora jogar"
-  sessionStop: string;         // "Sessão salva" → "Jogo salvo na máquina de escrever"
+  gameFinished: string; // "Zerado!" → "Missão cumprida" / "Golpe concluído"
+  sessionStart: string; // "Bora jogar"
+  sessionStop: string; // "Sessão salva" → "Jogo salvo na máquina de escrever"
   streakAlive: string;
   streakAtRisk: string;
   streakMilestone: (days: number) => string;
@@ -229,7 +228,7 @@ export interface ThemeCopy {
   coinsEarned: (n: number) => string;
   emptyLibrary: string;
   rouletteWin: string;
-  loading: string;             // "Carregando..." → "Now loading"
+  loading: string; // "Carregando..." → "Now loading"
 }
 ```
 
@@ -295,6 +294,39 @@ um toast.
 5. Trocar os `text-[Npx]` por tokens e os `steps()` por `var(--ease)`.
 6. Trocar `.dark` por `data-mode`, e fazer sonner e `theme-color` seguirem o tema.
 7. Screenshots antes e depois para provar que nada mudou.
+
+> **Fase 1: feita.** O que mudou em relação ao plano acima (o código manda; os comentários de
+> `styles.css` são a referência):
+>
+> - **Tokens com nomes finais**, no bloco "Tema base" de `styles.css`: `--body-font`, `--display-font`,
+>   `--display-{xl..xs}` (e `-lh`), `--display-xs-case`, `--display-xs-tracking`, `--btn-{sm,lg}-{size,lh}`,
+>   `--control-radius`, `--frame-offset`/`--frame-spread` (e `-thin-`), `--drop`, `--bevel-size`,
+>   `--sunken-size`, `--press-translate`, `--frame-gap`, `--drop-gap`, `--overlay-texture`,
+>   `--menu-cursor-{width,height,shape}`, `--ease-{ui,reveal,progress}`.
+> - **Escala de texto:** sem `--fs-*`. O `@theme` do Tailwind já publica `--text-*` e `--animate-*` como
+>   variáveis, então um tema sobrescreve `--text-sm` direto.
+> - **Moldura sem `data-frame-shape`:** em degrau é `--frame-offset: 4px; --frame-spread: 0`, e em anel é
+>   `--frame-offset: 0; --frame-spread: 1px`. A mesma fórmula cobre os dois casos.
+> - **`--display-weight` e `--display-style` ficam sem valor no tema base**, e com isso `display-*` herda
+>   peso e estilo, como antes. Um tema que defina os dois muda todos os títulos.
+> - **`data-mode`** substituiu `.dark`, e `data-theme="cartucho"` já está no `<html>`. O sonner lê o modo
+>   em `lib/theme.ts`. O `<meta theme-color>` fica para a fase 3, junto do `ThemeProvider`.
+> - **Utilitários novos:**
+>   - `frame-ring` / `frame-ring-<cor>` / `frame-inset`: anéis de 2px.
+>   - `tab-frame`.
+>   - `frame-space` / `frame-space-drop`: margens que reservam o espaço da moldura. O `cn()`
+>     (tailwind-merge) sabe que elas conflitam com `m-*`.
+> - **Exceções mantidas:** `recap-slides.tsx` continua em px fixos, porque espelha a imagem do recap
+>   (veja §8). A classificação indicativa e os avatares também ficam como estão.
+> - **Bug pré-existente, mantido de propósito:** em `/grupo`, o card do próprio usuário tem um anel
+>   `--primary` que nunca aparece, porque o `pixel-frame` do Card sobrescreve o `box-shadow`. A correção
+>   (por exemplo, `[--px-frame-color:var(--primary)]`) muda o visual, então fica para decidir.
+> - **Verificação:** capturas de 26 telas e estados, comparando os pixels e os estilos computados de cada
+>   elemento antes e depois. Saiu idêntico, tirando ruído de tempo (timer e carregamento de capas). Um
+>   tema de teste injetado (fonte serifada, anel de 1px, botão em pílula, sombra suave, display em
+>   itálico) mudou a interface inteira só por tokens.
+> - **Para a fase 2** (ainda fixo, visto no tema de teste): `border-b-4` no header e outras larguras de
+>   borda do Tailwind; o bisel e o afundado já são tokens, mas precisam de valores próprios por tema.
 
 **Fase 2: provar o contrato com dois temas opostos.**
 

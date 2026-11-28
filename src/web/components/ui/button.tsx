@@ -4,9 +4,9 @@ import type * as React from "react";
 import { cn } from "@/lib/utils";
 
 // Moldura, bisel e sombra são box-shadow (utilitários pixel-* em styles.css): não ocupam layout,
-// por isso a margem mt-1 ml-1 mr-3 mb-3 reserva o espaço da moldura e da sombra dura.
+// por isso a margem frame-space-drop reserva o espaço da moldura e da sombra dura.
 const buttonVariants = cva(
-  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2.5 whitespace-nowrap rounded-none display-sm select-none mt-1 ml-1 mr-3 mb-3 disabled:pointer-events-none disabled:pixel-disabled aria-invalid:[--px-frame-color:var(--destructive)] [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2.5 whitespace-nowrap rounded-control display-sm select-none frame-space-drop disabled:pointer-events-none disabled:pixel-disabled aria-invalid:[--px-frame-color:var(--destructive)] [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -23,8 +23,8 @@ const buttonVariants = cva(
       },
       size: {
         default: "h-11 px-[18px]",
-        sm: "h-9 gap-2 px-3 text-[10px] leading-3",
-        lg: "h-13 px-6 text-[14px] leading-5",
+        sm: "h-9 gap-2 px-3 text-(length:--btn-sm-size) leading-(--btn-sm-lh)",
+        lg: "h-13 px-6 text-(length:--btn-lg-size) leading-(--btn-lg-lh)",
         icon: "size-11",
       },
     },

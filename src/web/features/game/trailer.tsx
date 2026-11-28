@@ -16,7 +16,7 @@ export function Trailer({ videos, gameName }: { videos: GameVideo[]; gameName: s
 
   return (
     <div className="max-w-3xl space-y-3">
-      <div className="relative m-1 aspect-video overflow-hidden bg-black pixel-frame">
+      <div className="relative frame-space aspect-video overflow-hidden bg-black pixel-frame">
         {playing ? (
           <iframe
             key={video.youtubeId}

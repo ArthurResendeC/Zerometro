@@ -205,7 +205,7 @@ function SuggestionRow({
     <div
       className={cn(
         "flex min-w-0 items-center gap-3 p-2",
-        highlight && "m-1 bg-accent pixel-frame",
+        highlight && "frame-space bg-accent pixel-frame",
       )}
     >
       <GameCover

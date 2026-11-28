@@ -441,7 +441,7 @@ function TrophiesSlide({ recap }: { recap: Recap }) {
                   <img
                     src={achievements.rarest.iconUrl}
                     alt=""
-                    className="size-14 shrink-0 shadow-[0_0_0_2px_var(--pixel-shadow)] [image-rendering:pixelated]"
+                    className="size-14 shrink-0 frame-ring [image-rendering:pixelated]"
                   />
                 )}
                 <div className="min-w-0">

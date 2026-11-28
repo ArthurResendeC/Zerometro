@@ -168,7 +168,7 @@ export function ActivityHeatmap({ heatmap, actions, stale = false }: ActivityHea
                   className={cn(
                     "size-(--cell)",
                     cell.visible && "hover:brightness-125",
-                    cell.date === heatmap.today && "shadow-[inset_0_0_0_2px_var(--foreground)]",
+                    cell.date === heatmap.today && "frame-inset",
                     tooltip.isPinned(cell.date) &&
                       "brightness-125 outline-2 outline-offset-1 outline-foreground",
                   )}

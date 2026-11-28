@@ -1,9 +1,13 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Zerômetro — Direção A · Cartucho NES. Escuro em .dark (principal), claro em :root. */
+/* Zerômetro — Direção A · Cartucho NES, o tema base. Claro em :root, escuro em [data-mode="dark"]
+   (o principal). Contrato de temas: docs/gamificacao/temas-contrato.md. Um tema sobrescreve, em
+   [data-theme="<id>"] no <html>, os tokens deste arquivo: as cores (:root / [data-mode="dark"]),
+   os de forma, tipografia, textura e movimento (bloco "Tema base", logo abaixo) e as escalas
+   do Tailwind que viram variáveis (--text-*, --animate-*). */
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is([data-mode="dark"] *));
 
 /* O Bun reescreve o `max-*` do Tailwind (width < X) como max-width: calc(X - .001px), e o Chrome
    arredonda o .001px: na largura exata do breakpoint (ex.: 1024px) `lg:` e `max-lg:` valiam juntos.
@@ -72,7 +76,7 @@
   --flame-core: #e8b416;
 }
 
-.dark {
+[data-mode="dark"] {
   --background: #0f0e17;
   --foreground: #f4ecdc;
   --card: #1c1a29;
@@ -129,15 +133,89 @@
   --flame-core: #ffd23f;
 }
 
+/* ---------- Tema base: tokens que não dependem do modo claro/escuro ---------- */
+:root {
+  /* Tipografia: corpo (e números) e display (títulos, botões, rótulos) */
+  --body-font: "VT323", ui-monospace, monospace;
+  --display-font: "Press Start 2P", ui-monospace, monospace;
+  --display-xl: 32px;
+  --display-xl-lh: 40px;
+  --display-lg: 24px;
+  --display-lg-lh: 32px;
+  --display-md: 16px;
+  --display-md-lh: 24px;
+  --display-sm: 12px;
+  --display-sm-lh: 16px;
+  --display-xs: 10px;
+  --display-xs-lh: 12px;
+  --display-xs-case: uppercase;
+  --display-xs-tracking: 0.04em;
+  /* Sem valor no tema base: display-* herda peso e estilo. Um tema define para mudar todos. */
+  /* --display-weight: 800; --display-style: italic; */
+  --btn-sm-size: 10px;
+  --btn-sm-lh: 12px;
+  --btn-lg-size: 14px;
+  --btn-lg-lh: 20px;
+
+  /* Forma. A moldura são 4 box-shadows: em degrau (deslocamento, sem espalhar: os cantos ficam
+     vazados) ou anel (sem deslocamento, espalhando: --frame-offset 0 e --frame-spread 1px). */
+  --control-radius: 0px;
+  --frame-offset: 4px;
+  --frame-spread: 0px;
+  --frame-thin-offset: 2px;
+  --frame-thin-spread: 0px;
+  --drop: 4px 8px 0 0 var(--pixel-shadow), 8px 4px 0 0 var(--pixel-shadow);
+  --bevel-size: 4px;
+  --sunken-size: 4px;
+  --press-translate: 4px 4px;
+  /* Espaço fora da caixa que a moldura (gap) e moldura + sombra (drop-gap) ocupam. */
+  --frame-gap: 4px;
+  --drop-gap: 12px;
+
+  /* Textura */
+  --overlay-texture: repeating-linear-gradient(
+    0deg,
+    transparent 0 2px,
+    color-mix(in srgb, var(--pixel-shadow) 35%, transparent) 2px 4px
+  );
+  --menu-cursor-width: 10px;
+  --menu-cursor-height: 12px;
+  --menu-cursor-shape: polygon(
+    0 0,
+    40% 0,
+    40% 16.6%,
+    60% 16.6%,
+    60% 33.3%,
+    80% 33.3%,
+    80% 50%,
+    100% 50%,
+    80% 50%,
+    80% 66.6%,
+    60% 66.6%,
+    60% 83.3%,
+    40% 83.3%,
+    40% 100%,
+    0 100%
+  );
+
+  /* Movimento: em degraus, como sprite (uso: ease-(--ease-ui), [animation-timing-function:var(--ease-ui)]) */
+  --ease-ui: steps(2);
+  --ease-reveal: steps(4);
+  --ease-progress: steps(10);
+}
+
 @theme inline {
   --radius-sm: var(--radius);
   --radius-md: var(--radius);
   --radius-lg: var(--radius);
   --radius-xl: var(--radius);
+  --radius-control: var(--control-radius);
 
-  --font-sans: "VT323", ui-monospace, monospace;
-  --font-mono: "VT323", ui-monospace, monospace;
-  --font-pixel: "Press Start 2P", ui-monospace, monospace;
+  --font-sans: var(--body-font);
+  --font-mono: var(--body-font);
+  --font-display: var(--display-font);
+  /* compatibilidade: o app usa font-pixel hoje */
+  --font-pixel: var(--display-font);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -238,33 +316,43 @@
   }
 }
 
-/* ---------- Tipografia pixelada (Press Start 2P) ---------- */
+/* ---------- Tipografia de display (Press Start 2P no tema base) ---------- */
 @utility display-xl {
-  font-family: var(--font-pixel);
-  font-size: 32px;
-  line-height: 40px;
+  font-family: var(--display-font);
+  font-size: var(--display-xl);
+  line-height: var(--display-xl-lh);
+  font-weight: var(--display-weight);
+  font-style: var(--display-style);
 }
 @utility display-lg {
-  font-family: var(--font-pixel);
-  font-size: 24px;
-  line-height: 32px;
+  font-family: var(--display-font);
+  font-size: var(--display-lg);
+  line-height: var(--display-lg-lh);
+  font-weight: var(--display-weight);
+  font-style: var(--display-style);
 }
 @utility display-md {
-  font-family: var(--font-pixel);
-  font-size: 16px;
-  line-height: 24px;
+  font-family: var(--display-font);
+  font-size: var(--display-md);
+  line-height: var(--display-md-lh);
+  font-weight: var(--display-weight);
+  font-style: var(--display-style);
 }
 @utility display-sm {
-  font-family: var(--font-pixel);
-  font-size: 12px;
-  line-height: 16px;
+  font-family: var(--display-font);
+  font-size: var(--display-sm);
+  line-height: var(--display-sm-lh);
+  font-weight: var(--display-weight);
+  font-style: var(--display-style);
 }
 @utility display-xs {
-  font-family: var(--font-pixel);
-  font-size: 10px;
-  line-height: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-family: var(--display-font);
+  font-size: var(--display-xs);
+  line-height: var(--display-xs-lh);
+  font-weight: var(--display-weight);
+  font-style: var(--display-style);
+  text-transform: var(--display-xs-case);
+  letter-spacing: var(--display-xs-tracking);
 }
 
 /* As variáveis da moldura NÃO herdam: um Input dentro de um Card elevado não ganha a sombra do Card. */
@@ -284,6 +372,10 @@
   syntax: "*";
   inherits: false;
 }
+@property --px-ring {
+  syntax: "*";
+  inherits: false;
+}
 
 /* ---------- Moldura pixelada ----------
    pixel-frame desenha a moldura de 4px com cantos em degrau e compõe, via variáveis,
@@ -291,10 +383,10 @@
 @utility pixel-frame {
   --px-c: var(--px-frame-color, var(--border));
   box-shadow:
-    0 -4px 0 0 var(--px-c),
-    0 4px 0 0 var(--px-c),
-    -4px 0 0 0 var(--px-c),
-    4px 0 0 0 var(--px-c),
+    0 calc(-1 * var(--frame-offset)) 0 var(--frame-spread) var(--px-c),
+    0 var(--frame-offset) 0 var(--frame-spread) var(--px-c),
+    calc(-1 * var(--frame-offset)) 0 0 var(--frame-spread) var(--px-c),
+    var(--frame-offset) 0 0 var(--frame-spread) var(--px-c),
     var(--px-inset, 0 0 #0000),
     var(--px-drop, 0 0 #0000);
 }
@@ -304,24 +396,24 @@
 @utility pixel-frame-thin {
   --px-c: var(--px-frame-color, currentColor);
   box-shadow:
-    0 -2px 0 0 var(--px-c),
-    0 2px 0 0 var(--px-c),
-    -2px 0 0 0 var(--px-c),
-    2px 0 0 0 var(--px-c);
+    0 calc(-1 * var(--frame-thin-offset)) 0 var(--frame-thin-spread) var(--px-c),
+    0 var(--frame-thin-offset) 0 var(--frame-thin-spread) var(--px-c),
+    calc(-1 * var(--frame-thin-offset)) 0 0 var(--frame-thin-spread) var(--px-c),
+    var(--frame-thin-offset) 0 0 var(--frame-thin-spread) var(--px-c);
 }
 @utility pixel-drop {
-  --px-drop: 4px 8px 0 0 var(--pixel-shadow), 8px 4px 0 0 var(--pixel-shadow);
+  --px-drop: var(--drop);
 }
 @utility pixel-bevel {
-  --px-inset: inset 0 -4px 0 0 var(--px-shade, var(--primary-shade));
+  --px-inset: inset 0 calc(-1 * var(--bevel-size)) 0 0 var(--px-shade, var(--primary-shade));
 }
 @utility pixel-sunken {
-  --px-inset: inset 4px 4px 0 0 var(--muted);
+  --px-inset: inset var(--sunken-size) var(--sunken-size) 0 0 var(--muted);
 }
 @utility pixel-press {
-  translate: 4px 4px;
+  translate: var(--press-translate);
   --px-drop: 0 0 #0000;
-  --px-inset: inset 0 4px 0 0 var(--px-shade, var(--primary-shade));
+  --px-inset: inset 0 var(--bevel-size) 0 0 var(--px-shade, var(--primary-shade));
 }
 @utility pixel-disabled {
   --px-frame-color: var(--border);
@@ -331,11 +423,32 @@
   color: var(--muted-foreground);
 }
 @utility bg-scanlines {
-  background-image: repeating-linear-gradient(
-    0deg,
-    transparent 0 2px,
-    color-mix(in srgb, var(--pixel-shadow) 35%, transparent) 2px 4px
-  );
+  background-image: var(--overlay-texture);
+}
+/* Anel de 2px por fora (capas, avatares, seleção): sem layout, como a moldura. */
+@utility frame-ring {
+  box-shadow: 0 0 0 2px var(--px-ring, var(--pixel-shadow));
+}
+@utility frame-ring-* {
+  --px-ring: --value(--color- *, [color]);
+}
+@utility frame-inset {
+  box-shadow: inset 0 0 0 2px var(--px-ring, var(--foreground));
+}
+/* Aba aberta embaixo: moldura nos três lados e a base da cor do card, colada no painel. */
+@utility tab-frame {
+  box-shadow:
+    0 calc(-1 * var(--frame-offset)) 0 var(--frame-spread) var(--border),
+    calc(-1 * var(--frame-offset)) 0 0 var(--frame-spread) var(--border),
+    var(--frame-offset) 0 0 var(--frame-spread) var(--border),
+    0 var(--frame-offset) 0 0 var(--card);
+}
+/* Margem que reserva o espaço da moldura (e da sombra dura), que são box-shadow. */
+@utility frame-space {
+  margin: var(--frame-gap);
+}
+@utility frame-space-drop {
+  margin: var(--frame-gap) var(--drop-gap) var(--drop-gap) var(--frame-gap);
 }
 
 @layer base {
@@ -364,27 +477,11 @@
     position: absolute;
     left: 8px;
     top: 50%;
-    width: 10px;
-    height: 12px;
-    margin-top: -6px;
+    width: var(--menu-cursor-width);
+    height: var(--menu-cursor-height);
+    margin-top: calc(var(--menu-cursor-height) / -2);
     background: var(--primary);
-    clip-path: polygon(
-      0 0,
-      40% 0,
-      40% 16.6%,
-      60% 16.6%,
-      60% 33.3%,
-      80% 33.3%,
-      80% 50%,
-      100% 50%,
-      80% 50%,
-      80% 66.6%,
-      60% 66.6%,
-      60% 83.3%,
-      40% 83.3%,
-      40% 100%,
-      0 100%
-    );
+    clip-path: var(--menu-cursor-shape);
     animation: var(--animate-blink);
   }
 }

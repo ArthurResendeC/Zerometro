@@ -93,7 +93,7 @@ export function SessionsTable({ gameId }: { gameId: number }) {
   }
 
   return (
-    <div className="relative m-1 overflow-x-auto bg-card pixel-frame">
+    <div className="relative frame-space overflow-x-auto bg-card pixel-frame">
       <table className="w-full text-sm">
         <thead className="bg-secondary text-left text-muted-foreground">
           {table.getHeaderGroups().map((group) => (
