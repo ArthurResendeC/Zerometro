@@ -21,6 +21,7 @@ import { InstallAppToast } from "@/features/pwa/install-toast";
 import { useSteamAutoSync } from "@/features/steam/use-steam-auto-sync";
 import { ProfileAvatar } from "@/features/profile/avatars";
 import type { AuthSession } from "@/lib/auth";
+import { ThemeSync } from "@/features/theme/theme-sync";
 import { sessionQuery } from "@/lib/queries";
 import { useLogSessionDialog } from "@/stores/log-session-dialog";
 
@@ -78,6 +79,7 @@ function SignedInLayout({ session: initial }: { session: AuthSession }) {
 
   return (
     <div className="min-h-dvh">
+      <ThemeSync />
       <header className="sticky top-0 z-40 border-b-(length:--rule-thick) border-border bg-background">
         <nav className="mx-auto flex max-w-6xl items-center px-4 py-2 sm:gap-2">
           <Link

@@ -48,6 +48,13 @@ export class ValidationError extends AppError {
   }
 }
 
+/** Tema ou pacote de som que o perfil não tem (ainda não comprou ou ganhou). */
+export class ItemNotOwnedError extends AppError {
+  constructor(message: string) {
+    super(403, "item_not_owned", message);
+  }
+}
+
 export class IgdbError extends AppError {
   constructor(message: string, options?: ErrorOptions) {
     super(502, "igdb_error", message, options);

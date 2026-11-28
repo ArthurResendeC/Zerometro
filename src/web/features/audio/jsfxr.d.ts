@@ -6,5 +6,7 @@ declare module "jsfxr" {
   export const sfxr: {
     /** Sintetiza o som e devolve uma fonte pronta para tocar (o `buffer` dela é reaproveitável). */
     toWebAudio(definition: SfxrDefinition, context: BaseAudioContext): AudioBufferSourceNode;
+    /** Sintetiza e devolve as amostras cruas (usado nos testes, sem Web Audio). */
+    toBuffer(definition: SfxrDefinition): ArrayLike<number>;
   };
 }

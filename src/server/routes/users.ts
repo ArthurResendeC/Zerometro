@@ -12,7 +12,9 @@ import type { AppDeps } from "../app";
 import { SESSION_COOKIE } from "../auth";
 import { createRouter, type AppEnv, webContext } from "../lib/hono";
 import { validate } from "../lib/validate";
+import { grantItemSchema } from "../../shared/items";
 import { logActivity } from "../services/activity";
+import { grantItem, listItems } from "../services/items";
 import {
   type AuthUser,
   changePassword,
@@ -36,10 +38,11 @@ function keepSignedIn(deps: Deps, c: Context<AppEnv>, who: AuthUser) {
   return c.json<AuthSession>(toSession(who), 200);
 }
 
-/** A própria conta: nome, avatar, senha e "sair de todos os aparelhos". */
+/** A própria conta: nome, avatar, senha, "sair de todos os aparelhos" e os itens que tem. */
 export function createMeRoutes(deps: Deps) {
   return createRouter()
     .get("/", (c) => c.json<AuthSession>(toSession(c.get("user"))))
+    .get("/items", (c) => c.json({ items: listItems(webContext(deps, c)) }))
     .patch("/", validate("json", updateMeSchema), (c) =>
       c.json<AuthSession>(toSession(updateProfile(webContext(deps, c), c.req.valid("json")))),
     )
@@ -54,7 +57,7 @@ export function createMeRoutes(deps: Deps) {
 const inviteUrl = (deps: Deps, code: string) => `${deps.auth.publicUrl}/convite/${code}`;
 const idParam = z.object({ id: z.coerce.number().int().positive() });
 
-/** Só o admin: perfis da instância e convites. */
+/** Só o admin: perfis da instância, convites e itens concedidos. */
 export function createAdminRoutes(deps: Deps) {
   return createRouter()
     .use(requireAdmin)
@@ -73,6 +76,15 @@ export function createAdminRoutes(deps: Deps) {
         { id: created.id, url: inviteUrl(deps, created.code), expiresAt: created.expiresAt },
         201,
       );
+    })
+    .post("/users/:id/items", validate("json", grantItemSchema), (c) => {
+      const result = grantItem(
+        webContext(deps, c),
+        c.req.param("id"),
+        c.req.valid("json"),
+        "grant",
+      );
+      return c.json(result, result.created ? 201 : 200);
     })
     .get("/invites", (c) => c.json(listInvites(webContext(deps, c))))
     .post("/invites", validate("json", createInviteSchema), (c) => {

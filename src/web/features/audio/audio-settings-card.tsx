@@ -21,8 +21,8 @@ export function AudioSettingsCard() {
       <div className="space-y-1">
         <h2 className="display-xs">🔊 Áudio</h2>
         <p className="text-sm text-muted-foreground">
-          Sons 8 bits ao começar e parar sessões, zerar jogos e bater marcos. Vale só para este
-          aparelho.
+          Sons ao começar e parar sessões, zerar jogos e bater marcos, no estilo do seu tema. Ligar,
+          desligar e o volume valem só para este aparelho.
         </p>
       </div>
 

@@ -649,6 +649,13 @@ export const settingsQuery = () =>
     queryFn: async () => (await unwrap(api.settings.$get())).settings,
   });
 
+/** Itens de personalização que o perfil tem (temas, pacotes de som), incluindo os grátis. */
+export const itemsQuery = () =>
+  queryOptions({
+    queryKey: ["me", "items"] as const,
+    queryFn: async () => (await unwrap(api.me.items.$get())).items,
+  });
+
 export function useUpdateSettings() {
   const queryClient = useQueryClient();
   return useMutation({

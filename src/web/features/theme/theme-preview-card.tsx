@@ -1,44 +1,42 @@
 import { themeIds, themes } from "@shared/themes";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme";
+import { ThemeOption } from "./theme-option";
 
 /**
- * Prévia dos temas, só em desenvolvimento (ainda não há loja): troca o tema neste aparelho.
- * Some do build de produção (NODE_ENV fica fixo no bundle).
+ * Prévia de todos os temas, só em desenvolvimento: mostra sem salvar na conta (a loja vai usar a
+ * mesma prévia). Some do build de produção (NODE_ENV fica fixo no bundle).
  */
 export function ThemePreviewCard() {
-  const { id: active, setTheme } = useTheme();
+  const { activeId, previewId, startPreview, endPreview } = useTheme();
 
   return (
     <Card>
       <div className="space-y-1">
-        <h2 className="display-xs">🎨 Tema (prévia de desenvolvimento)</h2>
+        <h2 className="display-xs">🧪 Prévia de temas (desenvolvimento)</h2>
         <p className="text-sm text-muted-foreground">
-          Só aparece fora de produção. Vale para este aparelho.
+          Só aparece fora de produção. Mostra o tema sem salvar na conta, até você voltar.
         </p>
       </div>
       <ul className="grid gap-3 sm:grid-cols-3">
-        {themeIds.map((id) => {
-          const theme = themes[id];
-          return (
-            <li key={id}>
-              <button
-                type="button"
-                aria-pressed={active === id}
-                onClick={() => setTheme(id)}
-                className={cn(
-                  "frame-space flex h-full w-[calc(100%-2*var(--frame-gap))] cursor-pointer flex-col gap-1 bg-background p-3 text-left pixel-frame-thin hover:bg-accent",
-                  active === id && "[--px-frame-color:var(--primary)] bg-accent",
-                )}
-              >
-                <span className="display-xs">{theme.name}</span>
-                <span className="text-sm text-muted-foreground">{theme.description}</span>
-              </button>
-            </li>
-          );
-        })}
+        {themeIds.map((id) => (
+          <li key={id}>
+            <ThemeOption
+              theme={themes[id]}
+              active={activeId === id}
+              onSelect={() => startPreview(id)}
+            />
+          </li>
+        ))}
       </ul>
+      {previewId && (
+        <div>
+          <Button variant="outline" size="sm" onClick={endPreview}>
+            Voltar ao tema da conta
+          </Button>
+        </div>
+      )}
     </Card>
   );
 }

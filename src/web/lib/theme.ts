@@ -1,8 +1,10 @@
 // Tema ativo: atributos do <html> (data-theme, data-mode), fontes do tema e <meta theme-color>.
-// O script inline do index.html aplica o tema salvo antes da primeira pintura (sem piscar o tema
-// base); aqui fica o resto. Contrato: docs/gamificacao/temas-contrato.md.
+// O tema da conta vem dos ajustes (ThemeSync); uma prévia (a de desenvolvimento,
+// e a da loja no futuro) vale por cima dele até ser encerrada. O script inline do index.html
+// aplica o último tema antes da primeira pintura. Contrato: docs/gamificacao/temas-contrato.md.
 
 import { create } from "zustand";
+import { type SoundPackId, themeSoundPack } from "@shared/items";
 import { DEFAULT_THEME, isThemeId, type ThemeId, type ThemeMode, themes } from "@shared/themes";
 
 export type { ThemeMode };
@@ -14,6 +16,10 @@ interface StoredTheme {
   mode: ThemeMode;
   fontsHref: string | null;
   themeColor: string | null;
+  /** Tema da conta guardado junto, para voltar a ele ao fim de uma prévia antes dos ajustes chegarem. */
+  accountId?: ThemeId;
+  /** Este tema é uma prévia (não é o da conta). */
+  preview?: boolean;
 }
 
 const FONTS_LINK_ID = "theme-fonts";
@@ -37,8 +43,15 @@ function writeStored(value: StoredTheme | null) {
   }
 }
 
+function resolve(id: ThemeId): Omit<StoredTheme, "accountId" | "preview"> {
+  const def = themes[id];
+  const mode = def.modes[0]!;
+  return { id, mode, fontsHref: def.fontsHref, themeColor: def.themeColor[mode] ?? null };
+}
+
 /** Aplica um tema no documento: atributos, fontes e cor da barra do navegador. */
-function applyToDocument(theme: StoredTheme) {
+function applyToDocument(id: ThemeId) {
+  const theme = resolve(id);
   const root = document.documentElement;
   root.dataset.theme = theme.id;
   root.dataset.mode = theme.mode;
@@ -60,36 +73,71 @@ function applyToDocument(theme: StoredTheme) {
   if (meta && theme.themeColor) meta.content = theme.themeColor;
 }
 
-function resolve(id: ThemeId, mode?: ThemeMode): StoredTheme {
-  const def = themes[id];
-  const resolvedMode = mode && def.modes.includes(mode) ? mode : def.modes[0]!;
-  return {
-    id,
-    mode: resolvedMode,
-    fontsHref: def.fontsHref,
-    themeColor: def.themeColor[resolvedMode] ?? null,
-  };
-}
-
 interface ThemeState {
-  id: ThemeId;
-  mode: ThemeMode;
-  /** Troca o tema (e guarda neste aparelho). O tema base não fica salvo: é o padrão. */
-  setTheme: (id: ThemeId, mode?: ThemeMode) => void;
+  /** Tema dos ajustes da conta. */
+  accountId: ThemeId;
+  /** Pacote de sons escolhido na conta (null = o do tema). */
+  accountSoundPack: SoundPackId | null;
+  /** Tema em prévia, por cima do da conta (null = sem prévia). */
+  previewId: ThemeId | null;
+  /** O que está na tela: a prévia, se houver, senão o da conta. */
+  activeId: ThemeId;
+  /** Sincroniza com os ajustes da conta (não interrompe uma prévia). */
+  setAccount: (themeId: ThemeId, soundPack: SoundPackId | null) => void;
+  /** Mostra um tema sem salvar na conta. */
+  startPreview: (id: ThemeId) => void;
+  endPreview: () => void;
 }
 
-export const useTheme = create<ThemeState>((set) => {
-  const initial = typeof document === "undefined" ? null : readStored();
+function sync(state: Pick<ThemeState, "accountId" | "accountSoundPack" | "previewId">) {
+  const activeId = state.previewId ?? state.accountId;
+  if (typeof document !== "undefined") {
+    applyToDocument(activeId);
+    const isBase = activeId === DEFAULT_THEME && !state.previewId;
+    writeStored(
+      isBase
+        ? null
+        : { ...resolve(activeId), accountId: state.accountId, preview: Boolean(state.previewId) },
+    );
+  }
+  return activeId;
+}
+
+/** Pacote de sons que vale agora: na prévia, o do tema em prévia; fora dela, a escolha da conta. */
+export function activeSoundPack(
+  state: Pick<ThemeState, "accountId" | "accountSoundPack" | "previewId">,
+): SoundPackId {
+  return state.previewId
+    ? themeSoundPack[state.previewId]
+    : (state.accountSoundPack ?? themeSoundPack[state.accountId]);
+}
+
+export const useTheme = create<ThemeState>((set, get) => {
+  const stored = typeof document === "undefined" ? null : readStored();
+  const accountId = stored?.preview
+    ? (stored.accountId ?? DEFAULT_THEME)
+    : (stored?.id ?? DEFAULT_THEME);
+  const previewId = stored?.preview ? stored.id : null;
+  const initial = { accountId, accountSoundPack: null, previewId };
+
   return {
-    id: initial?.id ?? DEFAULT_THEME,
-    mode: initial?.mode ?? themes[DEFAULT_THEME].modes[0]!,
-    setTheme: (id, mode) => {
-      const theme = resolve(id, mode);
-      applyToDocument(theme);
-      writeStored(
-        id === DEFAULT_THEME && theme.mode === themes[DEFAULT_THEME].modes[0] ? null : theme,
-      );
-      set({ id: theme.id, mode: theme.mode });
+    ...initial,
+    activeId: previewId ?? accountId,
+    setAccount: (themeId, soundPack) => {
+      const { accountId: current, accountSoundPack, previewId: preview } = get();
+      if (current === themeId && accountSoundPack === soundPack) return;
+      const next = { accountId: themeId, accountSoundPack: soundPack, previewId: preview };
+      set({ ...next, activeId: sync(next) });
+    },
+    startPreview: (id) => {
+      const { accountId: account, accountSoundPack } = get();
+      const next = { accountId: account, accountSoundPack, previewId: id === account ? null : id };
+      set({ ...next, activeId: sync(next) });
+    },
+    endPreview: () => {
+      const { accountId: account, accountSoundPack } = get();
+      const next = { accountId: account, accountSoundPack, previewId: null };
+      set({ ...next, activeId: sync(next) });
     },
   };
 });
