@@ -62,10 +62,23 @@
   --page-texture-size: 100% 100%, 160px 160px;
   --card-ridge: repeating-linear-gradient(90deg, var(--primary) 0 8px, var(--info) 8px 16px);
   --xp-gap: 2px;
-  /* Naipe de ouros */
-  --menu-cursor-width: 10px;
-  --menu-cursor-height: 14px;
-  --menu-cursor-shape: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  /* Naipe de copas */
+  --menu-cursor-width: 13px;
+  --menu-cursor-height: 12px;
+  --menu-cursor-shape: polygon(
+    50% 22%,
+    62% 6%,
+    78% 0,
+    94% 8%,
+    100% 28%,
+    94% 50%,
+    50% 100%,
+    6% 50%,
+    0 28%,
+    6% 8%,
+    22% 0,
+    38% 6%
+  );
 
   /* Movimento: com um leve exagero, como carta virando */
   --ease-ui: cubic-bezier(0.34, 1.4, 0.64, 1);
@@ -75,6 +88,51 @@
 
 :root[data-theme="mesa-de-cartas"] body {
   background-attachment: fixed;
+}
+
+/* Cada card é uma carta do baralho: o naipe no canto de cima e, de ponta-cabeça, no de baixo,
+   revezando ♠ ♥ ♣ ♦. Copas e ouros na ficha vermelha (primary), espadas e paus na azul (info).
+   O naipe vem da posição entre irmãos ou, num card sozinho dentro de um <li>, da posição do li. */
+:root[data-theme="mesa-de-cartas"] [data-slot="card"] {
+  position: relative;
+  --mc-suit: "♠";
+  --mc-suit-color: var(--info);
+}
+:root[data-theme="mesa-de-cartas"]
+  :is([data-slot="card"]:nth-of-type(4n + 2), li:nth-child(4n + 2) > [data-slot="card"]) {
+  --mc-suit: "♥";
+  --mc-suit-color: var(--primary);
+}
+:root[data-theme="mesa-de-cartas"]
+  :is([data-slot="card"]:nth-of-type(4n + 3), li:nth-child(4n + 3) > [data-slot="card"]) {
+  --mc-suit: "♣";
+  --mc-suit-color: var(--info);
+}
+:root[data-theme="mesa-de-cartas"]
+  :is([data-slot="card"]:nth-of-type(4n), li:nth-child(4n) > [data-slot="card"]) {
+  --mc-suit: "♦";
+  --mc-suit-color: var(--primary);
+}
+:root[data-theme="mesa-de-cartas"] [data-slot="card"]::before,
+:root[data-theme="mesa-de-cartas"] [data-slot="card"]::after {
+  content: var(--mc-suit);
+  position: absolute;
+  font:
+    700 13px/1 ui-serif,
+    Georgia,
+    serif;
+  color: var(--mc-suit-color);
+  opacity: 0.6;
+  pointer-events: none;
+}
+:root[data-theme="mesa-de-cartas"] [data-slot="card"]::before {
+  top: 2px;
+  left: 4px;
+}
+:root[data-theme="mesa-de-cartas"] [data-slot="card"]::after {
+  right: 4px;
+  bottom: 2px;
+  rotate: 180deg;
 }
 :root[data-theme="mesa-de-cartas"] :is(.display-xl, .display-lg, .display-md) {
   text-transform: uppercase;
