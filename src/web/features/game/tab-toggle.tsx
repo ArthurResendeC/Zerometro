@@ -10,6 +10,10 @@ const tabOptions: SegmentedOption<GameTab>[] = [
   { value: "conquistas", label: "Conquistas", short: "Conquistas", Icon: TrophyIcon },
 ];
 
+/** Subtelas de "Minhas sessões": o dia a dia primeiro; os detalhes, que mudam pouco, à parte. */
+export const sessionSections = ["progresso", "sessoes", "detalhes"] as const;
+export type SessionSection = (typeof sessionSections)[number];
+
 /** Alternância das abas da página do jogo. */
 export function TabToggle({ tab, onChange }: { tab: GameTab; onChange: (tab: GameTab) => void }) {
   return <SegmentedToggle legend="Ver" options={tabOptions} value={tab} onChange={onChange} />;

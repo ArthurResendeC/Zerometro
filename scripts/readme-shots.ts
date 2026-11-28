@@ -82,7 +82,7 @@ const shots: Shot[] = [
   },
   {
     name: "jogo",
-    // Até o fim dos objetivos (as sessões e os detalhes ficam de fora).
+    // A subtela "Progresso", até o fim dos objetivos.
     capture: async (page) =>
       single(
         await page.shoot(`/jogo/${CELESTE}?aba=sessoes`, DESKTOP, {

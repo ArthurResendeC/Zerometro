@@ -14,7 +14,13 @@ import { AchievementsTab } from "@/features/game/achievements-tab";
 import { GameHero, type HeroGame } from "@/features/game/game-hero";
 import { LastNoteBlock } from "@/components/last-note";
 import { MySessions } from "@/features/game/my-sessions";
-import { type GameTab, gameTabs, TabToggle } from "@/features/game/tab-toggle";
+import {
+  type GameTab,
+  gameTabs,
+  type SessionSection,
+  sessionSections,
+  TabToggle,
+} from "@/features/game/tab-toggle";
 import { useNow } from "@/hooks/use-now";
 import { ApiError } from "@/lib/api";
 import { gamePageQuery, libraryByIgdbQuery } from "@/lib/queries";
@@ -25,6 +31,8 @@ import { gamePageQuery, libraryByIgdbQuery } from "@/lib/queries";
 const searchSchema = z.object({
   /** Sem aba: "sessoes" se o jogo estiver na biblioteca, senão "sobre". */
   aba: z.enum(gameTabs).optional().catch(undefined),
+  /** Subtela de "Minhas sessões" (sem ela, "progresso"). */
+  secao: z.enum(sessionSections).optional().catch(undefined),
 });
 
 export const Route = createFileRoute("/jogo/$igdbId")({
@@ -51,13 +59,17 @@ export const Route = createFileRoute("/jogo/$igdbId")({
 
 function GamePage() {
   const { igdbId } = Route.useParams();
-  const { aba } = Route.useSearch();
+  const { aba, secao } = Route.useSearch();
   const navigate = Route.useNavigate();
   const { data: item } = useSuspenseQuery(libraryByIgdbQuery(igdbId));
   const page = useQuery(gamePageQuery(igdbId));
 
   const tab: GameTab = item ? (aba ?? "sessoes") : "sobre";
-  const setTab = (next: GameTab) => void navigate({ search: { aba: next }, replace: true });
+  // Trocar de aba ou subtela não volta a página para o topo.
+  const setTab = (next: GameTab) =>
+    void navigate({ search: { aba: next }, replace: true, resetScroll: false });
+  const setSection = (next: SessionSection) =>
+    void navigate({ search: { aba: "sessoes", secao: next }, replace: true, resetScroll: false });
 
   // O básico vem da biblioteca (sem esperar o IGDB, sem pulo quando ele chega); o IGDB
   // completa o banner, os estúdios e o selo de status.
@@ -116,7 +128,7 @@ function GamePage() {
       <GameInGroup igdbId={igdbId} />
 
       {tab === "sessoes" && item ? (
-        <MySessions item={item} />
+        <MySessions item={item} section={secao ?? "progresso"} onSectionChange={setSection} />
       ) : tab === "conquistas" && item ? (
         <AchievementsTab item={item} />
       ) : (

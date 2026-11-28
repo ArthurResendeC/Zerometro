@@ -1,5 +1,5 @@
 import { useForm } from "@tanstack/react-form";
-import { useId, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 import { todayIn } from "@shared/dates";
 import { progressTargetLabels } from "@shared/completions";
 import {
@@ -53,11 +53,28 @@ import { ObjectivesSection } from "./objectives-section";
 import { ProgressGoalControl } from "./progress-goal";
 import { RatingSection } from "./rating-section";
 import { useRatePrompt } from "@/features/rating/use-rate-prompt";
+import { cn } from "@/lib/utils";
+import { type SessionSection, sessionSections } from "./tab-toggle";
 
-// Aba "Minhas sessões" da página do jogo: tempo jogado, sessões, detalhes da entrada e remover.
+// Aba "Minhas sessões" da página do jogo, em subtelas: progresso (tempo, conclusões, avaliação e
+// objetivos), sessões e detalhes da entrada (que mudam pouco e não precisam ficar à vista).
+
+const sectionLabels: Record<SessionSection, string> = {
+  progresso: "Progresso",
+  sessoes: "Sessões",
+  detalhes: "Detalhes",
+};
 
 /** Só para jogos da biblioteca. Ao remover, a página continua aberta, já sem esta aba. */
-export function MySessions({ item }: { item: LibraryItem }) {
+export function MySessions({
+  item,
+  section,
+  onSectionChange,
+}: {
+  item: LibraryItem;
+  section: SessionSection;
+  onSectionChange: (section: SessionSection) => void;
+}) {
   const openLogSession = useLogSessionDialog((state) => state.openNew);
   /** Diálogo "Marcar como zerado": fechado (null) ou aberto com o tipo já escolhido. */
   const [completeWith, setCompleteWith] = useState<CompletionType | null>(null);
@@ -66,11 +83,19 @@ export function MySessions({ item }: { item: LibraryItem }) {
 
   return (
     <div className="space-y-6">
-      <PlayedSummary item={item} />
+      <SectionNav section={section} onChange={onSectionChange} />
 
-      <CompletionsSection item={item} onMarkCompleted={() => setCompleteWith(nextLevel(item))} />
-      <RatingSection item={item} />
-      <ObjectivesSection item={item} onAllDone={() => setSuggestFull(true)} />
+      {section === "progresso" && (
+        <>
+          <PlayedSummary item={item} />
+          <CompletionsSection
+            item={item}
+            onMarkCompleted={() => setCompleteWith(nextLevel(item))}
+          />
+          <RatingSection item={item} />
+          <ObjectivesSection item={item} onAllDone={() => setSuggestFull(true)} />
+        </>
+      )}
       <CompleteDialog item={item} openWith={completeWith} onClose={() => setCompleteWith(null)} />
       <AlertDialog open={suggestFull} onOpenChange={setSuggestFull}>
         <AlertDialogContent>
@@ -87,26 +112,65 @@ export function MySessions({ item }: { item: LibraryItem }) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <section className="space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="display-md">Sessões</h2>
-          <div className="flex flex-wrap justify-end">
-            <Button size="sm" variant="outline" onClick={() => openLogSession(item.gameId)}>
-              <TimerIcon /> Registrar sessão
-            </Button>
-            <TimerButton gameId={item.gameId} size="sm" />
+      {section === "sessoes" && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="display-md">Sessões</h2>
+            <div className="flex flex-wrap justify-end">
+              <Button size="sm" variant="outline" onClick={() => openLogSession(item.gameId)}>
+                <TimerIcon /> Registrar sessão
+              </Button>
+              <TimerButton gameId={item.gameId} size="sm" />
+            </div>
           </div>
-        </div>
-        <SessionsTable gameId={item.gameId} />
-      </section>
+          <SessionsTable gameId={item.gameId} />
+        </section>
+      )}
 
-      <section className="space-y-3">
-        <h2 className="display-md">Detalhes</h2>
-        <EntryForm key={item.updatedAt} item={item} />
-      </section>
-
-      <RemoveButton item={item} />
+      {/* Sempre montado: o que foi alterado sobrevive à troca de subtela, e a barra de salvar
+          continua à mão. */}
+      <EntryForm
+        key={item.updatedAt}
+        item={item}
+        visible={section === "detalhes"}
+        onShow={() => onSectionChange("detalhes")}
+      >
+        <RemoveButton item={item} />
+      </EntryForm>
     </div>
+  );
+}
+
+/** As subtelas, no mesmo estilo das abas de status da biblioteca. */
+function SectionNav({
+  section,
+  onChange,
+}: {
+  section: SessionSection;
+  onChange: (section: SessionSection) => void;
+}) {
+  return (
+    <nav aria-label="Seções" className="flex overflow-x-auto border-b-4 border-border pt-1">
+      {sessionSections.map((option) => {
+        const active = option === section;
+        return (
+          <button
+            key={option}
+            type="button"
+            aria-current={active ? "page" : undefined}
+            onClick={() => onChange(option)}
+            className={cn(
+              "relative flex shrink-0 cursor-pointer items-center px-4 pt-3.5 pb-3 display-xs",
+              active
+                ? "mx-1 bg-card text-foreground shadow-[0_-4px_0_0_var(--border),-4px_0_0_0_var(--border),4px_0_0_0_var(--border),0_4px_0_0_var(--card)] after:absolute after:inset-x-0 after:top-0 after:h-1 after:bg-primary"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground",
+            )}
+          >
+            {sectionLabels[option]}
+          </button>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -228,7 +292,23 @@ function toPatch(values: EntryFormValues, initial: EntryFormValues): UpdateLibra
   return patch;
 }
 
-function EntryForm({ item }: { item: LibraryItem }) {
+/**
+ * Detalhes da entrada. Escondido fora da subtela "Detalhes", mas montado: alterado, mostra uma
+ * barra fixa no rodapé para salvar de qualquer ponto da página (ou de outra subtela).
+ */
+function EntryForm({
+  item,
+  visible,
+  onShow,
+  children,
+}: {
+  item: LibraryItem;
+  visible: boolean;
+  /** Volta para a subtela dos detalhes (para mostrar um erro de validação). */
+  onShow: () => void;
+  /** No fim da subtela, antes da barra de salvar (botões aqui precisam de `type="button"`). */
+  children?: ReactNode;
+}) {
   const update = useUpdateLibraryEntry(item.gameId);
   const initial = toFormValues(item);
   // Limite dos campos de data; calculado uma vez por montagem do formulário.
@@ -250,6 +330,7 @@ function EntryForm({ item }: { item: LibraryItem }) {
       // Zerou (a conclusão da história entra junto) ou abandonou: hora de avaliar.
       if (patch.status === "finished" || patch.status === "dropped") promptRating();
     },
+    onSubmitInvalid: onShow,
   });
 
   return (
@@ -258,272 +339,290 @@ function EntryForm({ item }: { item: LibraryItem }) {
         e.preventDefault();
         void form.handleSubmit();
       }}
-      className="space-y-4"
     >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <form.Field name="status">
-          {(field) => (
-            <div className="space-y-2">
-              <Label htmlFor={field.name}>Status</Label>
-              <NativeSelect
-                id={field.name}
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value as GameStatus)}
-              >
-                {gameStatuses.map((s) => (
-                  <option key={s} value={s}>
-                    {gameStatusLabels[s]}
-                  </option>
-                ))}
-              </NativeSelect>
-            </div>
-          )}
-        </form.Field>
+      <section className="space-y-4" hidden={!visible}>
+        <h2 className="display-md">Detalhes</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <form.Field name="status">
+            {(field) => (
+              <div className="space-y-2">
+                <Label htmlFor={field.name}>Status</Label>
+                <NativeSelect
+                  id={field.name}
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value as GameStatus)}
+                >
+                  {gameStatuses.map((s) => (
+                    <option key={s} value={s}>
+                      {gameStatusLabels[s]}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </div>
+            )}
+          </form.Field>
 
-        <form.Field name="platformPlayed">
-          {(field) => (
-            <div className="space-y-2">
-              <Label htmlFor={field.name}>Plataforma</Label>
-              <NativeSelect
-                id={field.name}
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-              >
-                <option value="">Não informada</option>
-                {platforms.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </NativeSelect>
-            </div>
-          )}
-        </form.Field>
-      </div>
+          <form.Field name="platformPlayed">
+            {(field) => (
+              <div className="space-y-2">
+                <Label htmlFor={field.name}>Plataforma</Label>
+                <NativeSelect
+                  id={field.name}
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                >
+                  <option value="">Não informada</option>
+                  {platforms.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </div>
+            )}
+          </form.Field>
+        </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <form.Field
-          name="startedAt"
-          validators={{ onSubmit: dateField({ max: today, optional: true }) }}
-        >
-          {(field) => (
-            <div className="space-y-2">
-              <Label htmlFor={field.name}>Começou em</Label>
-              <DateInput
-                id={field.name}
-                max={today}
-                value={field.state.value}
-                onChange={field.handleChange}
-                aria-invalid={field.state.meta.errors.length > 0}
-              />
-              <FieldErrors errors={field.state.meta.errors} />
-            </div>
-          )}
-        </form.Field>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <form.Field
+            name="startedAt"
+            validators={{ onSubmit: dateField({ max: today, optional: true }) }}
+          >
+            {(field) => (
+              <div className="space-y-2">
+                <Label htmlFor={field.name}>Começou em</Label>
+                <DateInput
+                  id={field.name}
+                  max={today}
+                  value={field.state.value}
+                  onChange={field.handleChange}
+                  aria-invalid={field.state.meta.errors.length > 0}
+                />
+                <FieldErrors errors={field.state.meta.errors} />
+              </div>
+            )}
+          </form.Field>
 
-        <form.Field name="emulatedOn">
-          {(field) => (
-            <div className="space-y-2">
-              <Label htmlFor={field.name}>Emulado em</Label>
-              <NativeSelect
-                id={field.name}
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value)}
-              >
-                <option value="">Não emulado</option>
-                {emulationTargets.map((target) => (
-                  <option key={target} value={target}>
-                    {target}
-                  </option>
-                ))}
-                <option value={OTHER_EMULATION}>Outro…</option>
-              </NativeSelect>
-            </div>
-          )}
-        </form.Field>
+          <form.Field name="emulatedOn">
+            {(field) => (
+              <div className="space-y-2">
+                <Label htmlFor={field.name}>Emulado em</Label>
+                <NativeSelect
+                  id={field.name}
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                >
+                  <option value="">Não emulado</option>
+                  {emulationTargets.map((target) => (
+                    <option key={target} value={target}>
+                      {target}
+                    </option>
+                  ))}
+                  <option value={OTHER_EMULATION}>Outro…</option>
+                </NativeSelect>
+              </div>
+            )}
+          </form.Field>
 
-        <form.Subscribe selector={(state) => state.values.emulatedOn === OTHER_EMULATION}>
-          {(other) =>
-            other && (
-              <form.Field name="emulatedOther">
-                {(field) => (
-                  <div className="space-y-2">
-                    <Label htmlFor={field.name}>Onde emula</Label>
-                    <Input
-                      id={field.name}
-                      maxLength={50}
-                      autoComplete="off"
-                      placeholder="Retroid Pocket, iPhone…"
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                    />
-                  </div>
-                )}
-              </form.Field>
-            )
-          }
-        </form.Subscribe>
-      </div>
+          <form.Subscribe selector={(state) => state.values.emulatedOn === OTHER_EMULATION}>
+            {(other) =>
+              other && (
+                <form.Field name="emulatedOther">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor={field.name}>Onde emula</Label>
+                      <Input
+                        id={field.name}
+                        maxLength={50}
+                        autoComplete="off"
+                        placeholder="Retroid Pocket, iPhone…"
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                      />
+                    </div>
+                  )}
+                </form.Field>
+              )
+            }
+          </form.Subscribe>
+        </div>
 
-      <form.Field name="priorMinutes" validators={{ onSubmit: priorMinutesSchema }}>
-        {(field) => (
-          <div className="space-y-2">
-            <Label>Antes do Zerômetro</Label>
-            <p className="text-sm text-muted-foreground">
-              Tempo que você já tinha jogado antes de registrar aqui. Conta no total e no progresso
-              do jogo, mas não na ofensiva nem nas médias.
-              {item.playtimeSource === "steam" &&
-                " Agora o tempo do jogo vem da Steam: este valor fica guardado e volta a contar se você escolher as sessões."}
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <DurationInput
-                label="horas"
-                max={MAX_PRIOR_MINUTES / 60}
-                value={Math.floor(field.state.value / 60)}
-                onChange={(h) => field.handleChange(h * 60 + (field.state.value % 60))}
-                invalid={field.state.meta.errors.length > 0}
-              />
-              <DurationInput
-                label="min"
-                max={59}
-                value={field.state.value % 60}
-                onChange={(m) =>
-                  field.handleChange(Math.floor(field.state.value / 60) * 60 + Math.min(m, 59))
-                }
-                invalid={field.state.meta.errors.length > 0}
-              />
-            </div>
-            <FieldErrors errors={field.state.meta.errors} />
-          </div>
+        {/* Com o tempo vindo da Steam, não conta: fica guardado e volta com as sessões. */}
+        {item.playtimeSource === "sessions" && (
+          <form.Field name="priorMinutes" validators={{ onSubmit: priorMinutesSchema }}>
+            {(field) => (
+              <div className="space-y-2">
+                <Label>Antes do Zerômetro</Label>
+                <p className="text-sm text-muted-foreground">
+                  Tempo que você já tinha jogado antes de registrar aqui. Conta no total e no
+                  progresso do jogo, mas não na ofensiva nem nas médias.
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <DurationInput
+                    label="horas"
+                    max={MAX_PRIOR_MINUTES / 60}
+                    value={Math.floor(field.state.value / 60)}
+                    onChange={(h) => field.handleChange(h * 60 + (field.state.value % 60))}
+                    invalid={field.state.meta.errors.length > 0}
+                  />
+                  <DurationInput
+                    label="min"
+                    max={59}
+                    value={field.state.value % 60}
+                    onChange={(m) =>
+                      field.handleChange(Math.floor(field.state.value / 60) * 60 + Math.min(m, 59))
+                    }
+                    invalid={field.state.meta.errors.length > 0}
+                  />
+                </div>
+                <FieldErrors errors={field.state.meta.errors} />
+              </div>
+            )}
+          </form.Field>
         )}
-      </form.Field>
 
-      <fieldset className="space-y-3">
-        <legend className="display-xs text-muted-foreground">Compra</legend>
-        <p className="text-sm text-muted-foreground">
-          Para o comprei × zerei e o custo por hora nas Estatísticas. Fica só com você: o preço não
-          entra no recap.
-        </p>
-        <form.Field name="viaSubscription">
-          {(field) => (
-            <div className="flex items-center gap-3">
-              <Switch
-                id={field.name}
-                checked={field.state.value}
-                onCheckedChange={field.handleChange}
-              />
-              <Label htmlFor={field.name}>Veio de assinatura (Game Pass, PS Plus…)</Label>
-            </div>
-          )}
-        </form.Field>
-        <form.Subscribe selector={(state) => state.values.viaSubscription}>
-          {(viaSubscription) => (
-            <div className="grid gap-4 sm:grid-cols-3">
-              <form.Field
-                name="acquiredOn"
-                validators={{ onSubmit: dateField({ max: today, optional: true }) }}
-              >
-                {(field) => (
-                  <div className="space-y-2">
-                    <Label htmlFor={field.name}>
-                      {viaSubscription ? "Resgatou em" : "Comprou em"}
-                    </Label>
-                    <DateInput
-                      id={field.name}
-                      max={today}
-                      value={field.state.value}
-                      onChange={field.handleChange}
-                      aria-invalid={field.state.meta.errors.length > 0}
-                    />
-                    <FieldErrors errors={field.state.meta.errors} />
-                  </div>
-                )}
-              </form.Field>
-
-              {!viaSubscription && (
+        <fieldset className="space-y-3">
+          <legend className="display-xs text-muted-foreground">Compra</legend>
+          <p className="text-sm text-muted-foreground">
+            Para o comprei × zerei e o custo por hora nas Estatísticas. Fica só com você: o preço
+            não entra no recap.
+          </p>
+          <form.Field name="viaSubscription">
+            {(field) => (
+              <div className="flex items-center gap-3">
+                <Switch
+                  id={field.name}
+                  checked={field.state.value}
+                  onCheckedChange={field.handleChange}
+                />
+                <Label htmlFor={field.name}>Veio de assinatura (Game Pass, PS Plus…)</Label>
+              </div>
+            )}
+          </form.Field>
+          <form.Subscribe selector={(state) => state.values.viaSubscription}>
+            {(viaSubscription) => (
+              <div className="grid gap-4 sm:grid-cols-3">
                 <form.Field
-                  name="price"
-                  validators={{
-                    onSubmit: ({ value }) =>
-                      value.trim() === "" || parseBrl(value) !== null
-                        ? undefined
-                        : "Preço inválido: use 59,90 (até R$ 99.999,99)",
-                  }}
+                  name="acquiredOn"
+                  validators={{ onSubmit: dateField({ max: today, optional: true }) }}
                 >
                   {(field) => (
                     <div className="space-y-2">
-                      <Label htmlFor={field.name}>Preço pago (R$)</Label>
-                      <Input
+                      <Label htmlFor={field.name}>
+                        {viaSubscription ? "Resgatou em" : "Comprou em"}
+                      </Label>
+                      <DateInput
                         id={field.name}
-                        inputMode="decimal"
-                        autoComplete="off"
-                        placeholder="0,00"
+                        max={today}
                         value={field.state.value}
-                        onChange={(e) => field.handleChange(e.target.value)}
+                        onChange={field.handleChange}
                         aria-invalid={field.state.meta.errors.length > 0}
                       />
                       <FieldErrors errors={field.state.meta.errors} />
                     </div>
                   )}
                 </form.Field>
-              )}
 
-              <form.Field name="store">
-                {(field) => (
-                  <div className="space-y-2">
-                    <Label htmlFor={field.name}>{viaSubscription ? "Assinatura" : "Loja"}</Label>
-                    <Input
-                      id={field.name}
-                      list={storeListId}
-                      maxLength={50}
-                      autoComplete="off"
-                      placeholder={viaSubscription ? "Game Pass" : "Steam"}
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                    />
-                    <datalist id={storeListId}>
-                      {(viaSubscription ? subscriptionSuggestions : storeSuggestions).map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </datalist>
-                  </div>
+                {!viaSubscription && (
+                  <form.Field
+                    name="price"
+                    validators={{
+                      onSubmit: ({ value }) =>
+                        value.trim() === "" || parseBrl(value) !== null
+                          ? undefined
+                          : "Preço inválido: use 59,90 (até R$ 99.999,99)",
+                    }}
+                  >
+                    {(field) => (
+                      <div className="space-y-2">
+                        <Label htmlFor={field.name}>Preço pago (R$)</Label>
+                        <Input
+                          id={field.name}
+                          inputMode="decimal"
+                          autoComplete="off"
+                          placeholder="0,00"
+                          value={field.state.value}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          aria-invalid={field.state.meta.errors.length > 0}
+                        />
+                        <FieldErrors errors={field.state.meta.errors} />
+                      </div>
+                    )}
+                  </form.Field>
                 )}
-              </form.Field>
+
+                <form.Field name="store">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor={field.name}>{viaSubscription ? "Assinatura" : "Loja"}</Label>
+                      <Input
+                        id={field.name}
+                        list={storeListId}
+                        maxLength={50}
+                        autoComplete="off"
+                        placeholder={viaSubscription ? "Game Pass" : "Steam"}
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                      />
+                      <datalist id={storeListId}>
+                        {(viaSubscription ? subscriptionSuggestions : storeSuggestions).map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </datalist>
+                    </div>
+                  )}
+                </form.Field>
+              </div>
+            )}
+          </form.Subscribe>
+        </fieldset>
+
+        <form.Field name="notes">
+          {(field) => (
+            <div className="space-y-2">
+              <Label htmlFor={field.name}>Anotações</Label>
+              <Textarea
+                id={field.name}
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                placeholder="Impressões, onde parei, conquistas…"
+                maxLength={2000}
+              />
             </div>
           )}
-        </form.Subscribe>
-      </fieldset>
-
-      <form.Field name="notes">
-        {(field) => (
-          <div className="space-y-2">
-            <Label htmlFor={field.name}>Anotações</Label>
-            <Textarea
-              id={field.name}
-              value={field.state.value}
-              onChange={(e) => field.handleChange(e.target.value)}
-              placeholder="Impressões, onde parei, conquistas…"
-              maxLength={2000}
-            />
-          </div>
-        )}
-      </form.Field>
+        </form.Field>
+        {children}
+      </section>
 
       <form.Subscribe selector={(s) => [s.isDirty, s.isSubmitting] as const}>
-        {([isDirty, isSubmitting]) => (
-          <div className="flex flex-wrap">
-            <Button type="submit" disabled={!isDirty || isSubmitting}>
-              {isSubmitting ? "Salvando…" : "Salvar"}
-            </Button>
-            {isDirty && (
-              <Button type="button" variant="ghost" onClick={() => form.reset()}>
-                Descartar
-              </Button>
-            )}
-          </div>
-        )}
+        {([isDirty, isSubmitting]) =>
+          isDirty && (
+            <>
+              {/* Espaço para a barra não cobrir o fim da página. */}
+              <div aria-hidden className="h-20" />
+              <section
+                aria-label="Alterações não salvas"
+                className="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4"
+              >
+                <div className="flex w-full max-w-xl flex-wrap items-center justify-between gap-x-4 gap-y-2 bg-card px-4 py-3 pixel-frame pixel-drop">
+                  <p className="text-sm">
+                    {visible ? "Alterações não salvas" : "Alterações não salvas nos detalhes"}
+                  </p>
+                  <div className="flex flex-wrap">
+                    <Button type="button" variant="ghost" size="sm" onClick={() => form.reset()}>
+                      Descartar
+                    </Button>
+                    <Button type="submit" size="sm" disabled={isSubmitting}>
+                      {isSubmitting ? "Salvando…" : "Salvar"}
+                    </Button>
+                  </div>
+                </div>
+              </section>
+            </>
+          )
+        }
       </form.Subscribe>
     </form>
   );
@@ -535,7 +634,12 @@ function RemoveButton({ item }: { item: LibraryItem }) {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-destructive hover:text-destructive"
+        >
           <TrashIcon /> Remover da biblioteca
         </Button>
       </AlertDialogTrigger>
