@@ -2,12 +2,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
+import type { LoginInput } from "@shared/auth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError } from "@/lib/api";
-import { safeRedirect, signIn } from "@/lib/auth";
+import { resetDeviceCache, safeRedirect, signIn } from "@/lib/auth";
 import { authKeys } from "@/lib/queries";
 
 const searchSchema = z.object({
@@ -19,10 +20,15 @@ export const Route = createFileRoute("/entrar")({
   component: LoginPage,
 });
 
-function failureMessage(error: unknown): string {
+type Mode = "password" | "token";
+
+function failureMessage(error: unknown, mode: Mode): string {
   if (error instanceof ApiError && error.status === 401) {
-    return "Token incorreto. Confira com quem cuida desta instância.";
+    return mode === "token"
+      ? "Token incorreto. Ele fica no .env da instância (ZEROMETRO_TOKEN)."
+      : "@apelido ou senha incorretos. Esqueceu a senha? Peça um link novo para quem te convidou.";
   }
+  if (error instanceof ApiError && error.status === 429) return error.message;
   if (error instanceof ApiError) {
     return `O servidor recusou o login (erro ${error.status}). Tente de novo mais tarde.`;
   }
@@ -33,19 +39,43 @@ function LoginPage() {
   const { redirect } = Route.useSearch();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [mode, setMode] = useState<Mode>("password");
+  const [handle, setHandle] = useState("");
+  const [password, setPassword] = useState("");
   const [token, setToken] = useState("");
 
   const login = useMutation({
     mutationFn: signIn,
     onSuccess: async (session) => {
+      // Outro perfil pode ter usado este aparelho: começa com o cache limpo.
+      await resetDeviceCache(queryClient);
       queryClient.setQueryData(authKeys.session, session);
       router.history.push(safeRedirect(redirect));
     },
   });
 
+  const input: LoginInput | null =
+    mode === "token"
+      ? token.trim()
+        ? { token: token.trim() }
+        : null
+      : handle.trim() && password
+        ? { handle: handle.trim().replace(/^@/, ""), password }
+        : null;
+
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
-    if (token.trim()) login.mutate(token.trim());
+    if (input) login.mutate(input);
+  };
+
+  const switchMode = (next: Mode) => {
+    setMode(next);
+    login.reset();
+  };
+
+  const errorProps = {
+    "aria-invalid": login.isError || undefined,
+    "aria-describedby": login.isError ? "login-error" : undefined,
   };
 
   return (
@@ -58,37 +88,70 @@ function LoginPage() {
           <p className="text-muted-foreground">Seu backlog de jogos e o tempo que você joga.</p>
         </div>
         <form onSubmit={submit} className="flex w-full flex-col gap-5 text-left">
-          <div className="space-y-3">
-            <Label htmlFor="token">Token de acesso</Label>
-            <Input
-              id="token"
-              type="password"
-              autoComplete="current-password"
-              value={token}
-              onChange={(event) => setToken(event.target.value)}
-              aria-invalid={login.isError || undefined}
-              aria-describedby={login.isError ? "login-error" : undefined}
-            />
-            {login.isError && (
-              <p id="login-error" role="alert" className="text-sm text-destructive">
-                <span aria-hidden>✕ </span>
-                {failureMessage(login.error)}
-              </p>
-            )}
-          </div>
-          <Button
-            type="submit"
-            size="lg"
-            className="w-full"
-            disabled={login.isPending || !token.trim()}
-          >
+          {mode === "password" ? (
+            <>
+              <div className="space-y-3">
+                <Label htmlFor="handle">@apelido</Label>
+                <Input
+                  id="handle"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  value={handle}
+                  onChange={(event) => setHandle(event.target.value)}
+                  {...errorProps}
+                />
+              </div>
+              <div className="space-y-3">
+                <Label htmlFor="password">Senha</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  {...errorProps}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="space-y-3">
+              <Label htmlFor="token">Token da instância</Label>
+              <Input
+                id="token"
+                type="password"
+                autoComplete="off"
+                value={token}
+                onChange={(event) => setToken(event.target.value)}
+                {...errorProps}
+              />
+            </div>
+          )}
+          {login.isError && (
+            <p id="login-error" role="alert" className="text-sm text-destructive">
+              <span aria-hidden>✕ </span>
+              {failureMessage(login.error, mode)}
+            </p>
+          )}
+          <Button type="submit" size="lg" className="w-full" disabled={login.isPending || !input}>
             {login.isPending ? "Entrando…" : "Entrar"}
           </Button>
         </form>
-        <p className="text-xs text-muted-foreground">
-          O token fica no <code>.env</code> da instância (<code>ZEROMETRO_TOKEN</code>). O acesso
-          vale 30 dias neste aparelho.
-        </p>
+        <div className="space-y-2 text-xs text-muted-foreground">
+          <p>
+            Ainda não tem perfil? Peça um convite para quem cuida desta instância. O acesso vale 30
+            dias neste aparelho.
+          </p>
+          <button
+            type="button"
+            className="underline underline-offset-4 hover:text-foreground"
+            onClick={() => switchMode(mode === "password" ? "token" : "password")}
+          >
+            {mode === "password"
+              ? "Sou o admin: entrar com o token"
+              : "Entrar com @apelido e senha"}
+          </button>
+        </div>
       </Card>
     </main>
   );

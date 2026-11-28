@@ -6,7 +6,8 @@ import {
   redirect,
   useLocation,
 } from "@tanstack/react-router";
-import { ChartIcon, ListIcon, SettingsIcon, TimerIcon, UserIcon } from "@/components/icons";
+import { useQuery } from "@tanstack/react-query";
+import { ChartIcon, ListIcon, TimerIcon, UserIcon } from "@/components/icons";
 import { LogSessionDialog } from "@/components/log-session-dialog";
 import { SessionNoteDialog } from "@/components/session-note-dialog";
 import { StartSessionButton } from "@/components/start-session-dialog";
@@ -18,18 +19,23 @@ import { OfflineBanner } from "@/features/offline/offline-banner";
 import { PendingIndicator } from "@/features/offline/pending-indicator";
 import { InstallAppToast } from "@/features/pwa/install-toast";
 import { useSteamAutoSync } from "@/features/steam/use-steam-auto-sync";
+import { ProfileAvatar } from "@/features/profile/avatars";
+import type { AuthSession } from "@/lib/auth";
 import { sessionQuery } from "@/lib/queries";
 import { useLogSessionDialog } from "@/stores/log-session-dialog";
 
 const LOGIN_PATH = "/entrar";
+/** Abrem sem login: a tela de entrar e os links de convite (ou de senha nova). */
+const isPublicPath = (pathname: string) =>
+  pathname === LOGIN_PATH || pathname.startsWith("/convite/");
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  // Tudo exige login, menos a própria tela de login.
+  // Tudo exige login, menos a tela de login e os convites.
   beforeLoad: async ({ context, location }) => {
     // Sem rede e sem sessão guardada no aparelho, não há como saber: vai para o login.
     const session = await context.queryClient.ensureQueryData(sessionQuery()).catch(() => null);
     const onLogin = location.pathname === LOGIN_PATH;
-    if (!session && !onLogin) {
+    if (!session && !isPublicPath(location.pathname)) {
       throw redirect({ to: LOGIN_PATH, search: { redirect: location.href } });
     }
     // Já entrou: a tela de login leva ao início.
@@ -50,7 +56,7 @@ function RootLayout() {
   const { session } = Route.useRouteContext();
   const pathname = useLocation({ select: (l) => l.pathname });
 
-  if (pathname === LOGIN_PATH || !session) {
+  if (isPublicPath(pathname) || !session) {
     return (
       <>
         <Outlet />
@@ -59,11 +65,14 @@ function RootLayout() {
     );
   }
 
-  return <SignedInLayout userId={session.userId} />;
+  return <SignedInLayout session={session} />;
 }
 
 /** O app depois de entrar: menu, timer, diálogos e a sincronização automática com a Steam. */
-function SignedInLayout({ userId }: { userId: string }) {
+function SignedInLayout({ session: initial }: { session: AuthSession }) {
+  // Do cache: mudar o nome ou o avatar nos ajustes já aparece aqui.
+  const session = useQuery({ ...sessionQuery(), initialData: initial }).data ?? initial;
+  const userId = session.userId;
   const openLogSession = useLogSessionDialog((state) => state.openNew);
   useSteamAutoSync();
 
@@ -122,10 +131,14 @@ function SignedInLayout({ userId }: { userId: string }) {
             <SoundToggle className="max-sm:size-8 sm:mr-2" />
             <Link
               to="/ajustes"
-              aria-label="Ajustes"
-              className="mr-1 flex size-9 items-center justify-center bg-muted text-muted-foreground shadow-[0_0_0_2px_var(--border)] hover:text-foreground aria-[current=page]:text-foreground aria-[current=page]:shadow-[0_0_0_2px_var(--primary)] sm:mr-3"
+              aria-label={`Ajustes (${session.name})`}
+              title={session.name}
+              className="group mr-1 flex size-9 items-center justify-center sm:mr-3"
             >
-              <SettingsIcon className="size-4" />
+              <ProfileAvatar
+                avatar={session.avatar}
+                className="size-8 group-hover:shadow-[0_0_0_2px_var(--foreground)] group-aria-[current=page]:shadow-[0_0_0_2px_var(--primary)]"
+              />
             </Link>
             <StartSessionButton className="max-sm:mr-2 max-xl:px-2.5" />
             <Button

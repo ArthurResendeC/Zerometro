@@ -1,22 +1,20 @@
 import { useForm } from "@tanstack/react-form";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { LONG_SESSION_MINUTES, type Settings, STREAK_MIN_MINUTES } from "@shared/settings";
 import { DurationInput } from "@/components/duration-input";
 import { FieldErrors } from "@/components/field-errors";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { LogOutIcon } from "@/components/icons";
 import { Label } from "@/components/ui/label";
 import { AudioSettingsCard } from "@/features/audio/audio-settings-card";
 import { RatingSettingsCard } from "@/features/rating/rating-settings-card";
 import { SteamSettingsCard } from "@/features/steam/steam-settings-card";
-import { clearPersistedQueries } from "@/features/offline/query-persistence";
-import { signOut as endSession } from "@/lib/auth";
+import { AccountCard } from "@/features/profile/account-card";
+import { PeopleCard } from "@/features/profile/people-card";
 import { formatMinutes } from "@/lib/format";
-import { settingsQuery, useUpdateSettings } from "@/lib/queries";
+import { sessionQuery, settingsQuery, useUpdateSettings } from "@/lib/queries";
 
 export const Route = createFileRoute("/ajustes")({
   loader: ({ context }) => context.queryClient.ensureQueryData(settingsQuery()),
@@ -25,13 +23,16 @@ export const Route = createFileRoute("/ajustes")({
 
 function SettingsPage() {
   const { data: settings } = useSuspenseQuery(settingsQuery());
+  const { data: session } = useQuery(sessionQuery());
 
   return (
     <div className="max-w-xl space-y-6">
       <div>
         <h1 className="display-lg">Ajustes</h1>
-        <p className="mt-2 text-muted-foreground">Preferências do Zerômetro.</p>
+        <p className="mt-2 text-muted-foreground">A sua conta e as preferências do Zerômetro.</p>
       </div>
+      {session && <AccountCard session={session} />}
+      {session?.role === "admin" && <PeopleCard />}
       <DurationSettingCard
         key={`streak-${settings.streakMinMinutes}`}
         field="streakMinMinutes"
@@ -53,40 +54,7 @@ function SettingsPage() {
       <RatingSettingsCard settings={settings} />
       <AudioSettingsCard />
       <SteamSettingsCard />
-      <AccountCard />
     </div>
-  );
-}
-
-function AccountCard() {
-  const { session } = Route.useRouteContext();
-  const router = useRouter();
-  const { queryClient } = Route.useRouteContext();
-  const [pending, setPending] = useState(false);
-
-  if (!session) return null;
-
-  const signOut = async () => {
-    setPending(true);
-    await endSession().catch(() => {});
-    // Nada pode sobrar no cache deste aparelho (nem no guardado para uso offline).
-    queryClient.clear();
-    await clearPersistedQueries();
-    await router.navigate({ to: "/entrar" });
-  };
-
-  return (
-    <Card className="flex flex-row items-center gap-3 p-4">
-      <div className="min-w-0 flex-1">
-        <p className="text-lg leading-6">Este aparelho</p>
-        <p className="text-sm text-muted-foreground">
-          O acesso vale 30 dias e se renova sozinho com o uso.
-        </p>
-      </div>
-      <Button variant="outline" size="sm" onClick={signOut} disabled={pending}>
-        <LogOutIcon /> Sair deste aparelho
-      </Button>
-    </Card>
   );
 }
 
