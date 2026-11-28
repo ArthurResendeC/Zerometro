@@ -1,8 +1,9 @@
 // O grupo: o ranking entre os perfis da instância e o que cada um deixa os amigos verem. Quem
-// desligou "Aparecer no grupo" ou está suspenso fica de fora. Preço, notas das sessões e "onde
-// parei" nunca saem daqui.
+// desligou "Aparecer no grupo" ou está suspenso fica de fora. As notas das sessões e o "onde
+// parei" nunca saem daqui; as seções do /amigo (e a nota dos jogos), cada um escolhe.
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, min, sql } from "drizzle-orm";
 import { type Avatar, avatars, DEFAULT_AVATAR } from "../../shared/auth";
+import { isSectionShared, sharedSections } from "../../shared/group-sections";
 import { startOfWeek } from "../../shared/dates";
 import type {
   GroupGameEntry,
@@ -10,11 +11,15 @@ import type {
   GroupLeaderboard,
   GroupMember,
   GroupMemberGame,
+  GroupMemberGamerProfile,
   GroupMemberProfile,
   GroupMemberStats,
+  GroupMemberStatsView,
   GroupPeriod,
 } from "../../shared/group";
 import type { LibraryItem } from "../../shared/library";
+import { type ProfileRow, type ProfileSection, profileSections } from "../../shared/profile";
+import type { StatsPeriod } from "../../shared/stats";
 import type { DbOrTx } from "../db/client";
 import {
   achievementUnlocks,
@@ -31,10 +36,19 @@ import type { ServiceContext, UserScope } from "./context";
 import { getLibraryItem, listLibrary } from "./library";
 import { getProfile } from "./profile";
 import { getSettings } from "./settings";
-import { currentStreak, minutesByDay } from "./stats";
+import { getPurchaseStats } from "./purchases";
+import {
+  activeYears,
+  currentStreak,
+  getHeatmap,
+  getPeriodBreakdown,
+  getRecords,
+  getRhythm,
+  minutesByDay,
+} from "./stats";
+import { getTimeline } from "./timeline";
 import { getActiveSession } from "./timer";
 
-const PROFILE_ROWS = 5;
 const PROFILE_GAMES = 12;
 
 const isAvatar = (value: string | null): value is Avatar =>
@@ -221,64 +235,147 @@ const memberGame = (item: LibraryItem): GroupMemberGame => ({
   rating: item.rating,
 });
 
-/** O perfil público de alguém do grupo, pelo @apelido. */
-export function getMemberProfile(ctx: ServiceContext, handle: string): GroupMemberProfile {
+/** Alguém do grupo pelo @apelido, com o que deixa os amigos verem. */
+function findMember(ctx: ServiceContext, handle: string) {
   const member = visibleMembers(ctx.db, ctx.userId).find((m) => m.handle === handle);
   if (!member) throw new NotFoundError(`@${handle} não está no grupo`);
   const scope: UserScope = { db: ctx.db, userId: member.userId };
+  const settings = getSettings(scope);
+  const shared = new Set(sharedSections(settings.groupSections));
+  return { member, scope, settings, shared };
+}
+
+/** Só o que estiver compartilhado é calculado; o resto vem null. */
+const when = <T>(shared: boolean, value: () => T): T | null => (shared ? value() : null);
+
+const withoutRating = (game: GroupMemberGame): GroupMemberGame => ({ ...game, rating: null });
+
+/** O perfil público de alguém do grupo, pelo @apelido (a aba Resumo). */
+export function getMemberProfile(ctx: ServiceContext, handle: string): GroupMemberProfile {
+  const { member, scope, shared } = findMember(ctx, handle);
   const library = listLibrary(scope);
-  const byGameId = new Map(library.map((item) => [item.gameId, item]));
-  const { from, to } = groupPeriodRange("all", ctx.today);
-  const lastPlayed = new Map(
-    ctx.db
-      .select({ gameId: playSessions.gameId, last: sql<string>`max(${playSessions.playedOn})` })
-      .from(playSessions)
-      .where(eq(playSessions.userId, member.userId))
-      .groupBy(playSessions.gameId)
-      .all()
-      .map((row) => [row.gameId, row.last]),
-  );
+  const showRating = shared.has("ratings");
+  const game = (item: LibraryItem) =>
+    showRating ? memberGame(item) : withoutRating(memberGame(item));
 
-  const recent = ctx.db
-    .select({
-      gameId: completions.gameId,
-      type: completions.type,
-      completedOn: completions.completedOn,
-    })
-    .from(completions)
-    .where(eq(completions.userId, member.userId))
-    .orderBy(desc(completions.completedOn), desc(completions.id))
-    .all()
-    // Um jogo por vez na lista, com a conclusão mais recente (o 100% depois da história).
-    .filter((row, i, rows) => rows.findIndex((r) => r.gameId === row.gameId) === i)
-    .slice(0, PROFILE_GAMES)
-    .flatMap((row) => {
-      const item = byGameId.get(row.gameId);
-      return item ? [{ ...memberGame(item), completedOn: row.completedOn, type: row.type }] : [];
-    });
-
-  const profile = getProfile(scope);
   return {
     member,
     playingNow: playingNow(scope),
-    totals: {
-      minutes: libraryMinutes(library),
-      ...completionCounts(scope, from, to),
-      achievements: achievementStats(scope, from, to).achievements,
-      streak: currentStreak(scope, ctx.today),
-      games: library.length,
-    },
-    playing: library
-      .filter((item) => item.status === "playing")
-      .toSorted((a, b) =>
-        (lastPlayed.get(b.gameId) ?? "").localeCompare(lastPlayed.get(a.gameId) ?? ""),
-      )
-      .slice(0, PROFILE_GAMES)
-      .map(memberGame),
-    recentlyFinished: recent,
-    genres: profile.genres.slice(0, PROFILE_ROWS),
-    series: profile.series.slice(0, PROFILE_ROWS),
-    developers: profile.developers.slice(0, PROFILE_ROWS),
+    sections: [...shared],
+    totals: when(shared.has("totals"), () => {
+      const { from, to } = groupPeriodRange("all", ctx.today);
+      return {
+        minutes: libraryMinutes(library),
+        ...completionCounts(scope, from, to),
+        achievements: achievementStats(scope, from, to).achievements,
+        streak: currentStreak(scope, ctx.today),
+        games: library.length,
+      };
+    }),
+    playing: when(shared.has("playing"), () => {
+      const lastPlayed = new Map(
+        ctx.db
+          .select({
+            gameId: playSessions.gameId,
+            last: sql<string>`max(${playSessions.playedOn})`,
+          })
+          .from(playSessions)
+          .where(eq(playSessions.userId, member.userId))
+          .groupBy(playSessions.gameId)
+          .all()
+          .map((row) => [row.gameId, row.last]),
+      );
+      return library
+        .filter((item) => item.status === "playing")
+        .toSorted((a, b) =>
+          (lastPlayed.get(b.gameId) ?? "").localeCompare(lastPlayed.get(a.gameId) ?? ""),
+        )
+        .slice(0, PROFILE_GAMES)
+        .map(game);
+    }),
+    recentlyFinished: when(shared.has("finished"), () => {
+      const byGameId = new Map(library.map((item) => [item.gameId, item]));
+      return (
+        ctx.db
+          .select({
+            gameId: completions.gameId,
+            type: completions.type,
+            completedOn: completions.completedOn,
+          })
+          .from(completions)
+          .where(eq(completions.userId, member.userId))
+          .orderBy(desc(completions.completedOn), desc(completions.id))
+          .all()
+          // Um jogo por vez na lista, com a conclusão mais recente (o 100% depois da história).
+          .filter((row, i, rows) => rows.findIndex((r) => r.gameId === row.gameId) === i)
+          .slice(0, PROFILE_GAMES)
+          .flatMap((row) => {
+            const item = byGameId.get(row.gameId);
+            return item ? [{ ...game(item), completedOn: row.completedOn, type: row.type }] : [];
+          })
+      );
+    }),
+    ratings: when(showRating, () =>
+      library
+        .filter((item) => item.rating !== null)
+        .toSorted((a, b) => b.rating! - a.rating! || a.name.localeCompare(b.name))
+        .map(memberGame),
+    ),
+  };
+}
+
+/** A aba Estatísticas de alguém do grupo, no ano (ou nos últimos 12 meses). */
+export function getMemberStats(
+  ctx: ServiceContext,
+  handle: string,
+  { year }: StatsPeriod,
+): GroupMemberStatsView {
+  const { scope, settings, shared } = findMember(ctx, handle);
+  const period = { today: ctx.today, year };
+  return {
+    year: year ?? null,
+    years: activeYears(scope, Number(ctx.today.slice(0, 4))),
+    heatmap: when(shared.has("heatmap"), () =>
+      getHeatmap(scope, { ...period, streakMinMinutes: settings.streakMinMinutes }),
+    ),
+    breakdown: when(shared.has("breakdown"), () => getPeriodBreakdown(scope, period)),
+    timeline: when(shared.has("timeline"), () => getTimeline(scope, period)),
+    rhythm: when(shared.has("rhythm"), () =>
+      getRhythm(scope, { ...period, timeZone: ctx.timeZone }),
+    ),
+    records: when(shared.has("records"), () => {
+      const records = getRecords(scope, period);
+      // A lista de zerados traz a nota: com as notas escondidas, sai daqui também.
+      if (!shared.has("ratings")) for (const game of records.finished) game.rating = null;
+      return records;
+    }),
+    purchases: when(shared.has("purchases"), () => getPurchaseStats(scope, period)),
+  };
+}
+
+/** A aba Perfil de gamer de alguém do grupo: só os rankings compartilhados. */
+export function getMemberGamerProfile(
+  ctx: ServiceContext,
+  handle: string,
+): GroupMemberGamerProfile {
+  const { scope, shared } = findMember(ctx, handle);
+  const profile = getProfile(scope);
+  const ratingsShared = shared.has("ratings");
+  // Sem as notas, a média por linha também revelaria o gosto: sai junto.
+  const rows = (list: ProfileRow[]) =>
+    ratingsShared ? list : list.map((row) => ({ ...row, avgRating: null, ratedGames: 0 }));
+  const rankings = Object.fromEntries(
+    profileSections.map((section) => [
+      section,
+      when(shared.has(section), () => rows(profile[section])),
+    ]),
+  ) as Record<ProfileSection, ProfileRow[] | null>;
+  return {
+    gamesCounted: profile.gamesCounted,
+    totalMinutes: profile.totalMinutes,
+    ...rankings,
+    criteria: when(shared.has("criteria"), () => profile.criteria),
+    ratingsShared,
   };
 }
 
@@ -306,14 +403,16 @@ export function getGameInGroup(ctx: ServiceContext, igdbId: number): GroupGameEn
   return members
     .filter((member) => owners.has(member.userId))
     .map((member) => {
-      const item = getLibraryItem({ db: ctx.db, userId: member.userId }, game.id);
+      const scope: UserScope = { db: ctx.db, userId: member.userId };
+      const item = getLibraryItem(scope, game.id);
       const { completion, ...rest } = memberGame(item);
+      const { groupSections } = getSettings(scope);
       return {
         member,
         status: rest.status,
         minutesPlayed: rest.minutesPlayed,
         completion,
-        rating: rest.rating,
+        rating: isSectionShared(groupSections, "ratings") ? rest.rating : null,
         achievements: item.achievements,
       };
     })

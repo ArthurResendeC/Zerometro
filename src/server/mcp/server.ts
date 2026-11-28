@@ -124,7 +124,7 @@ import {
   waitForSteamLibrarySync,
 } from "../services/steam-sync";
 import { getProfile } from "../services/profile";
-import { getLeaderboard, getMemberProfile } from "../services/group";
+import { getLeaderboard, getMemberGamerProfile, getMemberProfile } from "../services/group";
 import { type GroupMemberGame, groupMetrics, groupPeriods } from "../../shared/group";
 import { createRating, getLatestRating, getRatingTemplate, listRatings } from "../services/ratings";
 import { getRecap } from "../services/recap";
@@ -1754,7 +1754,7 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     {
       title: "Perfil de um amigo",
       description:
-        'O perfil público de alguém do grupo, pelo @apelido (veja get_group_leaderboard): o que está jogando, as últimas conclusões (com a nota), os totais (horas, zerados, 100%, conquistas, ofensiva) e os gêneros, séries e desenvolvedoras favoritos. Ex.: "o que a @ana anda jogando?", "o que o joao zerou por último?".',
+        'O perfil público de alguém do grupo, pelo @apelido (veja get_group_leaderboard): o que está jogando, as últimas conclusões, a nota de cada jogo, os totais (horas, zerados, 100%, conquistas, ofensiva) e os gêneros, séries e desenvolvedoras favoritos. Cada um escolhe o que compartilha: o que vier null a pessoa não mostra ao grupo (sharedSections lista o que ela mostra). Ex.: "o que a @ana anda jogando?", "o que o joao zerou por último?".',
       inputSchema: z.object({
         handle: z.string().trim().min(1).describe("@apelido do amigo (com ou sem @)"),
       }),
@@ -1762,41 +1762,53 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     },
     ({ handle }) =>
       run(() => {
-        const profile = getMemberProfile(ctx(), handle.replace(/^@/, "").toLowerCase());
-        const game = (g: GroupMemberGame) => ({
-          name: g.name,
-          status: g.status,
-          hours: minutesToHours(g.minutesPlayed),
-          completion: g.completion?.best ?? null,
-          rating: g.rating,
-        });
-        const rows = (list: ProfileRow[], label: (name: string) => string = (n) => n) =>
-          list.map((row) => ({
-            name: label(row.name),
-            hours: minutesToHours(row.minutes),
-            games: row.games,
-          }));
-        const { minutes, ...totals } = profile.totals;
+        const friend = handle.replace(/^@/, "").toLowerCase();
+        const profile = getMemberProfile(ctx(), friend);
+        const gamer = getMemberGamerProfile(ctx(), friend);
+        const totals = (t: NonNullable<typeof profile.totals>) => {
+          const { minutes, ...rest } = t;
+          return { ...rest, hours: minutesToHours(minutes) };
+        };
         return {
           name: profile.member.name,
           handle: profile.member.handle,
           playingNow: profile.playingNow?.name ?? null,
-          totals: { ...totals, hours: minutesToHours(minutes) },
-          playing: profile.playing.map(game),
-          recentlyFinished: profile.recentlyFinished.map((g) => ({
-            ...game(g),
-            type: g.type,
-            completedOn: g.completedOn,
-          })),
-          genres: rows(profile.genres, genreLabel),
-          series: rows(profile.series),
-          developers: rows(profile.developers),
+          sharedSections: profile.sections,
+          totals: profile.totals && totals(profile.totals),
+          playing: profile.playing?.map(friendGame) ?? null,
+          recentlyFinished:
+            profile.recentlyFinished?.map((g) => ({
+              ...friendGame(g),
+              type: g.type,
+              completedOn: g.completedOn,
+            })) ?? null,
+          ratings: profile.ratings?.map((g) => ({ name: g.name, rating: g.rating })) ?? null,
+          genres: friendRows(gamer.genres, genreLabel),
+          series: friendRows(gamer.series),
+          developers: friendRows(gamer.developers),
         };
       }),
   );
 
   return server;
 }
+
+/** Um jogo de um amigo para o modelo. */
+const friendGame = (g: GroupMemberGame) => ({
+  name: g.name,
+  status: g.status,
+  hours: minutesToHours(g.minutesPlayed),
+  completion: g.completion?.best ?? null,
+  rating: g.rating,
+});
+
+/** Os 5 primeiros de um ranking de um amigo; null = a pessoa não compartilha. */
+const friendRows = (list: ProfileRow[] | null, label: (name: string) => string = (n) => n) =>
+  list?.slice(0, 5).map((row) => ({
+    name: label(row.name),
+    hours: minutesToHours(row.minutes),
+    games: row.games,
+  })) ?? null;
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 

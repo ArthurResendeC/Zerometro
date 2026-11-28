@@ -13,7 +13,14 @@ import { NotFoundError } from "../errors";
 import { createFakeIgdb, createTestContext, fakeIgdbGame, TEST_TODAY } from "../testing";
 import { markCompleted } from "./completions";
 import type { ServiceContext } from "./context";
-import { getGameInGroup, getLeaderboard, getMemberProfile, groupPeriodRange } from "./group";
+import {
+  getGameInGroup,
+  getLeaderboard,
+  getMemberGamerProfile,
+  getMemberProfile,
+  getMemberStats,
+  groupPeriodRange,
+} from "./group";
 import { addToLibrary } from "./library";
 import { logSession } from "./sessions";
 import { updateSettings } from "./settings";
@@ -154,6 +161,7 @@ describe("ranking", () => {
     const text = JSON.stringify([
       getLeaderboard(bia, "all"),
       getMemberProfile(bia, "ana"),
+      getMemberStats(bia, "ana", {}),
       getGameInGroup(bia, 114283),
     ]);
     expect(text).not.toContain("19990");
@@ -171,7 +179,7 @@ describe("perfil de alguém do grupo", () => {
 
     const profile = getMemberProfile(bia, "ana");
     expect(profile.member).toMatchObject({ handle: "ana", isMe: false });
-    expect(profile.playing.map((g) => g.name)).toEqual(["Persona 5 Royal"]);
+    expect(profile.playing!.map((g) => g.name)).toEqual(["Persona 5 Royal"]);
     // Um item por jogo, com a conclusão mais recente.
     expect(profile.recentlyFinished).toMatchObject([
       { name: "Undertale", type: "full", completedOn: "2026-11-10" },
@@ -184,8 +192,59 @@ describe("perfil de alguém do grupo", () => {
     });
   });
 
+  test("notas, da maior para a menor; escondidas somem de todo o grupo", () => {
+    db.update(libraryEntries).set({ rating: 9 }).where(eq(libraryEntries.userId, "u-ana")).run();
+    expect(getMemberProfile(bia, "ana").ratings).toMatchObject([
+      { name: "Persona 5 Royal", rating: 9 },
+    ]);
+    expect(getGameInGroup(bia, 114283).find((e) => e.member.handle === "ana")?.rating).toBe(9);
+
+    updateSettings(ana, { groupSections: { ratings: false } });
+    const profile = getMemberProfile(bia, "ana");
+    expect(profile.ratings).toBeNull();
+    expect(profile.sections).not.toContain("ratings");
+    expect(profile.playing!.map((g) => g.rating)).toEqual([null]);
+    expect(getGameInGroup(bia, 114283).find((e) => e.member.handle === "ana")?.rating).toBeNull();
+    markCompleted(ana, gameId, { type: "main", date: "2026-11-10" });
+    expect(getMemberStats(bia, "ana", {}).records!.finished).toMatchObject([{ rating: null }]);
+    const gamer = getMemberGamerProfile(bia, "ana");
+    expect(gamer.ratingsShared).toBe(false);
+    expect(JSON.stringify(gamer)).not.toContain('"avgRating":9');
+  });
+
+  test("estatísticas: linha do tempo do ano e o que está desligado vem null", () => {
+    logSession(ana, { gameId, minutes: 60, playedOn: "2026-03-02" });
+    logSession(ana, { gameId, minutes: 30, playedOn: "2026-03-03" });
+
+    const stats = getMemberStats(bia, "ana", { year: 2026 });
+    expect(stats.years).toContain(2026);
+    expect(stats.timeline!.games).toMatchObject([
+      { name: "Persona 5 Royal", minutes: 90, spans: [{ from: "2026-03-02", to: "2026-03-03" }] },
+    ]);
+    expect(stats.heatmap!.totalMinutes).toBe(90);
+    // Comprei × zerei mostra dinheiro: só aparece se a pessoa ligar.
+    expect(stats.purchases).toBeNull();
+
+    updateSettings(ana, { groupSections: { timeline: false, purchases: true } });
+    const after = getMemberStats(bia, "ana", { year: 2026 });
+    expect(after.timeline).toBeNull();
+    expect(after.purchases).not.toBeNull();
+  });
+
+  test("perfil de gamer: só os rankings ligados", () => {
+    logSession(ana, { gameId, minutes: 60 });
+    updateSettings(ana, { groupSections: { developers: false, criteria: false } });
+    const gamer = getMemberGamerProfile(bia, "ana");
+    expect(gamer.developers).toBeNull();
+    expect(gamer.criteria).toBeNull();
+    expect(gamer.genres).not.toBeNull();
+    expect(getMemberProfile(bia, "ana").sections).not.toContain("developers");
+  });
+
   test("quem não está no grupo: 404", () => {
     updateSettings(ana, { shareWithGroup: false });
+    expect(() => getMemberStats(bia, "ana", {})).toThrow(NotFoundError);
+    expect(() => getMemberGamerProfile(bia, "ana")).toThrow(NotFoundError);
     expect(() => getMemberProfile(bia, "ana")).toThrow(NotFoundError);
     expect(() => getMemberProfile(bia, "ninguem")).toThrow(NotFoundError);
   });

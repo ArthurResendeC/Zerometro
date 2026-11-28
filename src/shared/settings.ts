@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { groupSectionsSchema } from "./group-sections";
 import { BLEND_WEIGHT, ratingModeSchema, ratingWeightsSchema } from "./ratings";
 
 // Preferências do usuário (guardadas no `kv`), compartilhadas por API, frontend e MCP.
@@ -31,6 +32,8 @@ export const settingsSchema = z.object({
   ratingCustomWeights: ratingWeightsSchema.nullable(),
   /** Aparecer no ranking do grupo e deixar os amigos verem o perfil (padrão: sim). */
   shareWithGroup: z.boolean(),
+  /** O que os amigos veem no /amigo (só as seções fora do padrão; veja `isSectionShared`). */
+  groupSections: groupSectionsSchema,
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
@@ -41,6 +44,7 @@ export const DEFAULT_SETTINGS: Settings = {
   ratingBlendWeight: BLEND_WEIGHT.default,
   ratingCustomWeights: null,
   shareWithGroup: true,
+  groupSections: {},
 };
 
 export const updateSettingsSchema = settingsSchema

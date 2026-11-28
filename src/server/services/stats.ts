@@ -314,7 +314,7 @@ export function genreStats({ db, userId }: UserScope, from: string, to: string):
  * linha do tempo) e compras. Só sessões deixaria de fora, por exemplo, o ano de um jogo zerado
  * antes de usar o Zerômetro.
  */
-function activeYears({ db, userId }: UserScope, currentYear: number): number[] {
+export function activeYears({ db, userId }: UserScope, currentYear: number): number[] {
   const rows = db.all<{ year: string }>(sql`
     select substr(${playSessions.playedOn}, 1, 4) as year from ${playSessions}
     where ${playSessions.userId} = ${userId} and ${playSessions.minutes} is not null

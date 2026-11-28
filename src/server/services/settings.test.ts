@@ -14,6 +14,7 @@ describe("settings", () => {
       ratingBlendWeight: 0.7,
       ratingCustomWeights: null,
       shareWithGroup: true,
+      groupSections: {},
     });
   });
 

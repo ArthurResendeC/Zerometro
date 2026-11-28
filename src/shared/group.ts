@@ -2,10 +2,15 @@ import { z } from "zod";
 import type { Avatar } from "./auth";
 import type { AchievementsSummary } from "./achievements";
 import type { CompletionType, GameStatus } from "./domain";
-import type { ProfileRow } from "./profile";
+import type { GroupSection } from "./group-sections";
+import type { GamerProfile, ProfileRow, ProfileSection } from "./profile";
+import type { PurchaseStats } from "./purchases";
+import type { CriterionAverage } from "./ratings";
+import type { Heatmap, PeriodBreakdown, Records, Rhythm } from "./stats";
+import type { Timeline } from "./timeline";
 
-// O grupo: todo mundo da instância que deixou "Aparecer no grupo" ligado. Nunca sai daqui o
-// preço pago, as notas das sessões nem o "onde parei".
+// O grupo: todo mundo da instância que deixou "Aparecer no grupo" ligado. Nunca sai daqui as
+// notas das sessões nem o "onde parei"; o resto, cada um escolhe (veja group-sections.ts).
 
 export const groupPeriods = ["week", "month", "year", "all"] as const;
 export type GroupPeriod = (typeof groupPeriods)[number];
@@ -78,10 +83,12 @@ export interface GroupMemberGame extends GroupGameRef {
   rating: number | null;
 }
 
-/** O perfil público de alguém do grupo. */
+/** O perfil público de alguém do grupo (a aba Resumo). Seção não compartilhada vem null. */
 export interface GroupMemberProfile {
   member: GroupMember;
   playingNow: GroupGameRef | null;
+  /** O que a pessoa deixa os amigos verem: decide as abas e as seções da tela. */
+  sections: GroupSection[];
   totals: {
     minutes: number;
     finished: number;
@@ -89,15 +96,36 @@ export interface GroupMemberProfile {
     achievements: number;
     streak: number;
     games: number;
-  };
+  } | null;
   /** Em andamento, os jogados mais recentemente primeiro. */
-  playing: GroupMemberGame[];
+  playing: GroupMemberGame[] | null;
   /** As últimas conclusões. */
-  recentlyFinished: (GroupMemberGame & { completedOn: string; type: CompletionType })[];
-  genres: ProfileRow[];
-  series: ProfileRow[];
-  developers: ProfileRow[];
+  recentlyFinished: (GroupMemberGame & { completedOn: string; type: CompletionType })[] | null;
+  /** Os jogos com nota, da maior para a menor. */
+  ratings: GroupMemberGame[] | null;
 }
+
+/** A aba Estatísticas de alguém do grupo, no mesmo recorte das Estatísticas (ano ou 12 meses). */
+export interface GroupMemberStatsView {
+  year: number | null;
+  /** Anos com alguma sessão, conclusão ou compra (o seletor). */
+  years: number[];
+  heatmap: Heatmap | null;
+  breakdown: PeriodBreakdown | null;
+  timeline: Timeline | null;
+  rhythm: Rhythm | null;
+  records: Records | null;
+  purchases: PurchaseStats | null;
+}
+
+/** A aba Perfil de gamer de alguém do grupo. Ranking não compartilhado vem null. */
+export type GroupMemberGamerProfile = Pick<GamerProfile, "gamesCounted" | "totalMinutes"> & {
+  [S in ProfileSection]: ProfileRow[] | null;
+} & {
+  criteria: CriterionAverage[] | null;
+  /** Com as notas escondidas, os rankings vêm sem a média e não dá para ordenar por nota. */
+  ratingsShared: boolean;
+};
 
 /** Quem do grupo tem um jogo, e como está com ele (página do jogo). */
 export interface GroupGameEntry {

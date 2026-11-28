@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import type { GroupGameEntry, GroupLeaderboard, GroupMemberProfile } from "../../shared/group";
+import type {
+  GroupGameEntry,
+  GroupLeaderboard,
+  GroupMemberGamerProfile,
+  GroupMemberProfile,
+  GroupMemberStatsView,
+} from "../../shared/group";
 import { createFakeIgdb, createTestApp, fakeIgdbGame } from "../testing";
 
 const json = (body: unknown) => ({
@@ -29,7 +35,24 @@ describe("/api/group", () => {
     const owner = (await (
       await joao.request("/api/group/members/OWNER")
     ).json()) as GroupMemberProfile;
-    expect(owner.playing.map((g) => g.name)).toEqual(["Persona 5 Royal"]);
+    expect(owner.playing!.map((g) => g.name)).toEqual(["Persona 5 Royal"]);
+
+    const stats = (await (
+      await joao.request("/api/group/members/owner/stats?year=2026")
+    ).json()) as GroupMemberStatsView;
+    expect(stats.year).toBe(2026);
+    expect(stats.timeline).not.toBeNull();
+    expect((await joao.request("/api/group/members/owner/stats?year=1")).status).toBe(400);
+
+    await request("/api/settings", {
+      ...json({ groupSections: { genres: false } }),
+      method: "PATCH",
+    });
+    const gamer = (await (
+      await joao.request("/api/group/members/owner/profile")
+    ).json()) as GroupMemberGamerProfile;
+    expect(gamer.genres).toBeNull();
+    expect(gamer.series).not.toBeNull();
 
     const game = (await (await joao.request("/api/group/games/114283")).json()) as GroupGameEntry[];
     expect(game.map((e) => e.member.handle)).toEqual(["owner"]);
