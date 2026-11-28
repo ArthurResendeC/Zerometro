@@ -49,11 +49,9 @@ export function SteamImportDialog({
         if (!busy) onOpenChange(next);
       }}
     >
-      {/* Coluna flex: cabeçalho, filtros e rodapé fixos; só a lista rola. */}
-      <DialogContent
-        className="flex max-h-[min(calc(100dvh-2rem),52rem)] flex-col sm:max-w-[720px]"
-        showClose={!busy}
-      >
+      {/* Coluna flex: cabeçalho, filtros e rodapé fixos; só a lista rola. Numa tela baixa a lista
+          encolhe para o diálogo caber. */}
+      <DialogContent className="flex flex-col sm:max-w-[720px]" showClose={!busy}>
         <DialogHeader>
           <DialogTitle>Importar da Steam</DialogTitle>
           {/* No celular a lista precisa do espaço; a descrição fica só para leitores de tela. */}
@@ -235,7 +233,7 @@ function ImportForm({
           </div>
 
           <ul
-            className="min-h-20 min-w-0 flex-1 divide-y-2 divide-border overflow-y-auto pr-1"
+            className="max-h-[min(20rem,40dvh)] min-h-20 min-w-0 flex-1 divide-y-2 divide-border overflow-y-auto pr-1"
             aria-label="Jogos da Steam"
           >
             {visible.map((c) => (
