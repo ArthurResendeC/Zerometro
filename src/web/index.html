@@ -4,6 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0f0e17" />
+    <!-- Tema salvo neste aparelho (src/web/lib/theme.ts), aplicado antes da primeira pintura. -->
+    <script>
+      try {
+        var t = JSON.parse(localStorage.getItem("zerometro:theme") || "null");
+        if (t && /^[a-z-]+$/.test(t.id) && /^(dark|light)$/.test(t.mode)) {
+          var r = document.documentElement;
+          r.dataset.theme = t.id;
+          r.dataset.mode = t.mode;
+          if (t.themeColor)
+            document.querySelector('meta[name="theme-color"]').content = t.themeColor;
+          if (t.fontsHref && t.fontsHref.indexOf("https://fonts.googleapis.com/") === 0) {
+            var l = document.createElement("link");
+            l.id = "theme-fonts";
+            l.rel = "stylesheet";
+            l.href = t.fontsHref;
+            document.head.appendChild(l);
+          }
+        }
+      } catch (e) {}
+    </script>
     <meta
       name="description"
       content="Quanto falta pra zerar? Backlog de jogos, sessões, ofensiva e estatísticas."

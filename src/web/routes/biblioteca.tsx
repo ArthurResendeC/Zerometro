@@ -145,7 +145,7 @@ function LibraryPage() {
 
       <nav
         aria-label="Status"
-        className="-mx-4 flex overflow-x-auto border-b-4 border-border px-4 pt-1"
+        className="-mx-4 flex overflow-x-auto border-b-(length:--rule-thick) border-border px-4 pt-1"
       >
         {tabs.map((tab) => {
           const active = search.status === tab.status;

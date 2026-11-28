@@ -150,7 +150,10 @@ function SectionNav({
   onChange: (section: SessionSection) => void;
 }) {
   return (
-    <nav aria-label="Seções" className="flex overflow-x-auto border-b-4 border-border pt-1">
+    <nav
+      aria-label="Seções"
+      className="flex overflow-x-auto border-b-(length:--rule-thick) border-border pt-1"
+    >
       {sessionSections.map((option) => {
         const active = option === section;
         return (

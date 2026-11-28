@@ -108,7 +108,10 @@ export function SessionsTable({ gameId }: { gameId: number }) {
         </thead>
         <tbody>
           {table.getRowModel().rows.map((row) => (
-            <tr key={row.id} className="border-t-2 border-dashed border-muted hover:bg-accent">
+            <tr
+              key={row.id}
+              className="border-t-(length:--rule) border-dashed border-muted hover:bg-accent"
+            >
               {row.getAllCells().map((cell) => (
                 <td key={cell.id} className="px-3 py-2 align-middle">
                   <table.FlexRender cell={cell} />

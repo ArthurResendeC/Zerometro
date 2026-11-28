@@ -81,7 +81,7 @@ export function CompletionsSection({
             para registrar replays também.
           </p>
         ) : (
-          <ol className="divide-y-2 divide-border">
+          <ol className="divide-y-(length:--rule) divide-border">
             {completions.map((completion) => (
               <li key={completion.id} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
                 <Badge variant={completion.type === "full" ? "full" : "finished"}>

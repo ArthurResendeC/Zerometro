@@ -412,7 +412,7 @@ function SetCard({ gameId, set, filter, search, sort, onChange }: SetCardProps) 
         {list.length === 0 ? (
           <p className="py-2 text-sm text-muted-foreground">Nenhuma conquista aqui.</p>
         ) : (
-          <ol className="divide-y-2 divide-border">
+          <ol className="divide-y-(length:--rule) divide-border">
             {list.slice(0, shown).map((a) => (
               <AchievementRow key={a.id} achievement={a} onChange={onChange} />
             ))}
@@ -611,7 +611,7 @@ function SetPicker({ item, sources, onLinked }: SetPickerProps) {
         ) : candidates.isError ? (
           <p className="text-sm text-destructive">{candidates.error.message}</p>
         ) : result && result.candidates.length > 0 ? (
-          <ul className="divide-y-2 divide-border">
+          <ul className="divide-y-(length:--rule) divide-border">
             {result.candidates.map((c) => (
               <CandidateRow
                 key={`${c.source}:${c.externalId}`}

@@ -110,7 +110,7 @@ export function TimelineSection({ timeline, person }: { timeline: Timeline; pers
             >
               <span
                 className={cn(
-                  "w-full border-t-2 border-dashed border-muted-foreground/60 group-hover:border-foreground",
+                  "w-full border-t-(length:--rule) border-dashed border-muted-foreground/60 group-hover:border-foreground",
                   tooltip.isPinned(key) && "border-foreground",
                 )}
               />
@@ -313,7 +313,10 @@ function TimelineLegend({ pauseDays }: { pauseDays: number }) {
         Jogando
       </li>
       <li className="flex items-center gap-1.5">
-        <span aria-hidden className="w-4 border-t-2 border-dashed border-muted-foreground/60" />
+        <span
+          aria-hidden
+          className="w-4 border-t-(length:--rule) border-dashed border-muted-foreground/60"
+        />
         Mais de {pauseDays} dias sem jogar
       </li>
       <li className="flex items-center gap-1.5">

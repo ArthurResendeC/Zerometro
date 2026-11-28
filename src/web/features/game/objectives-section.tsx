@@ -97,7 +97,7 @@ export function ObjectivesSection({ item, onAllDone }: ObjectivesSectionProps) {
                 {done}/{total} · {formatPercent(done / total)}
               </span>
             </div>
-            <ol className="divide-y-2 divide-border">
+            <ol className="divide-y-(length:--rule) divide-border">
               {objectives.map((objective, index) => (
                 <ObjectiveRow
                   key={objective.id}

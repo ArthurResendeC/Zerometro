@@ -13,6 +13,7 @@ import { RatingSettingsCard } from "@/features/rating/rating-settings-card";
 import { SteamSettingsCard } from "@/features/steam/steam-settings-card";
 import { GroupSettingsCard } from "@/features/group/group-settings-card";
 import { AccountCard } from "@/features/profile/account-card";
+import { ThemePreviewCard } from "@/features/theme/theme-preview-card";
 import { PeopleCard } from "@/features/profile/people-card";
 import { formatMinutes } from "@/lib/format";
 import { sessionQuery, settingsQuery, useUpdateSettings } from "@/lib/queries";
@@ -55,6 +56,7 @@ function SettingsPage() {
       />
       <RatingSettingsCard settings={settings} />
       <AudioSettingsCard />
+      {process.env.NODE_ENV !== "production" && <ThemePreviewCard />}
       <SteamSettingsCard />
     </div>
   );

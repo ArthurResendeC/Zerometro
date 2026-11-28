@@ -337,6 +337,50 @@ um toast.
 
 Os dois ficam escondidos atrás de uma flag de desenvolvimento até a loja existir.
 
+> **Fase 2: feita.** Os dois temas estão em `src/web/themes/`, e o registro em `src/shared/themes.ts`.
+>
+> - **Como um tema é escrito:**
+>   - um CSS com `:root[data-theme="<id>"]` para os tokens de forma, tipografia e movimento;
+>   - `:root[data-theme="<id>"][data-mode="<modo>"]` para as cores;
+>   - importado no `styles.css`.
+>
+>   O seletor com `:root` vence o tema base pela especificidade, então a ordem dos arquivos não importa.
+>   As escalas do Tailwind (`--text-*`, `--animate-*`) são sobrescritas direto.
+>
+> - **Ganchos para redesenhar componentes:** `data-slot` (`card`, `dialog-content`, `alert-dialog-content`,
+>   `button`, `xp-bar`…) e `data-variant` no botão. Um tema pode estilizar esses atributos além dos tokens.
+>   O Ladrão Fantasma usa isso para os painéis e para os botões inclinados.
+> - **Painéis recortados sem mudar a estrutura:** saiu melhor que o `::before` planejado. O tema troca
+>   fundo e moldura do card por um `border-image` 9-slice: um SVG com polígono preto, contorno branco e
+>   camada vermelha deslocada. Os cantos de 40px ficam fixos e as bordas esticam, então funciona em
+>   qualquer tamanho. Esticar o SVG inteiro (a primeira tentativa) deixava a sombra vermelha
+>   desproporcional nos cards largos.
+> - **Tokens novos desta fase:**
+>   - `--rule` e `--rule-thick`: bordas e divisores;
+>   - `--inner-line`: a linha de dentro dos dialogs;
+>   - `--focus-width` e `--focus-offset`;
+>   - `--page-texture` e `--page-texture-size`;
+>   - `--card-ridge`: as ranhuras do cartucho;
+>   - `--xp-gap`: o espaço entre as células da barra de XP.
+>
+>   O `tab-frame` passou a usar `--rule-thick` e funciona com moldura em anel.
+>
+> - **Prévia:** em `/ajustes`, fora de produção, um card troca o tema neste aparelho. O cuidado é este:
+>   - `lib/theme.ts` aplica o tema e guarda no `localStorage` já resolvido (id, modo, fontes, cor da barra);
+>   - um script inline no `index.html` aplica esse valor antes da primeira pintura, sem piscar o tema base;
+>   - as fontes do tema (Google Fonts) só carregam quando ele está ativo.
+> - **Testes** (`src/web/themes/themes.test.ts`): todo tema do registro tem CSS importado, define todas as
+>   cores em cada modo e passa no contraste de 4.5:1 nos pares texto/fundo. Conferi que o teste falha
+>   quando falta um token ou o contraste cai.
+> - **O tema base continua igual pixel a pixel:** a comparação de capturas antes e depois só acusou o card
+>   de prévia novo em `/ajustes`.
+> - **O que ficou para a fase 3:**
+>   - o tema salvo na conta (hoje só no aparelho);
+>   - a posse (`user_items`);
+>   - os pacotes de som por tema;
+>   - incluir `recap-slides` e a imagem do recap nos temas;
+>   - uma revisão visual tela a tela (estatísticas, perfil, recap) em cada tema.
+
 **Fase 3: infraestrutura.** `themes.ts`, `ThemeProvider`, script contra piscada, `user_items`, pacotes de som e
 os testes de completude e contraste.
 
