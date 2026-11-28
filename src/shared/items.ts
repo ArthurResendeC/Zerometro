@@ -21,10 +21,25 @@ export const soundPackIds = ["cartucho", "minimal", "ladrao-fantasma"] as const;
 export type SoundPackId = (typeof soundPackIds)[number];
 export const DEFAULT_SOUND_PACK: SoundPackId = "cartucho";
 
-export const soundPacks: Record<SoundPackId, { id: SoundPackId; name: string }> = {
-  cartucho: { id: "cartucho", name: "8 bits do Cartucho" },
-  minimal: { id: "minimal", name: "Toques do Minimal" },
-  "ladrao-fantasma": { id: "ladrao-fantasma", name: "Golpes do Ladrão Fantasma" },
+export const soundPacks: Record<
+  SoundPackId,
+  { id: SoundPackId; name: string; description: string }
+> = {
+  cartucho: {
+    id: "cartucho",
+    name: "8 bits do Cartucho",
+    description: "Bipes e arpejos de console antigo.",
+  },
+  minimal: {
+    id: "minimal",
+    name: "Toques do Minimal",
+    description: "Senoides suaves, como notificações discretas.",
+  },
+  "ladrao-fantasma": {
+    id: "ladrao-fantasma",
+    name: "Golpes do Ladrão Fantasma",
+    description: "Dente de serra seco e graves com impacto.",
+  },
 };
 
 export function isSoundPackId(value: unknown): value is SoundPackId {
@@ -63,6 +78,48 @@ export const grantItemSchema = z
     path: ["itemId"],
   });
 export type GrantItemInput = z.infer<typeof grantItemSchema>;
+
+// ---------------------------------------------------------------------------------------------
+// Loja
+
+/**
+ * Preço em moedas; null = não está à venda (grátis para todos, ou exclusivo de insígnia/fundador).
+ * Referência: jogando no ritmo do demo rende ~18 moedas por dia, então 250 ≈ duas semanas.
+ */
+export const themePrices: Record<ThemeId, number | null> = {
+  cartucho: null,
+  minimal: 250,
+  "ladrao-fantasma": 400,
+};
+export const soundPackPrices: Record<SoundPackId, number | null> = {
+  cartucho: null,
+  minimal: 80,
+  "ladrao-fantasma": 80,
+};
+
+export function priceOf(kind: ItemKind, id: string): number | null {
+  if (kind === "theme") return isThemeId(id) ? themePrices[id] : null;
+  return isSoundPackId(id) ? soundPackPrices[id] : null;
+}
+
+/** Um item na vitrine. */
+export interface ShopItem {
+  kind: ItemKind;
+  id: string;
+  name: string;
+  description: string;
+  /** null = não está à venda (só aparece se o perfil já tiver). */
+  price: number | null;
+  owned: boolean;
+}
+
+export interface Shop {
+  balance: number;
+  items: ShopItem[];
+}
+
+export const purchaseSchema = grantItemSchema;
+export type PurchaseInput = GrantItemInput;
 
 /** Nome para mostrar de um item. */
 export function itemName(kind: ItemKind, id: string): string {

@@ -31,6 +31,8 @@ import type {
   UpdateSessionInput,
 } from "@shared/sessions";
 import type { UpdateSettingsInput } from "@shared/settings";
+import type { PurchaseInput } from "@shared/items";
+import { isThemeId } from "@shared/themes";
 import {
   type LinkSteamProfileInput,
   STEAM_SYNC_GAMES_BATCH,
@@ -49,6 +51,7 @@ import { DEFAULT_TIME_ZONE, nextOccurrence, todayIn, zonedParts } from "@shared/
 import { ratingSavedSounds, reachedStreakMilestone } from "@/features/audio/sound-events";
 import type { SoundName } from "@/features/audio/sounds";
 import { useSound } from "@/features/audio/use-sound";
+import { useTheme } from "@/lib/theme";
 import { useSessionNoteDialog } from "@/stores/session-note-dialog";
 import {
   autoSyncMessage,
@@ -433,6 +436,52 @@ export const walletQuery = () =>
     queryKey: [...statsKeys.all, "wallet"] as const,
     queryFn: () => unwrap(api.wallet.$get()),
   });
+
+/** Vitrine da loja (com o saldo): debaixo de `statsKeys` pelo mesmo motivo da carteira. */
+export const shopQuery = () =>
+  queryOptions({
+    queryKey: [...statsKeys.all, "shop"] as const,
+    queryFn: () => unwrap(api.shop.$get()),
+  });
+
+/**
+ * Compra com moedas: atualiza a vitrine, a carteira e os itens do perfil. Um tema comprado já
+ * entra em uso na conta e encerra a prévia. Tudo aqui (e não no componente): o botão de comprar
+ * some assim que o item vira "seu", e callbacks de um componente desmontado não rodam.
+ */
+export function usePurchase() {
+  const queryClient = useQueryClient();
+  const { play } = useSound();
+  return useMutation({
+    mutationFn: async (input: PurchaseInput) => {
+      const shop = await unwrap(api.shop.purchase.$post({ json: input }));
+      if (input.kind !== "theme" || !isThemeId(input.itemId)) return { shop, settings: null };
+      // A compra já valeu; se aplicar o tema falhar, ele continua escolhível em Aparência.
+      const settings = await unwrap(api.settings.$patch({ json: { themeId: input.itemId } })).then(
+        (res) => res.settings,
+        () => null,
+      );
+      return { shop, settings };
+    },
+    onSuccess: ({ shop, settings }, input) => {
+      queryClient.setQueryData(shopQuery().queryKey, shop);
+      play("goal-reached");
+      const name = shop.items.find((i) => i.kind === input.kind && i.id === input.itemId)?.name;
+      if (settings) {
+        queryClient.setQueryData(settingsKeys.all, settings);
+        useTheme.getState().endPreview();
+        toast.success(`${name} é seu, e já está em uso`);
+      } else {
+        toast.success(`${name} é seu: escolha em Ajustes → Aparência`);
+      }
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: walletQuery().queryKey }),
+        queryClient.invalidateQueries({ queryKey: itemsQuery().queryKey }),
+      ]);
+    },
+    onError,
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Conclusões (zerei a história, + extras, 100%)

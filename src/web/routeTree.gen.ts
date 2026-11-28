@@ -18,6 +18,7 @@ import { Route as ComoAvaliamosRouteImport } from "./routes/como-avaliamos"
 import { Route as EntrarRouteImport } from "./routes/entrar"
 import { Route as EstatisticasRouteImport } from "./routes/estatisticas"
 import { Route as GrupoRouteImport } from "./routes/grupo"
+import { Route as LojaRouteImport } from "./routes/loja"
 import { Route as PerfilRouteImport } from "./routes/perfil"
 import { Route as RecapRouteImport } from "./routes/recap"
 import { Route as AmigoHandleRouteImport } from "./routes/amigo.$handle"
@@ -71,6 +72,11 @@ const GrupoRoute = GrupoRouteImport.update({
   path: "/grupo",
   getParentRoute: () => rootRouteImport,
 } as any)
+const LojaRoute = LojaRouteImport.update({
+  id: "/loja",
+  path: "/loja",
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PerfilRoute = PerfilRouteImport.update({
   id: "/perfil",
   path: "/perfil",
@@ -117,6 +123,7 @@ export interface FileRoutesByFullPath {
   "/entrar": typeof EntrarRoute
   "/estatisticas": typeof EstatisticasRoute
   "/grupo": typeof GrupoRoute
+  "/loja": typeof LojaRoute
   "/perfil": typeof PerfilRoute
   "/recap": typeof RecapRoute
   "/amigo/$handle": typeof AmigoHandleRoute
@@ -135,6 +142,7 @@ export interface FileRoutesByTo {
   "/entrar": typeof EntrarRoute
   "/estatisticas": typeof EstatisticasRoute
   "/grupo": typeof GrupoRoute
+  "/loja": typeof LojaRoute
   "/perfil": typeof PerfilRoute
   "/recap": typeof RecapRoute
   "/amigo/$handle": typeof AmigoHandleRoute
@@ -154,6 +162,7 @@ export interface FileRoutesById {
   "/entrar": typeof EntrarRoute
   "/estatisticas": typeof EstatisticasRoute
   "/grupo": typeof GrupoRoute
+  "/loja": typeof LojaRoute
   "/perfil": typeof PerfilRoute
   "/recap": typeof RecapRoute
   "/amigo/$handle": typeof AmigoHandleRoute
@@ -174,6 +183,7 @@ export interface FileRouteTypes {
     | "/entrar"
     | "/estatisticas"
     | "/grupo"
+    | "/loja"
     | "/perfil"
     | "/recap"
     | "/amigo/$handle"
@@ -192,6 +202,7 @@ export interface FileRouteTypes {
     | "/entrar"
     | "/estatisticas"
     | "/grupo"
+    | "/loja"
     | "/perfil"
     | "/recap"
     | "/amigo/$handle"
@@ -210,6 +221,7 @@ export interface FileRouteTypes {
     | "/entrar"
     | "/estatisticas"
     | "/grupo"
+    | "/loja"
     | "/perfil"
     | "/recap"
     | "/amigo/$handle"
@@ -229,6 +241,7 @@ export interface RootRouteChildren {
   EntrarRoute: typeof EntrarRoute
   EstatisticasRoute: typeof EstatisticasRoute
   GrupoRoute: typeof GrupoRoute
+  LojaRoute: typeof LojaRoute
   PerfilRoute: typeof PerfilRoute
   RecapRoute: typeof RecapRoute
   AmigoHandleRoute: typeof AmigoHandleRoute
@@ -303,6 +316,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof GrupoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    "/loja": {
+      id: "/loja"
+      path: "/loja"
+      fullPath: "/loja"
+      preLoaderRoute: typeof LojaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     "/perfil": {
       id: "/perfil"
       path: "/perfil"
@@ -365,6 +385,7 @@ const rootRouteChildren: RootRouteChildren = {
   EntrarRoute: EntrarRoute,
   EstatisticasRoute: EstatisticasRoute,
   GrupoRoute: GrupoRoute,
+  LojaRoute: LojaRoute,
   PerfilRoute: PerfilRoute,
   RecapRoute: RecapRoute,
   AmigoHandleRoute: AmigoHandleRoute,

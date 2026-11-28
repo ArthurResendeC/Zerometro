@@ -1,5 +1,5 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   achievementTiers,
   COINS_PER_HOUR,
@@ -26,9 +26,7 @@ function WalletPage() {
     <div className="flex max-w-xl flex-col gap-6">
       <div>
         <h1 className="display-lg">Carteira</h1>
-        <p className="mt-2 text-muted-foreground">
-          Moedas para trocar por temas e sons. A loja abre em breve.
-        </p>
+        <p className="mt-2 text-muted-foreground">Moedas para trocar por temas e sons na loja.</p>
       </div>
 
       <Card>
@@ -37,6 +35,11 @@ function WalletPage() {
           <span className="display-xl tabular-nums">{formatCount(wallet.balance)}</span>
           <span className="text-muted-foreground">moedas</span>
         </div>
+        <Link to="/loja" className="w-fit">
+          <span className="display-xs text-primary underline-offset-4 hover:underline">
+            Ir à loja →
+          </span>
+        </Link>
         <p className="text-sm text-muted-foreground">
           {formatCount(wallet.earned.playtime)} de horas jogadas ·{" "}
           {formatCount(wallet.earned.achievement)} de conquistas · rendendo desde{" "}
@@ -129,7 +132,7 @@ function describe({ reason, details }: CoinEntry): string {
       return `${details.adjustment ? "Ajuste: conquista" : "Conquista"} "${details.title}"${game}${rarity}`;
     }
     case "purchase":
-      return "Compra na loja";
+      return details.title ? `Compra: ${details.title}` : "Compra na loja";
     case "grant":
       return "Moedas concedidas";
   }
