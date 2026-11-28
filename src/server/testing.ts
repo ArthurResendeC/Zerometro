@@ -19,6 +19,7 @@ import type { RaGameListEntry, RetroAchievementsApi } from "./services/retroachi
 import type { SteamOwnedGame, SteamUnlock, SteamUserApi } from "./services/steam/user";
 import { NotFoundError, SteamProfilePrivateError } from "./errors";
 import { createRating } from "./services/ratings";
+import { createInvite } from "./services/users";
 
 export function fakeIgdbGame(overrides: Partial<IgdbGameDetails> = {}): IgdbGameDetails {
   return {
@@ -374,6 +375,8 @@ export function rateGut(ctx: ServiceContext, gameId: number, enjoyment: number) 
 
 /** Token da instância nos testes. */
 export const TEST_TOKEN = "token-de-teste-com-mais-de-32-caracteres";
+/** Senha dos perfis criados nos testes. */
+export const TEST_PASSWORD = "senha-de-teste";
 
 /**
  * App completo num banco em memória, com o token de teste. `request` já vai com o cookie de
@@ -436,6 +439,28 @@ export async function createTestApp(
     return app.request(path, { ...init, headers });
   };
 
+  /**
+   * Um amigo que entrou por convite (perfil com senha): o cookie dele e um `request` que já vai
+   * com ele.
+   */
+  const createMember = async (handle = "amigo", password = TEST_PASSWORD) => {
+    const { code } = createInvite(db, { userId: OWNER_ID, now: clock.now() }, {});
+    const res = await app.request(`/api/auth/invites/${code}/signup`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: handle, handle, avatar: "ghost", password }),
+    });
+    if (res.status !== 200) throw new Error(`convite recusado: ${await res.text()}`);
+    const memberCookie = sessionCookie(res) ?? "";
+    const { userId } = (await res.json()) as { userId: string };
+    const memberRequest = (path: string, init: RequestInit = {}) => {
+      const headers = new Headers(init.headers);
+      headers.set("cookie", memberCookie);
+      return app.request(path, { ...init, headers });
+    };
+    return { userId, handle, password, cookie: memberCookie, request: memberRequest };
+  };
+
   return {
     app,
     fetchRoot,
@@ -450,6 +475,7 @@ export async function createTestApp(
     cookie,
     userId: OWNER_ID,
     request,
+    createMember,
   };
 }
 

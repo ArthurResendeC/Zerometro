@@ -21,6 +21,7 @@ import { createStatsRoutes } from "./routes/stats";
 import { createProfileRoutes } from "./routes/profile";
 import { createSteamRoutes } from "./routes/steam";
 import { createTimerRoutes } from "./routes/timer";
+import { toSession } from "./services/users";
 import type { AchievementCatalog } from "./services/achievement-catalog";
 import type { Clock } from "./services/context";
 import type { FeedsService } from "./services/feeds";
@@ -30,7 +31,7 @@ import type { SteamUserApi } from "./services/steam/user";
 
 export interface AppDeps {
   db: Db;
-  /** Token da instância: login do site, sessão por cookie e OAuth do MCP. */
+  /** Login do site (perfis e token do admin), sessão por cookie e OAuth do MCP. */
   auth: Auth;
   igdb: IgdbApi;
   /** Listas do IGDB da tela inicial (cache compartilhado entre requisições). */
@@ -75,8 +76,8 @@ export function createApp(deps: AppDeps) {
       // Entrar e sair (públicas).
       .route("/auth", createAuthRoutes(deps))
       // Daqui para baixo, só com o cookie de sessão ou o token.
-      .use(requireAuth(deps.auth))
-      .get("/auth/session", (c) => c.json<AuthSession>({ userId: c.get("userId") }))
+      .use(requireAuth(deps))
+      .get("/auth/session", (c) => c.json<AuthSession>(toSession(c.get("user"))))
       .route("/igdb", createIgdbRoutes(deps))
       .route("/feeds", createFeedRoutes(deps))
       .route("/library", createLibraryRoutes(deps))

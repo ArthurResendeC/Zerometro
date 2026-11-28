@@ -12,12 +12,79 @@ export type UserRole = (typeof userRoles)[number];
 export const inviteKinds = ["signup", "reset"] as const;
 export type InviteKind = (typeof inviteKinds)[number];
 
-export const loginInputSchema = z.object({
-  token: z.string().trim().min(1, "Informe o token de acesso"),
-});
+/** Avatares pixel art que dá para escolher (desenhados em `src/web/features/profile/avatars`). */
+export const avatars = [
+  "flame",
+  "ghost",
+  "slime",
+  "sword",
+  "potion",
+  "mushroom",
+  "skull",
+  "cat",
+  "star",
+  "heart",
+  "controller",
+  "crown",
+] as const;
+export type Avatar = (typeof avatars)[number];
+export const DEFAULT_AVATAR: Avatar = "flame";
+
+export const MIN_PASSWORD_LENGTH = 8;
+
+/** @apelido: o login e o endereço do perfil (minúsculo, sem acento). */
+export const handleSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9_]{3,20}$/, "Use de 3 a 20 letras sem acento, números ou _");
+
+export const passwordSchema = z
+  .string()
+  .min(MIN_PASSWORD_LENGTH, `A senha precisa de pelo menos ${MIN_PASSWORD_LENGTH} caracteres`)
+  .max(200, "Senha longa demais");
+
+export const displayNameSchema = z
+  .string()
+  .trim()
+  .min(1, "Informe um nome")
+  .max(40, "Nome longo demais");
+
+/** Entrar com o @apelido e a senha, ou (o admin) com o token da instância. */
+export const loginInputSchema = z.union([
+  z.object({
+    handle: z.string().trim().toLowerCase().min(1, "Informe o @apelido"),
+    password: z.string().min(1, "Informe a senha"),
+  }),
+  z.object({ token: z.string().trim().min(1, "Informe o token de acesso") }),
+]);
 export type LoginInput = z.infer<typeof loginInputSchema>;
 
-/** Resposta de GET /api/auth/session: quem é o dono dos dados desta instância. */
+/** Criar o perfil a partir de um convite. */
+export const acceptSignupSchema = z.object({
+  name: displayNameSchema,
+  handle: handleSchema,
+  avatar: z.enum(avatars),
+  password: passwordSchema,
+});
+export type AcceptSignupInput = z.infer<typeof acceptSignupSchema>;
+
+/** Redefinir a senha a partir de um link de redefinição. */
+export const acceptResetSchema = z.object({ password: passwordSchema });
+export type AcceptResetInput = z.infer<typeof acceptResetSchema>;
+
+/** O que a página do convite mostra antes de aceitar (GET /api/auth/invites/:code). */
+export type InvitePreview =
+  | { kind: "signup"; invitedBy: string }
+  | { kind: "reset"; name: string; handle: string };
+
+/** Resposta de GET /api/auth/session (e do login): quem está usando o app. */
 export interface AuthSession {
   userId: string;
+  name: string;
+  handle: string | null;
+  avatar: Avatar;
+  role: UserRole;
+  /** Já tem senha? O admin pode entrar só pelo token até definir uma. */
+  hasPassword: boolean;
 }

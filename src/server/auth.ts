@@ -1,9 +1,10 @@
-// Autenticação de uma instância self-hosted: cada instância é de uma pessoa, e quem tem o
-// ZEROMETRO_TOKEN (do .env) entra.
-// - Site: digita o token em /entrar e ganha um cookie assinado de 30 dias, renovado a cada dia
-//   de uso. Não fica nada guardado no banco: trocar o token desloga todos os aparelhos.
-// - API por script: `Authorization: Bearer <token>`.
-// - MCP: OAuth próprio (src/server/oauth), aprovado com o mesmo token, ou o token como Bearer.
+// Autenticação da instância: cada pessoa tem um perfil (convidado pelo admin) e entra com o
+// @apelido e a senha; o admin (`owner`) também entra com o ZEROMETRO_TOKEN (do .env).
+// - Site: ganha um cookie assinado de 30 dias, renovado a cada dia de uso, com o id do perfil e a
+//   versão da sessão dele (trocar a senha ou "sair de todos" incrementa e derruba os cookies).
+//   A chave sai do SESSION_SECRET (ou, sem ele, do token): trocá-la desloga todo mundo.
+// - API por script: `Authorization: Bearer <token>` (vale como o admin).
+// - MCP: OAuth próprio (src/server/oauth), aprovado com o perfil, ou o token como Bearer.
 import { createHmac } from "node:crypto";
 import { createOAuthServer, type OAuthServer } from "./oauth/server";
 import { sameSecret } from "./oauth/tokens";
@@ -19,6 +20,10 @@ const RENEW_AFTER_S = 24 * 60 * 60;
 export const MIN_TOKEN_LENGTH = 32;
 
 interface SessionPayload {
+  /** Id do perfil. */
+  uid: string;
+  /** `session_version` do perfil quando o cookie foi emitido. */
+  ver: number;
   /** Emitido em (segundos desde a época). */
   iat: number;
   /** Vence em (segundos desde a época). */
@@ -26,8 +31,10 @@ interface SessionPayload {
 }
 
 export interface AuthConfig {
-  /** ZEROMETRO_TOKEN. */
+  /** ZEROMETRO_TOKEN: entra como o admin. */
   token: string;
+  /** SESSION_SECRET: chave dos cookies e do OAuth; sem ele, sai do token. */
+  sessionSecret?: string;
   /** URL pública do site (emissor do OAuth; https liga o cookie `Secure`). */
   publicUrl: string;
   /** Relógio em ms (injetável nos testes). */
@@ -47,32 +54,54 @@ export interface CookieOptions {
 export interface Auth {
   /** O token confere (tempo constante)? */
   isToken: (candidate: string) => boolean;
-  /** Valor de um cookie de sessão novo, de 30 dias. */
-  issueSession: () => string;
-  /** O cookie é válido? `renew` diz se já vale reemitir. */
-  checkSession: (value: string | undefined) => { valid: boolean; renew: boolean };
+  /** Valor de um cookie de sessão novo, de 30 dias, para o perfil. */
+  issueSession: (who: SessionUser) => string;
+  /**
+   * A assinatura e o prazo do cookie conferem? Devolve de quem é (a versão ainda precisa bater
+   * com a do banco); `renew` diz se já vale reemitir.
+   */
+  checkSession: (value: string | undefined) => (SessionUser & { renew: boolean }) | undefined;
   /** Opções do cookie de sessão (`maxAge` 0 apaga). */
   cookieOptions: (maxAge?: number) => CookieOptions;
   /** Servidor OAuth do MCP (rotas na raiz e o `protect` do /mcp). */
   oauth: OAuthServer;
 }
 
+/** O que o cookie identifica: o perfil e a versão da sessão dele. */
+export interface SessionUser {
+  id: string;
+  sessionVersion: number;
+}
+
 const base64url = (data: Buffer | string) => Buffer.from(data).toString("base64url");
 
-export function createAuth({ token, publicUrl, now = Date.now, log }: AuthConfig): Auth {
-  // Chave própria para as sessões: o cookie nunca vale como outra coisa assinada com o token.
-  const key = createHmac("sha256", token).update("zerometro/session/v1").digest();
+export function createAuth({
+  token,
+  sessionSecret,
+  publicUrl,
+  now = Date.now,
+  log,
+}: AuthConfig): Auth {
+  const secret = sessionSecret || token;
+  // Chave própria para as sessões: o cookie nunca vale como outra coisa assinada com o segredo.
+  const key = createHmac("sha256", secret).update("zerometro/session/v2").digest();
   const mac = (data: string) => base64url(createHmac("sha256", key).update(data).digest());
   const seconds = () => Math.floor(now() / 1000);
 
-  const issueSession = () => {
+  const issueSession = (who: SessionUser) => {
     const iat = seconds();
-    const payload = base64url(JSON.stringify({ iat, exp: iat + SESSION_TTL_S }));
+    const session: SessionPayload = {
+      uid: who.id,
+      ver: who.sessionVersion,
+      iat,
+      exp: iat + SESSION_TTL_S,
+    };
+    const payload = base64url(JSON.stringify(session));
     return `${payload}.${mac(payload)}`;
   };
 
   const checkSession = (value: string | undefined) => {
-    const invalid = { valid: false, renew: false };
+    const invalid = undefined;
     const [payload, signature, ...rest] = (value ?? "").split(".");
     if (!payload || !signature || rest.length > 0) return invalid;
     if (!sameSecret(signature, mac(payload))) return invalid;
@@ -84,7 +113,12 @@ export function createAuth({ token, publicUrl, now = Date.now, log }: AuthConfig
     }
     const at = seconds();
     if (typeof session.exp !== "number" || session.exp <= at) return invalid;
-    return { valid: true, renew: at - session.iat >= RENEW_AFTER_S };
+    if (typeof session.uid !== "string" || typeof session.ver !== "number") return invalid;
+    return {
+      id: session.uid,
+      sessionVersion: session.ver,
+      renew: at - session.iat >= RENEW_AFTER_S,
+    };
   };
 
   return {

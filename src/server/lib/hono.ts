@@ -1,10 +1,11 @@
 import { type Context, Hono } from "hono";
 import type { AppDeps } from "../app";
 import { createContext, type ServiceContext } from "../services/context";
+import type { AuthUser } from "../services/users";
 
-/** Variáveis por requisição: o middleware de auth garante `userId` nas rotas protegidas. */
+/** Variáveis por requisição: o middleware de auth garante `userId` e `user` nas rotas protegidas. */
 export interface AppEnv {
-  Variables: { userId: string };
+  Variables: { userId: string; user: AuthUser };
 }
 
 export const createRouter = () => new Hono<AppEnv>();

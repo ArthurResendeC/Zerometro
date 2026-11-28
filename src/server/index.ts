@@ -37,7 +37,11 @@ try {
 // (não no build nem no pre-deploy). Uma réplica só, então não há corrida.
 runMigrations(db, MIGRATIONS_FOLDER, env.TZ);
 
-const auth = createAuth({ token: env.ZEROMETRO_TOKEN!, publicUrl });
+const auth = createAuth({
+  token: env.ZEROMETRO_TOKEN!,
+  sessionSecret: env.SESSION_SECRET,
+  publicUrl,
+});
 
 const igdb = createIgdbFromEnv(db, env);
 const clock = { now: () => new Date(), timeZone: env.TZ };

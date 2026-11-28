@@ -11,8 +11,13 @@ const envSchema = z.object({
   STEAM_WEB_API_KEY: z.string().trim().optional(),
   /** Chave da API do RetroAchievements. Sem ela, o RA fica desligado. */
   RA_API_KEY: z.string().trim().optional(),
-  /** Token de acesso da instância (site, API e MCP). Obrigatório para o servidor subir. */
+  /** Token do admin da instância (primeiro acesso, scripts e MCP). Obrigatório para o servidor subir. */
   ZEROMETRO_TOKEN: z.string().trim().optional(),
+  /**
+   * Chave dos cookies de sessão e do OAuth do MCP (gere com: mise run token). Sem ela, sai do
+   * ZEROMETRO_TOKEN; com ela, trocar o token não desloga os perfis.
+   */
+  SESSION_SECRET: z.string().trim().optional(),
   /** URL pública do site (padrão: domínio da Railway ou http://localhost:PORT). */
   PUBLIC_URL: z.url().optional(),
   /** Injetado pela Railway quando o serviço tem domínio público (sem https://). */
