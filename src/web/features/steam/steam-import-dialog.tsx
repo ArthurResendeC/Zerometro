@@ -49,10 +49,15 @@ export function SteamImportDialog({
         if (!busy) onOpenChange(next);
       }}
     >
-      <DialogContent className="sm:max-w-[720px]" showClose={!busy}>
+      {/* Coluna flex: cabeçalho, filtros e rodapé fixos; só a lista rola. */}
+      <DialogContent
+        className="flex max-h-[min(calc(100dvh-2rem),52rem)] flex-col sm:max-w-[720px]"
+        showClose={!busy}
+      >
         <DialogHeader>
           <DialogTitle>Importar da Steam</DialogTitle>
-          <DialogDescription>
+          {/* No celular a lista precisa do espaço; a descrição fica só para leitores de tela. */}
+          <DialogDescription className="max-sm:sr-only">
             Os jogos da sua conta que ainda não estão aqui. Eles entram com o tempo da Steam, e as
             conquistas vêm junto.
           </DialogDescription>
@@ -185,7 +190,7 @@ function ImportForm({
     });
 
   return (
-    <div className="grid min-w-0 gap-4">
+    <div className="flex min-h-0 min-w-0 flex-col gap-4">
       <p className="text-sm">
         {candidates.length === 0
           ? "Todos os jogos da sua conta que o IGDB conhece já estão na biblioteca."
@@ -230,7 +235,7 @@ function ImportForm({
           </div>
 
           <ul
-            className="max-h-[45dvh] min-w-0 divide-y-2 divide-border overflow-y-auto pr-1"
+            className="min-h-20 min-w-0 flex-1 divide-y-2 divide-border overflow-y-auto pr-1"
             aria-label="Jogos da Steam"
           >
             {visible.map((c) => (
@@ -256,7 +261,7 @@ function ImportForm({
             <Button
               size="sm"
               variant="ghost"
-              className="justify-self-start"
+              className="self-start"
               onClick={() => setShowIgnored((v) => !v)}
             >
               {showIgnored
@@ -277,7 +282,7 @@ function ImportForm({
             Costumam ser ferramentas, trilhas sonoras ou testes. Se algum for jogo, adicione pela
             busca.
           </p>
-          <ul className="mt-2 space-y-1">
+          <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto pr-1">
             {unmatched.map((u) => (
               <li key={u.appId} className="flex justify-between gap-2">
                 <span className="truncate">{u.name ?? `App ${u.appId}`}</span>
@@ -331,7 +336,9 @@ function CandidateRow({
 
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2">
-      <label className="flex min-w-0 flex-1 basis-60 cursor-pointer items-center gap-3">
+      {/* relative: o checkbox sr-only é absolute; sem isso ele se posiciona no diálogo e estica a
+          rolagem dele com espaço vazio. */}
+      <label className="relative flex min-w-0 flex-1 basis-60 cursor-pointer items-center gap-3">
         <input
           type="checkbox"
           checked={checked}
