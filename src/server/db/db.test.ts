@@ -486,3 +486,44 @@ describe("migration 0015 + dados: notas antigas viram avaliações", () => {
     expect(() => sql(`UPDATE library_entries SET rating = 10.5 WHERE game_id = 1`)).toThrow();
   });
 });
+
+describe("migration 0016: perfis por convite", () => {
+  test("o `owner` vira o admin com os dados de sempre", async () => {
+    const old = await migratedUntil(15);
+    const sql = (statement: string) => old.$client.run(statement);
+    sql(`INSERT INTO games (id, igdb_id, name) VALUES (1, 1, 'Hades')`);
+    sql(`INSERT INTO library_entries (user_id, game_id, status) VALUES ('owner', 1, 'playing')`);
+    sql(`INSERT INTO play_sessions (user_id, game_id, played_on, minutes) VALUES
+      ('owner', 1, '2026-11-01', 30)`);
+
+    runMigrations(old);
+
+    const all = (query: string) => old.$client.query(query).all();
+    expect(all("SELECT id, role, handle, password_hash, session_version FROM user")).toEqual([
+      { id: "owner", role: "admin", handle: "owner", password_hash: null, session_version: 0 },
+    ]);
+    expect(all("SELECT user_id FROM library_entries")).toEqual([{ user_id: "owner" }]);
+    expect(all("SELECT user_id, minutes FROM play_sessions")).toEqual([
+      { user_id: "owner", minutes: 30 },
+    ]);
+  });
+
+  test("@apelido único e convite de redefinição sempre com alvo", () => {
+    const sql = db.$client.run.bind(db.$client);
+    sql(`INSERT INTO user (id, name, email, handle) VALUES ('a', 'A', 'a@x', 'joao')`);
+    expect(() =>
+      sql(`INSERT INTO user (id, name, email, handle) VALUES ('b', 'B', 'b@x', 'joao')`),
+    ).toThrow();
+    sql(`INSERT INTO user (id, name, email) VALUES ('c', 'C', 'c@x'), ('d', 'D', 'd@x')`);
+    expect(() =>
+      sql(`INSERT INTO invites (kind, token_hash, created_by, expires_at)
+        VALUES ('reset', 'h1', 'owner', '2026-12-01')`),
+    ).toThrow();
+    expect(() =>
+      sql(`INSERT INTO invites (kind, token_hash, created_by, target_user_id, expires_at)
+        VALUES ('signup', 'h2', 'owner', 'a', '2026-12-01')`),
+    ).toThrow();
+    sql(`INSERT INTO invites (kind, token_hash, created_by, target_user_id, expires_at)
+      VALUES ('reset', 'h3', 'owner', 'a', '2026-12-01')`);
+  });
+});

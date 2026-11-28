@@ -19,6 +19,7 @@ import {
   sessionSources,
   ttbSources,
 } from "../../shared/domain";
+import { inviteKinds, userRoles } from "../../shared/auth";
 import { achievementSources, achievementUnlockOrigins } from "../../shared/achievements";
 import { progressGoals } from "../../shared/completions";
 import type { CriterionWeights } from "../../shared/rating-criteria";
@@ -38,25 +39,44 @@ const updatedAt = () =>
 const nowMs = sql`(cast(unixepoch('subsecond') * 1000 as integer))`;
 
 /**
- * O dono dos dados. Cada instância é de uma pessoa só (entra com o ZEROMETRO_TOKEN), então há
- * uma linha, `owner`; a tabela fica como alvo das FKs de `user_id` (ver OWNER_ID em auth.ts).
- * Os campos são os da época da Better Auth, que a migration 0007 aposentou.
+ * Quem usa a instância: o `owner` (admin, entra também com o ZEROMETRO_TOKEN) e os amigos que
+ * ele convidou. Cada um entra com o @apelido e a senha; os dados pessoais têm `user_id`.
+ * `email` e `image` são da época da Better Auth (o e-mail dos perfis é `<id>@zerometro.invalid`).
  */
-export const user = sqliteTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
-  image: text("image"),
-  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().default(nowMs),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
-    .notNull()
-    .default(nowMs)
-    .$onUpdate(() => new Date()),
-});
+export const user = sqliteTable(
+  "user",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    email: text("email").notNull().unique(),
+    emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
+    image: text("image"),
+    role: text("role", { enum: userRoles }).notNull().default("member"),
+    /** @apelido do login e do perfil público (minúsculo, único). */
+    handle: text("handle"),
+    /** Avatar pixel art pré-definido (id em `src/shared/avatars.ts`). */
+    avatar: text("avatar"),
+    /** Hash da senha (Bun.password, argon2id); null = ainda sem senha (o owner entra pelo token). */
+    passwordHash: text("password_hash"),
+    /** Vai no cookie: incrementar desloga todos os aparelhos (trocar a senha, "sair de todos"). */
+    sessionVersion: integer("session_version").notNull().default(0),
+    /** Suspenso pelo admin (ISO UTC): não entra, não aparece no grupo; os dados ficam. */
+    disabledAt: text("disabled_at"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().default(nowMs),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(nowMs)
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [
+    uniqueIndex("user_handle_idx")
+      .on(t.handle)
+      .where(sql`${t.handle} is not null`),
+  ],
+);
 
-const userId = () =>
-  text("user_id")
+const userId = (column = "user_id") =>
+  text(column)
     .notNull()
     .references(() => user.id, { onDelete: "cascade" });
 
@@ -464,6 +484,32 @@ export const kv = sqliteTable("kv", {
   updatedAt: updatedAt(),
 });
 
+/**
+ * Links de uso único que o admin gera: `signup` cria um perfil novo; `reset` redefine a senha de
+ * `target_user_id`. Só o hash do código fica no banco.
+ */
+export const invites = sqliteTable(
+  "invites",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    kind: text("kind", { enum: inviteKinds }).notNull().default("signup"),
+    /** sha256 (hex) do código do link. */
+    tokenHash: text("token_hash").notNull().unique(),
+    createdBy: userId("created_by"),
+    targetUserId: text("target_user_id").references(() => user.id, { onDelete: "cascade" }),
+    /** Para quem é ("pro João"), só para o admin se achar na lista. */
+    note: text("note"),
+    expiresAt: text("expires_at").notNull(),
+    usedBy: text("used_by").references(() => user.id, { onDelete: "set null" }),
+    usedAt: text("used_at"),
+    revokedAt: text("revoked_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("invites_reset_has_target", sql`(${t.kind} = 'reset') = (${t.targetUserId} is not null)`),
+  ],
+);
+
 export type Game = typeof games.$inferSelect;
 export type NewGame = typeof games.$inferInsert;
 export type LibraryEntry = typeof libraryEntries.$inferSelect;
@@ -475,4 +521,6 @@ export type Objective = typeof objectives.$inferSelect;
 export type Rating = typeof ratings.$inferSelect;
 export type AchievementSet = typeof achievementSets.$inferSelect;
 export type Achievement = typeof achievements.$inferSelect;
+export type User = typeof user.$inferSelect;
+export type Invite = typeof invites.$inferSelect;
 export type ActivityLogEntry = typeof activityLog.$inferSelect;
