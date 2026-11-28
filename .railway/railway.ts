@@ -103,6 +103,8 @@ export default defineRailway(() => {
       // Segredos: nunca neste arquivo (vai para o git). Defina uma vez com
       // `railway variable set NOME=valor`; preserve() mantém o valor que já está lá.
       ZEROMETRO_TOKEN: preserve(),
+      // Opcional: sem ela, os logins são assinados com o ZEROMETRO_TOKEN.
+      SESSION_SECRET: preserve(),
       IGDB_CLIENT_ID: preserve(),
       IGDB_CLIENT_SECRET: preserve(),
       // Conquistas (opcionais): sem a chave, a fonte fica desligada.

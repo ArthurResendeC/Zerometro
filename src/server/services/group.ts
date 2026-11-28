@@ -248,8 +248,10 @@ export function getMemberProfile(ctx: ServiceContext, handle: string): GroupMemb
     .from(completions)
     .where(eq(completions.userId, member.userId))
     .orderBy(desc(completions.completedOn), desc(completions.id))
-    .limit(PROFILE_GAMES)
     .all()
+    // Um jogo por vez na lista, com a conclusão mais recente (o 100% depois da história).
+    .filter((row, i, rows) => rows.findIndex((r) => r.gameId === row.gameId) === i)
+    .slice(0, PROFILE_GAMES)
     .flatMap((row) => {
       const item = byGameId.get(row.gameId);
       return item ? [{ ...memberGame(item), completedOn: row.completedOn, type: row.type }] : [];

@@ -69,7 +69,7 @@ run = """
 docker rm -f zerometro-local >/dev/null 2>&1 || true
 docker run --rm --name zerometro-local -p 3000:8080 -e PORT=8080 \
   -v zerometro-data-local:/data -e PUBLIC_URL=http://localhost:3000 \
-  -e ZEROMETRO_TOKEN -e IGDB_CLIENT_ID -e IGDB_CLIENT_SECRET -e STEAM_WEB_API_KEY -e RA_API_KEY \
+  -e ZEROMETRO_TOKEN -e SESSION_SECRET -e IGDB_CLIENT_ID -e IGDB_CLIENT_SECRET -e STEAM_WEB_API_KEY -e RA_API_KEY \
   zerometro:local
 """
 

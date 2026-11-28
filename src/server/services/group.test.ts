@@ -166,15 +166,22 @@ describe("perfil de alguém do grupo", () => {
   test("em andamento, conclusões recentes e totais", async () => {
     const undertale = (await addToLibrary(ana, igdb, { igdbId: 12517, status: "backlog" })).gameId;
     markCompleted(ana, undertale, { type: "main", date: "2026-11-01" });
+    markCompleted(ana, undertale, { type: "full", date: "2026-11-10" });
     logSession(ana, { gameId, minutes: 45 });
 
     const profile = getMemberProfile(bia, "ana");
     expect(profile.member).toMatchObject({ handle: "ana", isMe: false });
     expect(profile.playing.map((g) => g.name)).toEqual(["Persona 5 Royal"]);
+    // Um item por jogo, com a conclusão mais recente.
     expect(profile.recentlyFinished).toMatchObject([
-      { name: "Undertale", type: "main", completedOn: "2026-11-01" },
+      { name: "Undertale", type: "full", completedOn: "2026-11-10" },
     ]);
-    expect(profile.totals).toMatchObject({ minutes: 45, finished: 1, games: 2 });
+    expect(profile.totals).toMatchObject({
+      minutes: 45,
+      finished: 1,
+      fullCompletions: 1,
+      games: 2,
+    });
   });
 
   test("quem não está no grupo: 404", () => {

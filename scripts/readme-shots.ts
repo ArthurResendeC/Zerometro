@@ -139,15 +139,38 @@ const shots: Shot[] = [
       single(
         await page.shoot("/entrar", DESKTOP, {
           loggedOut: true,
-          // Pontinhos no campo, sem o token de verdade.
-          prepare: () => page.fill("#token", ["x".repeat(40)]),
+          // Um amigo do demo; a senha vira pontinhos.
+          prepare: () => page.fill("#handle, #password", ["bia", "x".repeat(10)]),
+        }),
+      ),
+  },
+  {
+    name: "grupo",
+    capture: async (page) =>
+      single(await page.shoot("/grupo", { width: 1280, height: 800 }, { fullPage: true })),
+  },
+  {
+    name: "amigo",
+    capture: async (page) =>
+      single(
+        await page.shoot("/amigo/bia", DESKTOP, {
+          cropBelow: `[...document.querySelectorAll("h2")].find(h => h.textContent.trim() === "Zerou por último")?.closest("section")`,
         }),
       ),
   },
   {
     name: "ajustes",
     capture: async (page) =>
-      single(await page.shoot("/ajustes", { width: 720, height: 800 }, { fullPage: true })),
+      single(
+        await page.shoot(
+          "/ajustes",
+          { width: 720, height: 800 },
+          {
+            // Até o "Aparecer no grupo": sua conta, as pessoas (admin) e o grupo.
+            cropBelow: `[...document.querySelectorAll("label")].find(l => l.textContent.includes("Aparecer no grupo"))?.closest("[data-slot=card]")`,
+          },
+        ),
+      ),
   },
 ];
 

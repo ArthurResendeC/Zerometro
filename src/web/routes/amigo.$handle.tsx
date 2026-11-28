@@ -110,7 +110,7 @@ function FriendPage() {
               [
                 completionTypeLabels[g.type],
                 formatDate(g.completedOn),
-                g.rating !== null && `★ ${g.rating.toLocaleString("pt-BR")}`,
+                g.rating !== null && `★\u00a0${g.rating.toLocaleString("pt-BR")}`,
               ]
                 .filter(Boolean)
                 .join(" · ")
@@ -150,7 +150,7 @@ function GameGrid<T extends GroupMemberGame>({
           >
             <GameCover name={game.name} imageId={game.coverImageId} />
             <p className="truncate text-sm">{game.name}</p>
-            <p className="truncate text-xs text-muted-foreground">{detail(game)}</p>
+            <p className="line-clamp-2 text-xs text-muted-foreground">{detail(game)}</p>
           </Link>
         </li>
       ))}

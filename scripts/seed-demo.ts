@@ -3,7 +3,7 @@
 // nunca apagar dados de verdade) com jogos reais do IGDB, ~10 meses de sessões, uma ofensiva
 // em andamento e um timer rodando. As datas são relativas a hoje, então os gráficos sempre
 // parecem atuais. Os dados ficam no dono da instância (`owner`, criado pelas migrations): é só
-// entrar com o ZEROMETRO_TOKEN.
+// entrar com o ZEROMETRO_TOKEN. Três amigos (seed-demo-friends.ts) enchem o ranking do grupo.
 import { rmSync } from "node:fs";
 import { basename } from "node:path";
 import { OWNER_ID } from "../src/server/auth";
@@ -41,6 +41,7 @@ import { saveFeedSnapshot } from "../src/server/services/feeds";
 import { saveGamePage } from "../src/server/services/game-pages";
 import type { IgdbGamePage } from "../src/shared/game-page";
 import { GAMES, type GameKey, type GameRow } from "./demo-library";
+import { DEMO_PASSWORD, seedDemoFriends } from "./seed-demo-friends";
 import { seedDemoMeta } from "./seed-demo-meta";
 // Listas da home (IGDB, nov/2026) congeladas: o demo roda sem credenciais do IGDB.
 import demoFeeds from "./demo-feeds.json";
@@ -544,6 +545,8 @@ for (const { game, set } of demoAchievements as { game: GameKey; set: FetchedAch
   }
 }
 
+const friends = seedDemoFriends(db, { today, now, tz: TZ });
+
 // Valem 24h; depois disso, com credenciais do IGDB, o servidor troca pelas listas de hoje.
 for (const key of feedKeys) {
   saveFeedSnapshot(db, key, (demoFeeds as Record<FeedKey, FeedGame[]>)[key], now);
@@ -559,3 +562,4 @@ console.log(
     `${sessions.length} sessões (~${totalHours}h), ofensiva de ${STREAK_DAYS} dias e timer rodando.`,
 );
 console.log("Entre com o ZEROMETRO_TOKEN do .env para ver os dados.");
+console.log(`Amigos no grupo: ${friends.join(", ")} (senha: ${DEMO_PASSWORD}).`);

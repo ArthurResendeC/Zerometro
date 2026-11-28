@@ -12,7 +12,7 @@
 
 Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa de quanto falta para zerar cada jogo. Também dá para consultar tudo por IA através de um servidor **MCP** ("comecei a jogar", "joguei 2h ontem", "zerei").
 
-> 🧪 **Self-hosted: cada pessoa hospeda o seu.** Uma instância do Zerômetro é de uma pessoa só e fica protegida por um token de acesso (`ZEROMETRO_TOKEN`, no `.env`). Não existe um serviço público: suba a sua (veja [Rodando localmente](#-rodando-localmente) e [Deploy](#-deploy-railway)). Todas as instâncias buildam deste repositório, então cada push na `main` chega a todo mundo.
+> 👥 **Uma instância para você e seus amigos.** Quem sobe a instância é o admin: entra com o token de acesso (`ZEROMETRO_TOKEN`, no `.env`) e convida os amigos por link. Cada um cria o próprio perfil (nome, @apelido, avatar e senha) e tem a própria biblioteca, sessões e conquistas, e todo mundo se compara no [ranking do grupo](#-telas). Não existe um serviço público: suba a sua (veja [Rodando localmente](#-rodando-localmente) e [Deploy](#-deploy-railway)) e chame a turma. Todas as instâncias buildam deste repositório, então cada push na `main` chega a todas.
 
 > 🚧 **Em desenvolvimento.** A seção abaixo separa o que já funciona do que ainda falta.
 
@@ -36,6 +36,18 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
   <img src="docs/readme/perfil.png" alt="Perfil de gamer: desenvolvedoras e publishers favoritas, séries e franquias mais jogadas com as capas, gêneros, temas, perspectiva, modos de jogo e plataformas, ordenados por horas jogadas, zerados ou nota média" width="100%">
   <br>
   <sub><b>Perfil de gamer</b> · o seu gosto calculado pela biblioteca: devs e publishers favoritas, séries, gêneros, temas e plataformas, por horas, zerados ou nota média</sub>
+</p>
+
+<p align="center">
+  <img src="docs/readme/grupo.png" alt="Ranking do grupo no mês, por horas: os líderes de cada métrica (mais jogou, mais zerou, mais conquistas, maior ofensiva) e a lista com medalhas, avatar pixel art, dias jogados, zerados, conquistas, ofensiva, barra de horas, o jogo mais jogado ou o que cada um está jogando agora e a conquista mais rara" width="100%">
+  <br>
+  <sub><b>Grupo</b> · o ranking entre os amigos da instância por horas, zerados, conquistas ou ofensiva, na semana, no mês, no ano ou desde sempre, com quem está jogando agora</sub>
+</p>
+
+<p align="center">
+  <img src="docs/readme/amigo.png" alt="Perfil de uma amiga do grupo: avatar, totais (jogado, zerados, 100%, conquistas, ofensiva e jogos na biblioteca), o que está jogando e o que zerou por último, com o tipo de conclusão, a data e a nota" width="100%">
+  <br>
+  <sub><b>Perfil de um amigo</b> · o que está jogando, o que zerou por último (com a nota), os totais e, mais abaixo, gêneros, séries e desenvolvedoras favoritas. Preço, notas das sessões e "onde parei" ficam só com você</sub>
 </p>
 
 <p align="center">
@@ -74,11 +86,11 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
       <br><sub><b>No celular</b> · o mesmo app, pensado para registrar do sofá</sub>
     </td>
     <td width="50%" valign="top">
-      <img src="docs/readme/entrar.png" alt="Tela de login com o token de acesso">
-      <br><sub><b>Login</b> · token de acesso da instância, vale 30 dias por aparelho</sub>
+      <img src="docs/readme/entrar.png" alt="Tela de login com @apelido e senha e o link para o admin entrar com o token">
+      <br><sub><b>Login</b> · @apelido e senha (o admin também entra com o token da instância); vale 30 dias por aparelho</sub>
       <br><br>
-      <img src="docs/readme/ajustes.png" alt="Ajustes: mínimo diário da ofensiva, aviso de sessão longa, efeitos sonoros e a conta Steam conectada (Sincronizar tudo, Desconectar e a última sincronização automática)" width="60%">
-      <br><sub><b>Ajustes</b> · mínimo da ofensiva, aviso de sessão longa, sons 8 bits e a sua Steam, que sincroniza sozinha ao abrir o app</sub>
+      <img src="docs/readme/ajustes.png" alt="Ajustes: sua conta (nome, avatar pixel art, senha e sair dos aparelhos), Pessoas (criar convite, os perfis com senha nova e suspender) e o interruptor Aparecer no grupo" width="60%">
+      <br><sub><b>Ajustes</b> · sua conta, as pessoas da instância (convites, só para o admin) e aparecer ou não no grupo; mais abaixo, ofensiva, sessão longa, sons 8 bits e a sua Steam</sub>
     </td>
   </tr>
 </table>
@@ -91,7 +103,8 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 
 ### Já funciona
 
-- **Acesso por token:** cada instância é de uma pessoa; entra quem tem o `ZEROMETRO_TOKEN`, e o login vale 30 dias por aparelho (renovado com o uso)
+- **Perfis por convite:** o admin (quem sobe a instância e entra com o `ZEROMETRO_TOKEN`) cria links de convite, de uso único e válidos por 7 dias, e cada amigo escolhe nome, @apelido, avatar pixel art e senha. Cada perfil tem os próprios dados. O login vale 30 dias por aparelho (renovado com o uso); trocar a senha ou "sair dos outros aparelhos" desconecta o resto, inclusive os conectores de IA, e o admin pode suspender um perfil ou gerar um link de senha nova
+- **Grupo:** ranking entre os amigos por horas, zerados (a primeira vez; replays não contam), conquistas e ofensiva, na semana, no mês, no ano ou desde sempre, com o que cada um está jogando agora e a conquista mais rara do período. O perfil de cada amigo mostra o que está jogando, o que zerou por último (com a nota) e os gêneros, séries e desenvolvedoras favoritos, e a página do jogo mostra quem do grupo também tem o jogo e como está com ele. Preço, notas das sessões e "onde parei" nunca são compartilhados, e quem quiser sai do grupo nos ajustes
 - **Biblioteca por status:** jogando, sem fim (multiplayer, live service e outros jogos que não se zeram), zerados, próximos, lista de desejos, pausados e abandonados, ordenada pela última sessão, por quando começou a jogar ou pela sua nota (com o valor num selo no card)
 - **Dados do IGDB:** busca de jogos com capa, plataformas, gêneros, ano e tempo para zerar
 - **Registro de sessões:** manual ("joguei 2h ontem") ou pelo **timer** ("Comecei a jogar" / "Parei"), que roda no servidor e não se perde ao fechar a aba
@@ -117,7 +130,7 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 - **Instalável como app** (PWA) no computador (Chrome, Edge, Safari) e no celular, com janela própria, atalhos no ícone e um aviso com o passo a passo de cada navegador
 - **Funciona sem internet:** o app abre offline com os dados já vistos neste aparelho (só leitura), e registrar sessão, "Comecei", "Parei" e trocar de jogo vão para uma fila no aparelho com o horário real. Quando a conexão volta, a fila é enviada em ordem e sem duplicar (mesmo com várias abas); o cabeçalho mostra o que está pendente e, se o servidor recusar algo (ex.: o timer já tinha começado em outro aparelho), o motivo, com a opção de descartar
 - **Efeitos sonoros 8 bits** (desligados por padrão): ao começar e parar sessões, zerar jogos e bater marcos da ofensiva, com volume nos ajustes
-- **Servidor MCP** em `/mcp` com OAuth próprio, aprovado com o token (conector do claude.ai, Claude Code), com tools de leitura e de escrita (timer, sessões, adicionar jogo, status, conclusões e objetivos)
+- **Servidor MCP** em `/mcp` com OAuth próprio (conector do claude.ai, Claude Code): cada amigo aprova com o próprio @apelido e senha e a IA só vê os dados dele, com tools de leitura e de escrita (timer, sessões, adicionar jogo, status, conclusões e objetivos) e do grupo ("quem jogou mais este mês?")
 - **Deploy na Railway** como código (`.railway/railway.ts`) + imagem Docker
 
 ### Ainda falta
@@ -135,6 +148,7 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 - [x] ~Recap como imagem para compartilhar (stories 9:16 e 16:9)~
 - [x] ~Imagem de cada slide do recap~
 - [ ] Retrospectiva do ano
+- [x] ~Uma instância para o grupo de amigos: perfis por convite e ranking~
 - [x] ~Sincronização de tempo jogado da Steam~
 - [x] ~Conquistas da Steam e do RetroAchievements (lista da fonte, marcadas à mão)~
 - [x] ~Sincronizar conquistas e horas com o perfil da Steam~
@@ -156,7 +170,7 @@ Tracker pessoal de jogos: backlog, tempo jogado por dia, ofensiva e estimativa d
 | UI                              | [shadcn/ui](https://ui.shadcn.com) + Tailwind CSS                                                                  |
 | Estado de UI                    | Zustand                                                                                                            |
 | Validação                       | Zod (compartilhado entre API, frontend e MCP)                                                                      |
-| Acesso                          | Token da instância + cookie assinado; OAuth 2.1 próprio para o MCP                                                 |
+| Acesso                          | Perfis por convite com senha (argon2id) + cookie assinado; token do admin; OAuth 2.1 próprio para o MCP            |
 | IA                              | [Model Context Protocol](https://modelcontextprotocol.io) (Streamable HTTP)                                        |
 | Dados de jogos                  | [IGDB API](https://api-docs.igdb.com)                                                                              |
 | Conquistas                      | [Steam Web API](https://steamcommunity.com/dev) e [RetroAchievements API](https://api-docs.retroachievements.org)  |
@@ -170,7 +184,7 @@ src/
   server/
     routes/    # REST (/api/*) consumido pelo frontend
     mcp/       # servidor MCP (/mcp) e as tools
-    oauth/     # servidor OAuth do MCP (registro, autorização com o token, tokens)
+    oauth/     # servidor OAuth do MCP (registro, autorização com @apelido e senha, tokens)
     services/  # regras de negócio, usadas por REST e MCP
     db/        # schema e migrations
   web/         # SPA React
@@ -194,10 +208,12 @@ cd zerometro
 mise trust && mise install   # Bun e Node nas versões do mise.toml
 mise run install             # dependências
 cp .env.example .env         # preencha as credenciais do IGDB
-mise run token >> .env       # gera o seu ZEROMETRO_TOKEN (é com ele que você entra)
+mise run token >> .env       # gera o ZEROMETRO_TOKEN (com ele você entra como admin)
 mise run db:migrate
 mise run dev                 # http://localhost:3000
 ```
+
+Depois de entrar com o token, defina a sua senha em **Ajustes → Sua conta** e convide os amigos em **Pessoas**. Para ver o grupo com dados, `mise run demo` cria três amigos de exemplo (`@bia`, `@caio` e `@duda`, senha `demo-senha`).
 
 Outras tarefas (`mise tasks` lista todas):
 
@@ -212,7 +228,7 @@ Outras tarefas (`mise tasks` lista todas):
 | `mise run mcp:inspect`                 | abre o MCP Inspector                                                             |
 | `mise run igdb:smoke [termo]`          | testa busca e tempo para zerar no IGDB real                                      |
 | `mise run achievements:smoke [perfil]` | testa as conquistas na Steam e no RA (e a sincronização, com um perfil da Steam) |
-| `mise run demo`                        | sobe com dados de exemplo em `data/demo.db`                                      |
+| `mise run demo`                        | sobe com dados de exemplo em `data/demo.db` (com três amigos no grupo)           |
 | `mise run demo:capture`                | congela as páginas de jogo do demo (IGDB real)                                   |
 | `mise run demo:capture-achievements`   | congela as conquistas do demo (Steam real)                                       |
 | `mise run readme:shots [telas]`        | refaz os prints do README num demo novo (precisa de um Chromium headless)        |
@@ -222,19 +238,20 @@ Outras tarefas (`mise tasks` lista todas):
 
 Os padrões ficam no `[env]` do `mise.toml`; valores locais e segredos vão no `.env` (carregado pelo mise, não versionado).
 
-| Variável                                | Descrição                                                                                                                                       |
-| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET` | Credenciais do app na Twitch                                                                                                                    |
-| `STEAM_WEB_API_KEY`                     | Chave da Steam Web API ([pedir aqui](https://steamcommunity.com/dev/apikey)). Opcional: sem ela, a Steam some das conquistas e da sincronização |
-| `RA_API_KEY`                            | Chave da API do RetroAchievements (no site: Settings → Keys). Opcional, idem                                                                    |
-| `ZEROMETRO_TOKEN`                       | Token de acesso da instância (pelo menos 32 caracteres; `mise run token`). Obrigatório                                                          |
-| `PUBLIC_URL`                            | URL pública do site (padrão: domínio da Railway ou `http://localhost:$PORT`)                                                                    |
-| `DATABASE_PATH`                         | Caminho do arquivo SQLite (padrão: `data/zerometro.db` na raiz do projeto)                                                                      |
-| `PORT`                                  | Porta do servidor (padrão: `3000`)                                                                                                              |
-| `TZ`                                    | Fuso usado nas estatísticas (padrão: `America/Sao_Paulo`)                                                                                       |
-| `ZEROMETRO_DOMAIN`                      | Só no deploy: domínio próprio da sua instância na Railway (ver [Deploy](#-deploy-railway))                                                      |
-| `ZEROMETRO_VOLUME_REGION`               | Só no deploy: região do volume do SQLite (padrão: `us-west2`)                                                                                   |
-| `ZEROMETRO_BACKUP`                      | Só no deploy: onde fica o backup do banco (ver [Backup](#backup-do-banco))                                                                      |
+| Variável                                | Descrição                                                                                                                                                      |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET` | Credenciais do app na Twitch                                                                                                                                   |
+| `STEAM_WEB_API_KEY`                     | Chave da Steam Web API ([pedir aqui](https://steamcommunity.com/dev/apikey)). Opcional: sem ela, a Steam some das conquistas e da sincronização                |
+| `RA_API_KEY`                            | Chave da API do RetroAchievements (no site: Settings → Keys). Opcional, idem                                                                                   |
+| `ZEROMETRO_TOKEN`                       | Token do admin: entra como admin, aprova conectores MCP e vale como Bearer na API (pelo menos 32 caracteres; `mise run token`). Obrigatório                    |
+| `SESSION_SECRET`                        | Chave que assina os logins e os conectores MCP (ex.: `openssl rand -hex 32`). Opcional: sem ela, vem do `ZEROMETRO_TOKEN`, e trocar o token desloga todo mundo |
+| `PUBLIC_URL`                            | URL pública do site (padrão: domínio da Railway ou `http://localhost:$PORT`)                                                                                   |
+| `DATABASE_PATH`                         | Caminho do arquivo SQLite (padrão: `data/zerometro.db` na raiz do projeto)                                                                                     |
+| `PORT`                                  | Porta do servidor (padrão: `3000`)                                                                                                                             |
+| `TZ`                                    | Fuso usado nas estatísticas (padrão: `America/Sao_Paulo`)                                                                                                      |
+| `ZEROMETRO_DOMAIN`                      | Só no deploy: domínio próprio da sua instância na Railway (ver [Deploy](#-deploy-railway))                                                                     |
+| `ZEROMETRO_VOLUME_REGION`               | Só no deploy: região do volume do SQLite (padrão: `us-west2`)                                                                                                  |
+| `ZEROMETRO_BACKUP`                      | Só no deploy: onde fica o backup do banco (ver [Backup](#backup-do-banco))                                                                                     |
 
 ---
 
@@ -242,12 +259,12 @@ Os padrões ficam no `[env]` do `mise.toml`; valores locais e segredos vão no `
 
 O Zerômetro expõe um servidor MCP em `/mcp` (Streamable HTTP), com dois jeitos de autenticar:
 
-- **OAuth 2.1** (para o claude.ai, que só conecta assim): o conector se registra sozinho, abre a página `/authorize` da sua instância e você aprova digitando o `ZEROMETRO_TOKEN`. O conector recebe tokens próprios (1h, renovados sozinhos por até 30 dias de inatividade); o seu token nunca sai do seu navegador.
-- **O próprio token como Bearer**, para clientes configurados à mão.
+- **OAuth 2.1** (para o claude.ai, que só conecta assim): o conector se registra sozinho, abre a página `/authorize` da instância e você aprova com o seu @apelido e senha (o admin também pode deixar o @apelido vazio e usar o `ZEROMETRO_TOKEN`). O conector recebe tokens próprios (1h, renovados sozinhos por até 30 dias de inatividade) e só enxerga os dados de quem aprovou; a senha nunca sai do navegador.
+- **O `ZEROMETRO_TOKEN` como Bearer** (só o admin), para clientes configurados à mão.
 
-**Por que o token aparece no OAuth:** o registro de conectores (`/register`) é aberto, como o protocolo exige, então qualquer pessoa que descubra a URL consegue iniciar uma conexão. É na página `/authorize` que a instância confere quem está aprovando, e numa instância self-hosted a única prova de que é o dono é o `ZEROMETRO_TOKEN`. Sem essa checagem, um estranho poderia conectar o próprio claude.ai à sua biblioteca.
+**Por que pedir a senha no OAuth:** o registro de conectores (`/register`) é aberto, como o protocolo exige, então qualquer pessoa que descubra a URL consegue iniciar uma conexão. É na página `/authorize` que a instância confere quem está aprovando e de qual perfil são os dados. Sem essa checagem, um estranho poderia conectar o próprio claude.ai à sua biblioteca.
 
-**Conectar no claude.ai:** Configurações → Conectores → Adicionar conector personalizado → URL `https://<seu-domínio>/mcp` → Conectar → digite o token. O site precisa estar acessível pela internet (o claude.ai conecta a partir dos servidores da Anthropic).
+**Conectar no claude.ai:** Configurações → Conectores → Adicionar conector personalizado → URL `https://<seu-domínio>/mcp` → Conectar → seu @apelido e senha. Cada amigo conecta o próprio claude.ai na mesma URL. O site precisa estar acessível pela internet (o claude.ai conecta a partir dos servidores da Anthropic).
 
 **Claude Code** (OAuth, abre o navegador para aprovar):
 
@@ -255,16 +272,16 @@ O Zerômetro expõe um servidor MCP em `/mcp` (Streamable HTTP), com dois jeitos
 claude mcp add --transport http zerometro https://<seu-domínio>/mcp
 ```
 
-Ou com o token direto, sem passar pelo navegador:
+Ou, para o admin, com o token direto, sem passar pelo navegador:
 
 ```bash
 claude mcp add --transport http zerometro https://<seu-domínio>/mcp \
   --header "Authorization: Bearer $ZEROMETRO_TOKEN"
 ```
 
-Por segurança, o OAuth só devolve a pessoa para o claude.ai e para endereços locais (`localhost`, usado pelo Claude Code e pelo MCP Inspector). Trocar o `ZEROMETRO_TOKEN` desconecta todos os conectores.
+Por segurança, o OAuth só devolve a pessoa para o claude.ai e para endereços locais (`localhost`, usado pelo Claude Code e pelo MCP Inspector). Trocar a senha ou "sair dos outros aparelhos" desconecta os conectores daquele perfil; sem `SESSION_SECRET`, trocar o `ZEROMETRO_TOKEN` desconecta os de todo mundo.
 
-**Tools disponíveis (leitura):** `search_igdb`, `get_feeds` (as listas da tela inicial: bem avaliados, em alta e próximos), `list_library` (com filtro de pós-jogo e ordenação por última sessão, início ou nota), `get_game` (com conclusões, objetivos e conquistas), `list_objectives`, `list_achievements` (secretas sem spoiler, a menos que peça), `get_stats`, `get_period_stats` (um ano ou os últimos 12 meses: gêneros, horários, recordes, zerados e comprei × zerei), `get_timeline` ("quando eu larguei o Persona?": os trechos jogados, as pausas e as conclusões de cada jogo), `get_profile` (o perfil de gamer: "qual minha publisher favorita?"), `get_rating_template` e `get_rating` (os critérios da avaliação guiada e a avaliação de um jogo), `suggest_next` ("tenho meia hora, o que eu jogo?", com sorteio opcional), `get_recap` (a semana ou o mês, e a imagem para compartilhar com `image: true`: a geral ou, com `slide`, a de um slide), `list_sessions`, `get_active_session`. O jogo pode ser passado pelo id ou pelo nome (sem diferenciar acentos); se o nome for ambíguo, a tool devolve as opções.
+**Tools disponíveis (leitura):** `search_igdb`, `get_feeds` (as listas da tela inicial: bem avaliados, em alta e próximos), `list_library` (com filtro de pós-jogo e ordenação por última sessão, início ou nota), `get_game` (com conclusões, objetivos e conquistas), `list_objectives`, `list_achievements` (secretas sem spoiler, a menos que peça), `get_stats`, `get_period_stats` (um ano ou os últimos 12 meses: gêneros, horários, recordes, zerados e comprei × zerei), `get_timeline` ("quando eu larguei o Persona?": os trechos jogados, as pausas e as conclusões de cada jogo), `get_profile` (o perfil de gamer: "qual minha publisher favorita?"), `get_rating_template` e `get_rating` (os critérios da avaliação guiada e a avaliação de um jogo), `suggest_next` ("tenho meia hora, o que eu jogo?", com sorteio opcional), `get_recap` (a semana ou o mês, e a imagem para compartilhar com `image: true`: a geral ou, com `slide`, a de um slide), `list_sessions`, `get_active_session`, e as do grupo: `get_group_leaderboard` ("quem jogou mais este mês?", "quem zerou mais este ano?") e `get_friend_profile` (o perfil de um amigo pelo @apelido, sem preços nem notas das sessões). O jogo pode ser passado pelo id ou pelo nome (sem diferenciar acentos); se o nome for ambíguo, a tool devolve as opções.
 
 **Tools de escrita:** `start_session` / `stop_session` (o mesmo timer do site, com a nota de onde parou), `set_session_note` ("anota que parei no Palácio 3"), `log_session` (sessão já jogada, ex.: "joguei 2h ontem"), `add_game` (pelo igdbId achado com `search_igdb`, opcionalmente com o tempo já jogado), `set_status`, `set_prior_playtime` (tempo jogado antes do Zerômetro, ex.: "já tenho 39h de Witcher 3"), `set_purchase` ("comprei o Hades na Steam por 47,49 ontem", "peguei no Game Pass"), `set_platform` ("estou jogando o Zelda emulado no PC"), `set_progress_goal` ("minha meta no Tarkov é 500h", "quero fazer o 100% do Hollow Knight"), `mark_completed` ("zerei o Ocarina mas vou continuar jogando", "platinei"), `add_objective` ("adiciona o objetivo 900 sementes Korok no BotW") `update_objective` ("peguei mais 10 sementes"), `link_achievement_set` (liga a lista da Steam pelo IGDB; no RA devolve as opções para escolher) `set_achievement` ("peguei a conquista Farewell do Celeste", pelo nome aproximado), `sync_steam` ("sincroniza minhas conquistas do Celeste com a Steam", ou todos os jogos), `import_steam_games` ("importa da Steam os jogos que joguei este ano", com os appIds de `list_steam_import`) e `set_playtime_source` ("usa o tempo da Steam no Hades") e `rate_game` ("avalia comigo o Expedition 33": a IA pergunta um critério por vez antes de salvar; "dá 8 pro Hades" vira a nota rápida). As que apagam (`remove_completion`, `delete_objective`) só executam com `confirm: true`; sem isso, mostram o que seria apagado. Tudo fica no histórico de atividade com actor `mcp`.
 
@@ -292,7 +309,7 @@ Para inspecionar localmente: `mise run mcp:inspect` e aponte para `http://localh
 
 ## 🚀 Deploy (Railway)
 
-Cada pessoa sobe **a sua** instância, no próprio projeto da Railway e com os próprios segredos, mas todas buildam do mesmo repositório: um push na `main` daqui chega a todo mundo. A infraestrutura está em [`.railway/railway.ts`](.railway/railway.ts) ([IaC da Railway](https://docs.railway.com/infrastructure-as-code)): um serviço `web` buildado pelo [`Dockerfile`](Dockerfile) a partir da `main` no GitHub, com um volume em `/data` para o SQLite (uma réplica só). As migrations rodam no boot do servidor, porque o volume não fica montado no build nem no pre-deploy.
+O admin sobe **uma** instância para o grupo, no próprio projeto da Railway e com os próprios segredos, e convida os amigos. Outras turmas podem subir as suas: todas buildam do mesmo repositório, então um push na `main` daqui chega a todas. A infraestrutura está em [`.railway/railway.ts`](.railway/railway.ts) ([IaC da Railway](https://docs.railway.com/infrastructure-as-code)): um serviço `web` buildado pelo [`Dockerfile`](Dockerfile) a partir da `main` no GitHub, com um volume em `/data` para o SQLite (uma réplica só). As migrations rodam no boot do servidor, porque o volume não fica montado no build nem no pre-deploy.
 
 O que muda de uma instância para outra **não fica no código**: o `railway.ts` lê do ambiente de quem roda o plan/apply (o mise carrega o seu `.env`):
 
@@ -323,8 +340,10 @@ mise run deploy:plan               # confere o que vai ser criado
 mise run deploy:apply              # cria o serviço, o volume, o bucket do backup e o domínio próprio
 
 # Segredos (uma vez; o railway.ts usa preserve() e nunca guarda valores).
-# O token de produção é o que você vai digitar para entrar: guarde num gerenciador de senhas.
+# O token de produção é o que você vai digitar para entrar como admin: guarde num gerenciador de senhas.
 railway variable set --service web "$(mise run -q token)" --skip-deploys
+# Chave dos logins: com ela, trocar o token não desloga os amigos.
+railway variable set --service web SESSION_SECRET="$(openssl rand -hex 32)" --skip-deploys
 railway variable set --service web IGDB_CLIENT_ID=... IGDB_CLIENT_SECRET=... --skip-deploys
 # (opcional) conquistas: uma ou as duas
 railway variable set --service web STEAM_WEB_API_KEY=... RA_API_KEY=... --skip-deploys
@@ -333,11 +352,13 @@ railway variable set --service web STEAM_WEB_API_KEY=... RA_API_KEY=... --skip-d
 railway domain --service web
 ```
 
-Com domínio próprio, crie no seu DNS o registro que a Railway mostra em _Settings → Networking_ do serviço. O deploy que o `apply` dispara falha até os segredos existirem (sem `ZEROMETRO_TOKEN` o servidor nem sobe, e não mexe no banco); depois deles, `railway redeploy --service web`. Daí em diante, cada push na `main` faz um deploy novo.
+Com domínio próprio, crie no seu DNS o registro que a Railway mostra em _Settings → Networking_ do serviço. O deploy que o `apply` dispara falha até os segredos existirem (sem `ZEROMETRO_TOKEN` o servidor nem sobe, e não mexe no banco); depois deles, `railway redeploy --service web`. Daí em diante, cada push na `main` faz um deploy novo. Entre com o token, defina a sua senha em **Ajustes → Sua conta** e convide os amigos em **Pessoas**.
 
-**Ver ou trocar o token:** `railway variable list --service web` mostra o atual. Para trocar (ex.: vazou), rode `railway variable set --service web "$(mise run -q token)"`: o deploy novo desloga todos os aparelhos e desconecta todos os conectores MCP, e você entra de novo com o token novo.
+**Ver ou trocar o token:** `railway variable list --service web` mostra o atual. Para trocar (ex.: vazou), rode `railway variable set --service web "$(mise run -q token)"`. Com `SESSION_SECRET`, ninguém é deslogado; sem ela, o deploy novo desloga todos os aparelhos e desconecta todos os conectores MCP de todos os perfis. Trocar a `SESSION_SECRET` desloga todo mundo.
 
-Mudanças de infraestrutura: edite `.railway/railway.ts`, rode `mise run deploy:plan` e depois `mise run deploy:apply`. Rode sempre com o **seu** `.env`: sem `ZEROMETRO_DOMAIN`, o plan apaga a `PUBLIC_URL` da instância. Se o plan apagar algo (variáveis ou recursos que saíram do `railway.ts`), o apply recusa até você confirmar com `railway config apply --confirm-destructive`. Confira antes no plan que só sai o esperado. Se o plan apagar algo (variáveis ou recursos que saíram do `railway.ts`), o apply recusa até você confirmar com `railway config apply --confirm-destructive`. Confira antes no plan que só sai o esperado.
+**Migrando de uma instância de uma pessoa só:** é só fazer o deploy. A migration transforma o dono em admin (`@owner`) sem mexer em nenhum dado de jogo; os aparelhos pedem login de novo (entre com o token e defina a senha), e o conector do claude.ai que já estava ligado continua funcionando como o admin (enquanto a `SESSION_SECRET` não for definida: com ela, os conectores antigos precisam ser ligados de novo).
+
+Mudanças de infraestrutura: edite `.railway/railway.ts`, rode `mise run deploy:plan` e depois `mise run deploy:apply`. Rode sempre com o **seu** `.env`: sem `ZEROMETRO_DOMAIN`, o plan apaga a `PUBLIC_URL` da instância. Se o plan apagar algo (variáveis ou recursos que saíram do `railway.ts`), o apply recusa até você confirmar com `railway config apply --confirm-destructive`. Confira antes no plan que só sai o esperado.
 
 ### Backup do banco
 
