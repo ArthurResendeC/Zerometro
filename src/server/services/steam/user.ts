@@ -6,6 +6,7 @@ import {
 } from "../../errors";
 import type { SteamProfileRef } from "../../../shared/steam";
 import { createJsonClient, type FetchFn } from "../http-json";
+import { createRequestGate, type RequestGate } from "../rate-gate";
 
 // Dados da conta Steam de quem usa o app: perfil, conquistas desbloqueadas e horas por jogo.
 // Tudo público (o perfil precisa mostrar os "Detalhes dos jogos"); a chave da instância faz as
@@ -54,6 +55,8 @@ export interface SteamUserApi {
   getUnlocked(steamId: string, appId: number): Promise<SteamUnlock[] | null>;
   /** Jogos da conta com as horas (só os `appIds`, se vier). SteamProfilePrivateError se esconder. */
   getOwnedGames(steamId: string, appIds?: number[]): Promise<SteamOwnedGame[]>;
+  /** Até quando a Steam pediu pausa (null = liberado): as rodadas automáticas esperam. */
+  pausedUntil(): Date | null;
 }
 
 interface RawVanity {
@@ -94,16 +97,26 @@ export interface SteamUserApiOptions {
   now?: () => number;
   sleep?: (ms: number) => Promise<unknown>;
   minIntervalMs?: number;
+  /** A fila e o disjuntor da chave, compartilhados com as listas de conquistas. */
+  gate?: RequestGate;
 }
 
 const fromUnix = (seconds: number | undefined) => (seconds ? new Date(seconds * 1000) : null);
 
 export function createSteamUserApi(options: SteamUserApiOptions): SteamUserApi {
+  const gate =
+    options.gate ??
+    createRequestGate({
+      label: "a Steam",
+      minIntervalMs: options.minIntervalMs ?? MIN_INTERVAL_MS,
+      now: options.now,
+      sleep: options.sleep,
+    });
   const client = createJsonClient({
     label: "a Steam",
     baseUrl: BASE_URL,
     defaultParams: { key: options.apiKey },
-    minIntervalMs: options.minIntervalMs ?? MIN_INTERVAL_MS,
+    gate,
     fetch: options.fetch,
     now: options.now,
     sleep: options.sleep,
@@ -123,6 +136,7 @@ export function createSteamUserApi(options: SteamUserApiOptions): SteamUserApi {
 
   return {
     enabled: true,
+    pausedUntil: () => gate.pausedUntil(),
 
     async resolveProfile(ref) {
       if ("steamId" in ref) return summary(ref.steamId);
@@ -180,10 +194,14 @@ export function createDisabledSteamUserApi(): SteamUserApi {
     resolveProfile: notConfigured,
     getUnlocked: notConfigured,
     getOwnedGames: notConfigured,
+    pausedUntil: () => null,
   };
 }
 
-export function createSteamUserFromEnv(env: Pick<Env, "STEAM_WEB_API_KEY">): SteamUserApi {
+export function createSteamUserFromEnv(
+  env: Pick<Env, "STEAM_WEB_API_KEY">,
+  gate?: RequestGate,
+): SteamUserApi {
   const apiKey = env.STEAM_WEB_API_KEY;
-  return apiKey ? createSteamUserApi({ apiKey }) : createDisabledSteamUserApi();
+  return apiKey ? createSteamUserApi({ apiKey, gate }) : createDisabledSteamUserApi();
 }

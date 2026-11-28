@@ -75,6 +75,25 @@ export class AchievementSourceError extends AppError {
   }
 }
 
+/**
+ * A fonte (Steam, RetroAchievements) recusou por excesso de chamadas: a instância para de chamar
+ * até `until`, para todos os perfis (ver `rate-gate.ts`).
+ */
+export class SourceRateLimitedError extends AppError {
+  constructor(
+    sourceLabel: string,
+    readonly until: Date,
+  ) {
+    const time = until.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const who = sourceLabel.charAt(0).toUpperCase() + sourceLabel.slice(1);
+    super(
+      503,
+      "source_rate_limited",
+      `${who} pediu uma pausa nas consultas: tente de novo depois das ${time}`,
+    );
+  }
+}
+
 /** A fonte de conquistas não tem chave configurada nesta instância. */
 export class AchievementSourceNotConfiguredError extends AppError {
   constructor(sourceLabel: string, envVar: string) {

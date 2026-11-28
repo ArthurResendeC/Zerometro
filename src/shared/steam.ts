@@ -78,6 +78,22 @@ export interface SteamLibrarySync {
   newUnlocks: number;
 }
 
+/**
+ * O "Sincronizar tudo" roda em segundo plano no servidor (uma biblioteca grande leva minutos, um
+ * jogo de cada vez no ritmo da Steam): o app e o MCP acompanham por aqui.
+ */
+export interface SteamLibrarySyncRun {
+  status: "running" | "done" | "failed";
+  startedAt: string;
+  finishedAt: string | null;
+  /** Jogos da biblioteca já vistos, de `total` (0 até a Steam responder com a conta). */
+  done: number;
+  total: number;
+  /** O resultado, quando termina. */
+  result: SteamLibrarySync | null;
+  error: string | null;
+}
+
 /** Intervalo mínimo entre duas sincronizações automáticas (ao abrir o app). */
 export const STEAM_AUTO_SYNC_INTERVAL_MS = 30 * 60_000;
 
@@ -172,7 +188,7 @@ export interface SteamImportResult {
 }
 
 /** Jogos por pedido ao trazer as conquistas dos importados (o front pede em lotes). */
-export const STEAM_SYNC_GAMES_BATCH = 10;
+export const STEAM_SYNC_GAMES_BATCH = 5;
 
 export const steamSyncGamesSchema = z.object({
   gameIds: z

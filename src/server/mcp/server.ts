@@ -117,7 +117,12 @@ import {
 import { listSessions, logSession, noteLastSession } from "../services/sessions";
 import { getSettings } from "../services/settings";
 import { importSteamGames, previewSteamImport } from "../services/steam-import";
-import { syncSteamGame, syncSteamLibrary } from "../services/steam-sync";
+import {
+  getSteamLibrarySyncRun,
+  startSteamLibrarySync,
+  syncSteamGame,
+  waitForSteamLibrarySync,
+} from "../services/steam-sync";
 import { getProfile } from "../services/profile";
 import { getLeaderboard, getMemberProfile } from "../services/group";
 import { type GroupMemberGame, groupMetrics, groupPeriods } from "../../shared/group";
@@ -128,6 +133,7 @@ import { getHeatmap, getPeriodBreakdown, getRecords, getRhythm, getStats } from 
 import { getTimeline } from "../services/timeline";
 import { getPurchaseStats } from "../services/purchases";
 import type { PurchaseStats } from "../../shared/purchases";
+import type { SteamLibrarySyncRun } from "../../shared/steam";
 import { getActiveSession, startTimer, stopTimer } from "../services/timer";
 
 // Servidor MCP do Zerômetro: tools finas por cima dos `services/` (as mesmas regras da API
@@ -1528,13 +1534,17 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     {
       title: "Sincronizar com a Steam",
       description:
-        "Traz da conta Steam do usuário (o perfil conectado nos Ajustes do site) as conquistas desbloqueadas, com a data real, e o tempo total de cada jogo. Com game: só esse jogo; sem game: todos os da biblioteca que estão na conta (pode levar um tempo). Só adiciona desbloqueios, nunca desmarca. Um jogo na conta sem lista de conquistas ganha a da Steam. O tempo da Steam fica guardado à parte (steamPlaytime): só vira o tempo jogado se o jogo usar a Steam como fonte (set_playtime_source), e aí o que foi jogado na Steam desde a última sincronização vira sessão (source steam, sessionMinutes; sincronizações seguidas com o jogo aberto estendem a mesma sessão, com startedAt/endedAt aproximados), que entra na ofensiva e nas estatísticas, descontado o que o timer ou log_session já registraram. O total da primeira sincronização (ou da importação) não tem data e fica como tempo antes do Zerômetro. O servidor também sincroniza sozinho de meia em meia hora. Se o perfil não estiver conectado ou esconder os jogos, a mensagem de erro diz o que o usuário precisa fazer.",
+        "Traz da conta Steam do usuário (o perfil conectado nos Ajustes do site) as conquistas desbloqueadas, com a data real, e o tempo total de cada jogo. Com game: só esse jogo, na hora. Sem game: todos os da biblioteca que estão na conta, em segundo plano no servidor (um jogo de cada vez, no ritmo da Steam): a tool espera até 20s e, se ainda não acabou, devolve status running com o andamento (done/total); chame de novo com progress: true para ver o andamento ou o resultado, sem começar outra rodada. Se a Steam pedir uma pausa por excesso de consultas, a rodada para e a mensagem diz a partir de que horas tentar de novo. Só adiciona desbloqueios, nunca desmarca. Um jogo na conta sem lista de conquistas ganha a da Steam. O tempo da Steam fica guardado à parte (steamPlaytime): só vira o tempo jogado se o jogo usar a Steam como fonte (set_playtime_source), e aí o que foi jogado na Steam desde a última sincronização vira sessão (source steam, sessionMinutes; sincronizações seguidas com o jogo aberto estendem a mesma sessão, com startedAt/endedAt aproximados), que entra na ofensiva e nas estatísticas, descontado o que o timer ou log_session já registraram. O total da primeira sincronização (ou da importação) não tem data e fica como tempo antes do Zerômetro. O servidor também sincroniza sozinho de meia em meia hora. Se o perfil não estiver conectado ou esconder os jogos, a mensagem de erro diz o que o usuário precisa fazer.",
       inputSchema: z.object({
         game: gameRefSchema.optional().describe("Um jogo só; omita para sincronizar todos"),
+        progress: z
+          .boolean()
+          .default(false)
+          .describe("Só ver o andamento ou o resultado do último 'todos', sem começar outro"),
       }),
       annotations: { ...write, openWorldHint: true },
     },
-    ({ game }) =>
+    ({ game, progress }) =>
       run(async () => {
         const scope = ctx();
         if (game !== undefined) {
@@ -1542,21 +1552,14 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
           const sync = await syncSteamGame(scope, steamDeps(), gameId);
           return { sync, game: gameSummary(getLibraryItem(scope, gameId)) };
         }
-        const result = await syncSteamLibrary(scope, steamDeps());
-        return {
-          syncedAt: result.syncedAt,
-          newUnlocks: result.newUnlocks,
-          games: result.games
-            .filter((g) => g.owned || g.newUnlocks > 0 || g.error)
-            .map(({ gameId, name, steamMinutes, newUnlocks, sessionMinutes, linkedSet, error }) =>
-              Object.assign(
-                { gameId, name, steamMinutes, newUnlocks },
-                sessionMinutes > 0 && { sessionMinutes },
-                linkedSet && { linkedSet },
-                error && { error },
-              ),
-            ),
-        };
+        if (progress) {
+          const last = getSteamLibrarySyncRun(scope);
+          return last
+            ? librarySyncRunSummary(last)
+            : { status: null, message: "Nenhuma sincronização de todos os jogos desde o boot." };
+        }
+        startSteamLibrarySync(scope, steamDeps());
+        return librarySyncRunSummary((await waitForSteamLibrarySync(scope, SYNC_WAIT_MS))!);
       }),
   );
 
@@ -1631,8 +1634,13 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
           ignore,
         });
         const gameIds = result.added.map((a) => a.gameId);
-        const sync =
-          gameIds.length > 0 ? await syncSteamLibrary(scope, steamDeps(), { gameIds }) : null;
+        // As conquistas em segundo plano (centenas de jogos levam minutos no ritmo da Steam).
+        let achievementsRun: SteamLibrarySyncRun | null = null;
+        if (gameIds.length > 0) {
+          startSteamLibrarySync(scope, steamDeps(), { gameIds });
+          achievementsRun = await waitForSteamLibrarySync(scope, SYNC_WAIT_MS);
+        }
+        const sync = achievementsRun?.status === "done" ? achievementsRun.result : null;
         const byGame = new Map(sync?.games.map((g) => [g.gameId, g]));
         return {
           added: result.added.map(({ gameId, name, status }) => {
@@ -1650,6 +1658,20 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
           }),
           skipped: result.skipped,
           ignored: result.ignored,
+          ...(achievementsRun &&
+            achievementsRun.status !== "done" && {
+              achievements: {
+                status: achievementsRun.status,
+                done: achievementsRun.done,
+                total: achievementsRun.total,
+                ...(achievementsRun.error
+                  ? { error: achievementsRun.error }
+                  : {
+                      message:
+                        "As conquistas continuam chegando em segundo plano. Chame sync_steam com progress: true para acompanhar.",
+                    }),
+              },
+            }),
         };
       }),
   );
@@ -1811,6 +1833,46 @@ function criterionAverageSummary(a: CriterionAverage) {
     games: a.count,
     best: a.best && `${a.best.name}: ${a.best.score}`,
     worst: a.worst && `${a.worst.name}: ${a.worst.score}`,
+  };
+}
+
+/** Quanto a sync_steam (todos) espera a rodada em segundo plano antes de responder. */
+const SYNC_WAIT_MS = 20_000;
+
+/** O "Sincronizar tudo" para a IA: o andamento, o erro ou só os jogos que têm o que contar. */
+function librarySyncRunSummary(syncRun: SteamLibrarySyncRun) {
+  if (syncRun.status === "running") {
+    return {
+      status: syncRun.status,
+      done: syncRun.done,
+      total: syncRun.total,
+      message:
+        "Continua em segundo plano. Chame sync_steam com progress: true para ver o andamento e o resultado.",
+    };
+  }
+  if (syncRun.status === "failed" || !syncRun.result) {
+    return {
+      status: syncRun.status,
+      done: syncRun.done,
+      total: syncRun.total,
+      error: syncRun.error,
+    };
+  }
+  const result = syncRun.result;
+  return {
+    status: syncRun.status,
+    syncedAt: result.syncedAt,
+    newUnlocks: result.newUnlocks,
+    games: result.games
+      .filter((g) => g.owned || g.newUnlocks > 0 || g.error)
+      .map(({ gameId, name, steamMinutes, newUnlocks, sessionMinutes, linkedSet, error }) =>
+        Object.assign(
+          { gameId, name, steamMinutes, newUnlocks },
+          sessionMinutes > 0 && { sessionMinutes },
+          linkedSet && { linkedSet },
+          error && { error },
+        ),
+      ),
   };
 }
 

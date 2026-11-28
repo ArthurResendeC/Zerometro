@@ -6,18 +6,20 @@ import type {
   SteamAutoSync,
   SteamAutoSyncState,
   SteamGameSync,
-  SteamLibrarySync,
+  SteamLibrarySyncRun,
   SteamProfile,
 } from "../../shared/steam";
 import { games } from "../db/schema";
 import { createSteamUserFromEnv } from "../services/steam/user";
 import {
   createFakeIgdb,
+  createFakeSource,
   createFakeSteamUser,
   createTestApp,
   createTestClock,
   FAKE_STEAM_ID,
   fakeIgdbGame,
+  fakeSteamSet,
   TEST_NOW,
 } from "../testing";
 
@@ -176,24 +178,145 @@ describe("sincronizar com a Steam", () => {
     });
   });
 
-  test("tudo: só os jogos na Steam; perfil privado → 409", async () => {
+  test("tudo, em segundo plano: só os jogos na Steam; perfil privado → falha com o motivo", async () => {
     const { request } = await createTestApp({ steamUser: steamUser() });
+    expect(await (await request("/api/steam/sync")).json()).toEqual({ run: null });
     await addP5r(request);
     await linkProfile(request);
 
-    const res = await request("/api/steam/sync", { method: "POST" });
-    const body = (await res.json()) as SteamLibrarySync;
-    expect(body.newUnlocks).toBe(2);
-    expect(body.games.map((g) => [g.name, g.steamMinutes])).toEqual([["Persona 5 Royal", 3000]]);
+    const started = (await (
+      await request("/api/steam/sync", { method: "POST" })
+    ).json()) as SteamLibrarySyncRun;
+    expect(started).toMatchObject({ status: "running", result: null });
+    const run = await finishSync(request);
+    expect(run).toMatchObject({ status: "done", done: 1, total: 1, error: null });
+    expect(run.result?.newUnlocks).toBe(2);
+    expect(run.result?.games.map((g) => [g.name, g.steamMinutes])).toEqual([
+      ["Persona 5 Royal", 3000],
+    ]);
 
     const closed = await createTestApp({ steamUser: createFakeSteamUser({ private: true }) });
     await addP5r(closed.request);
     await linkProfile(closed.request);
-    const denied = await closed.request("/api/steam/sync", { method: "POST" });
-    expect(denied.status).toBe(409);
-    expect(await denied.json()).toMatchObject({ error: { code: "steam_profile_private" } });
+    await closed.request("/api/steam/sync", { method: "POST" });
+    const denied = await finishSync(closed.request);
+    expect(denied.status).toBe("failed");
+    expect(denied.error).toContain("Detalhes dos jogos");
+    const profile = (await (await closed.request("/api/steam/profile")).json()) as {
+      auto: SteamAutoSyncState;
+    };
+    expect(profile.auto.lastError?.message).toContain("Detalhes dos jogos");
+  });
+
+  test('tudo: lista ligada num jogo fora da conta ("not public" nesse app) não derruba a rodada', async () => {
+    // P5R fora da conta (jogou no PS5), com a lista da Steam ligada à mão; Celeste na conta.
+    const fake = createFakeSteamUser({
+      owned: { 504230: 60 },
+      unlocked: { 504230: [{ apiName: "ACH_1", unlockedAt: null }] },
+      notPublicApps: [P5R],
+    });
+    const { request } = await createTestApp({
+      steamUser: fake,
+      igdb: createFakeIgdb([
+        fakeIgdbGame(),
+        fakeIgdbGame({ igdbId: 26226, name: "Celeste", steamAppId: 504230 }),
+      ]),
+      steam: createFakeSource([
+        fakeSteamSet(),
+        fakeSteamSet({ externalId: "504230", title: "Celeste" }),
+      ]),
+    });
+    const p5r = await addP5r(request);
+    await request(
+      `/api/library/${p5r.gameId}/achievements/sets`,
+      json({ source: "steam", id: String(P5R) }),
+    );
+    await request("/api/library", json({ igdbId: 26226, status: "playing" }));
+    await linkProfile(request);
+
+    await request("/api/steam/sync", { method: "POST" });
+    const run = await finishSync(request);
+    expect(run).toMatchObject({ status: "done", done: 2, total: 2 });
+    expect(run.result?.games.map((g) => [g.name, g.owned, g.newUnlocks, g.error])).toEqual(
+      expect.arrayContaining([
+        ["Persona 5 Royal", false, 0, null],
+        ["Celeste", true, 1, null],
+      ]),
+    );
+
+    // O botão do jogo também não acusa perfil privado.
+    const one = await request(`/api/library/${p5r.gameId}/steam/sync`, { method: "POST" });
+    expect(one.status).toBe(200);
+  });
+
+  test("tudo: clicar de novo durante a rodada devolve a mesma, sem chamar a Steam outra vez", async () => {
+    const fake = steamUser();
+    const { request } = await createTestApp({ steamUser: fake });
+    await addP5r(request);
+    await linkProfile(request);
+    fake.calls.length = 0;
+
+    const first = (await (
+      await request("/api/steam/sync", { method: "POST" })
+    ).json()) as SteamLibrarySyncRun;
+    const second = (await (
+      await request("/api/steam/sync", { method: "POST" })
+    ).json()) as SteamLibrarySyncRun;
+    expect(second.startedAt).toBe(first.startedAt);
+    await finishSync(request);
+    expect(fake.calls.filter((c) => c === "owned:")).toHaveLength(1);
+  });
+
+  test("a Steam pediu pausa: a rodada para no primeiro jogo e não começa outra", async () => {
+    const until = new Date(TEST_NOW.getTime() + 10 * 60_000);
+    const fake = createFakeSteamUser({
+      owned: { [P5R]: 3000, 504230: 60 },
+      rateLimitedUntil: until,
+    });
+    const { request } = await createTestApp({
+      steamUser: fake,
+      igdb: createFakeIgdb([
+        fakeIgdbGame(),
+        fakeIgdbGame({ igdbId: 26226, name: "Celeste", steamAppId: 504230 }),
+      ]),
+      // Os dois jogos têm lista: sem a pausa, os dois perguntariam os desbloqueios.
+      steam: createFakeSource([
+        fakeSteamSet(),
+        fakeSteamSet({ externalId: "504230", title: "Celeste" }),
+      ]),
+    });
+    await addP5r(request);
+    await request("/api/library", json({ igdbId: 26226, status: "playing" }));
+    await linkProfile(request);
+    fake.calls.length = 0;
+
+    await request("/api/steam/sync", { method: "POST" });
+    const run = await finishSync(request);
+    expect(run.status).toBe("failed");
+    expect(run.error).toContain("A Steam pediu uma pausa");
+    // Um jogo só: não seguiu tentando o outro.
+    expect(fake.calls.filter((c) => c.startsWith("unlocked:"))).toHaveLength(1);
+    expect(run).toMatchObject({ done: 0, total: 2 });
+
+    const again = await request("/api/steam/sync", { method: "POST" });
+    expect(again.status).toBe(503);
+    expect(await again.json()).toMatchObject({ error: { code: "source_rate_limited" } });
   });
 });
+
+/** Espera o "Sincronizar tudo" em segundo plano acabar (com os fakes, é questão de ticks). */
+async function finishSync(request: Request) {
+  for (let i = 0; i < 100; i++) {
+    // oxlint-disable-next-line no-await-in-loop
+    const { run } = (await (await request("/api/steam/sync")).json()) as {
+      run: SteamLibrarySyncRun;
+    };
+    if (run.status !== "running") return run;
+    // oxlint-disable-next-line no-await-in-loop
+    await Bun.sleep(5);
+  }
+  throw new Error("A sincronização não terminou");
+}
 
 /** `n` minutos depois de TEST_NOW. */
 const minutes = (n: number) => new Date(TEST_NOW.getTime() + n * 60_000);
@@ -215,6 +338,18 @@ async function setupAuto(options: Parameters<typeof createFakeSteamUser>[0]) {
 }
 
 describe("sincronização automática (ao abrir o app)", () => {
+  test("Steam em pausa: pula sem chamar nem mexer no relógio", async () => {
+    const until = new Date(TEST_NOW.getTime() + 10 * 60_000);
+    const fake = createFakeSteamUser({ owned: { [P5R]: 3000 }, pausedUntil: until });
+    const { request } = await createTestApp({ steamUser: fake });
+    await addP5r(request);
+    await linkProfile(request);
+    fake.calls.length = 0;
+    const res = await request("/api/steam/sync/auto", { method: "POST" });
+    expect(await res.json()).toMatchObject({ status: "skipped", state: null });
+    expect(fake.calls).toEqual([]);
+  });
+
   test("sem perfil: pula sem chamar a Steam", async () => {
     const fake = createFakeSteamUser({ owned: { [P5R]: 3000 } });
     const { request } = await createTestApp({ steamUser: fake });
@@ -328,6 +463,7 @@ describe("sincronização automática (ao abrir o app)", () => {
   test('"Sincronizar tudo" zera o relógio; perfil novo começa do zero', async () => {
     const { auto, clock, fake, request } = await setupAuto({ owned: { [P5R]: 3000 } });
     await request("/api/steam/sync", { method: "POST" });
+    await finishSync(request);
     fake.calls.length = 0;
     clock.set(minutes(10));
     expect((await auto()).status).toBe("skipped");

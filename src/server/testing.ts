@@ -17,7 +17,7 @@ import type { AchievementSourceApi, FetchedAchievementSet } from "./services/ach
 import { createAchievementCatalog } from "./services/achievement-catalog";
 import type { RaGameListEntry, RetroAchievementsApi } from "./services/retroachievements";
 import type { SteamOwnedGame, SteamUnlock, SteamUserApi } from "./services/steam/user";
-import { NotFoundError, SteamProfilePrivateError } from "./errors";
+import { NotFoundError, SourceRateLimitedError, SteamProfilePrivateError } from "./errors";
 import { createRating } from "./services/ratings";
 import { createInvite } from "./services/users";
 
@@ -270,9 +270,22 @@ export function createFakeSteamUser(
     unlocked?: Record<number, SteamUnlock[]>;
     private?: boolean;
     enabled?: boolean;
+    /**
+     * A Steam recusa as conquistas (SourceRateLimitedError) com pausa até essa hora; como no
+     * cliente de verdade, `pausedUntil()` só passa a dizer isso depois da primeira recusa.
+     */
+    rateLimitedUntil?: Date;
+    /** Já em pausa desde o começo. */
+    pausedUntil?: Date;
+    /**
+     * Apps em que a Steam responde "Profile is not public" nos desbloqueios (o que ela faz com
+     * os apps fora da conta, mesmo com o perfil público).
+     */
+    notPublicApps?: number[];
   } = {},
 ): SteamUserApi & { calls: string[] } {
   const calls: string[] = [];
+  let pausedUntil = options.pausedUntil ?? null;
   const games = (): SteamOwnedGame[] =>
     Object.entries(options.owned ?? {}).map(([appId, game]) =>
       typeof game === "number"
@@ -288,6 +301,7 @@ export function createFakeSteamUser(
   return {
     enabled: options.enabled ?? true,
     calls,
+    pausedUntil: () => pausedUntil,
     async resolveProfile(ref) {
       calls.push(`resolve:${"steamId" in ref ? ref.steamId : ref.vanity}`);
       const known = "steamId" in ref ? ref.steamId === FAKE_STEAM_ID : ref.vanity === "robinwalker";
@@ -301,7 +315,13 @@ export function createFakeSteamUser(
     },
     async getUnlocked(_steamId, appId) {
       calls.push(`unlocked:${appId}`);
-      if (options.private) throw new SteamProfilePrivateError();
+      if (options.private || options.notPublicApps?.includes(appId)) {
+        throw new SteamProfilePrivateError();
+      }
+      if (options.rateLimitedUntil) {
+        pausedUntil = options.rateLimitedUntil;
+        throw new SourceRateLimitedError("a Steam", options.rateLimitedUntil);
+      }
       return options.unlocked?.[appId] ?? null;
     },
     async getOwnedGames(_steamId, appIds = []) {

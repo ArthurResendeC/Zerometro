@@ -670,8 +670,18 @@ describe("tools", () => {
     });
     expect(steam.data).toMatchObject({ playtimeSource: "steam", minutesPlayed: 3000 });
 
+    const before = await callJson(client, "sync_steam", { progress: true });
+    expect(before.data).toMatchObject({ status: null });
+
     const all = await callJson(client, "sync_steam", {});
-    expect(all.data).toMatchObject({ newUnlocks: 0, games: [{ name: "Persona 5 Royal" }] });
+    expect(all.data).toMatchObject({
+      status: "done",
+      newUnlocks: 0,
+      games: [{ name: "Persona 5 Royal" }],
+    });
+    // Só consulta: devolve a última rodada, sem começar outra.
+    const again = await callJson(client, "sync_steam", { progress: true });
+    expect(again.data).toEqual(all.data);
 
     await client.close();
   });

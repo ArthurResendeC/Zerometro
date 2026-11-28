@@ -14,7 +14,12 @@ import {
   unlinkSteamProfile,
 } from "../services/steam-account";
 import { importSteamGames, previewSteamImport } from "../services/steam-import";
-import { autoSyncSteam, syncSteamLibrary } from "../services/steam-sync";
+import {
+  autoSyncSteam,
+  getSteamLibrarySyncRun,
+  startSteamLibrarySync,
+  syncSteamLibrary,
+} from "../services/steam-sync";
 
 /** A conta Steam do usuário: perfil, sincronização de todos os jogos e importação da conta. */
 export function createSteamRoutes(deps: AppDeps) {
@@ -43,7 +48,9 @@ export function createSteamRoutes(deps: AppDeps) {
         unlinkSteamProfile(webContext(deps, c));
         return c.json(body(null, null));
       })
-      .post("/sync", async (c) => c.json(await syncSteamLibrary(webContext(deps, c), syncDeps)))
+      // "Sincronizar tudo": começa em segundo plano e responde na hora; o app acompanha pelo GET.
+      .post("/sync", (c) => c.json(startSteamLibrarySync(webContext(deps, c), syncDeps)))
+      .get("/sync", (c) => c.json({ run: getSteamLibrarySyncRun(webContext(deps, c)) }))
       // Chamado pelo app ao abrir e ao voltar ao primeiro plano; o servidor decide se roda.
       .post("/sync/auto", async (c) => c.json(await autoSyncSteam(webContext(deps, c), syncDeps)))
       // Só alguns jogos: as conquistas dos que acabaram de ser importados, em lotes.

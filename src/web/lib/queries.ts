@@ -36,6 +36,7 @@ import {
   STEAM_SYNC_GAMES_BATCH,
   type SteamAutoSyncState,
   type SteamImportInput,
+  type SteamLibrarySyncRun,
 } from "@shared/steam";
 import type {
   StartTimerInput,
@@ -1275,10 +1276,37 @@ export function useSyncSteamGame(gameId: number) {
   });
 }
 
+/** De quanto em quanto tempo o app pergunta como vai o "Sincronizar tudo". */
+const STEAM_SYNC_POLL_MS = 1500;
+
+/**
+ * "Sincronizar tudo": o servidor roda em segundo plano (uma biblioteca grande leva minutos) e o
+ * app acompanha até acabar. Fechar a página não interrompe; clicar de novo retoma a mesma rodada.
+ */
 export function useSyncSteamLibrary() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => unwrap(api.steam.sync.$post()),
+    mutationFn: async ({ onProgress }: { onProgress: (run: SteamLibrarySyncRun) => void }) => {
+      let run = await unwrap(api.steam.sync.$post());
+      onProgress(run);
+      while (run.status === "running") {
+        // Uma pergunta de cada vez, de propósito.
+        // oxlint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => setTimeout(resolve, STEAM_SYNC_POLL_MS));
+        // oxlint-disable-next-line no-await-in-loop
+        const latest = (await unwrap(api.steam.sync.$get())).run;
+        if (!latest)
+          throw new Error("O servidor reiniciou no meio da sincronização. Tente de novo.");
+        run = latest;
+        onProgress(run);
+      }
+      if (run.status === "failed" || !run.result) {
+        // O erro também fica nos Ajustes (ex.: até quando a Steam pediu pausa).
+        void queryClient.invalidateQueries({ queryKey: steamKeys.profile });
+        throw new Error(run.error ?? "A sincronização com a Steam falhou");
+      }
+      return run.result;
+    },
     onSuccess: (sync) => {
       const { title, description } = librarySyncMessage(sync);
       toast.success(title, { description });

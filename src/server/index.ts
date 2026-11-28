@@ -11,7 +11,7 @@ import { createGamePagesService } from "./services/game-pages";
 import { createIgdbFromEnv } from "./services/igdb";
 import { startIgdbBackfill } from "./services/igdb-backfill-job";
 import { createRetroAchievementsFromEnv } from "./services/retroachievements";
-import { createSteamFromEnv } from "./services/steam";
+import { createSteamFromEnv, createSteamGate } from "./services/steam";
 import { startSteamSyncJob } from "./services/steam-sync-job";
 import { createSteamUserFromEnv } from "./services/steam/user";
 import { PUBLIC_DIR, createPublicRoutes } from "./static";
@@ -46,6 +46,9 @@ const auth = createAuth({
 
 const igdb = createIgdbFromEnv(db, env);
 const clock = { now: () => new Date(), timeZone: env.TZ };
+// Uma chave da Steam para a instância inteira: as listas de conquistas e as contas dos perfis
+// dividem a mesma fila e o mesmo disjuntor.
+const steamGate = createSteamGate();
 const deps = {
   db,
   auth,
@@ -55,10 +58,10 @@ const deps = {
   achievements: createAchievementCatalog({
     db,
     clock,
-    steam: createSteamFromEnv(env),
+    steam: createSteamFromEnv(env, steamGate),
     retroachievements: createRetroAchievementsFromEnv(env),
   }),
-  steamUser: createSteamUserFromEnv(env),
+  steamUser: createSteamUserFromEnv(env, steamGate),
   recapImages: createRecapImageRenderer(),
   clock,
 };
@@ -70,6 +73,9 @@ const root = createRootRoutes(deps);
 // e a SPA (HTML import do Bun) no resto.
 const server = Bun.serve({
   port: env.PORT,
+  // O padrão do Bun (10s) corta a resposta de quem espera mais (ex.: a tool do MCP que aguarda a
+  // sincronização da Steam por até 20s). As tarefas longas rodam em segundo plano de qualquer jeito.
+  idleTimeout: 60,
   routes: {
     "/api/*": (req) => app.fetch(req),
     "/mcp": root.mcp,

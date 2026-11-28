@@ -5,6 +5,7 @@ import {
   type SteamAutoSync,
   type SteamGameSync,
   type SteamLibrarySync,
+  type SteamLibrarySyncRun,
   type SteamProfile,
 } from "../../shared/steam";
 import type { AchievementSet } from "../db/schema";
@@ -14,7 +15,12 @@ import {
   libraryEntries,
   userAchievementSets,
 } from "../db/schema";
-import { AppError, SteamNotLinkedError, SteamProfilePrivateError } from "../errors";
+import {
+  AppError,
+  SourceRateLimitedError,
+  SteamNotLinkedError,
+  SteamProfilePrivateError,
+} from "../errors";
 import type { AchievementCatalog } from "./achievement-catalog";
 import { ensureSetOrNull, linkedSets, steamAppIdOf } from "./achievements";
 import { logActivity } from "./activity";
@@ -30,8 +36,18 @@ import type { SteamOwnedGame, SteamUserApi } from "./steam/user";
 // guardado à parte; ele só vale como "tempo jogado" se o jogo usar a Steam como fonte, e aí o
 // que foi jogado desde a última sincronização vira sessão (ver `steam-playtime.ts`).
 //
-// Manual (botão no jogo ou "Sincronizar tudo"): completa, na hora. Automática (ao abrir o app):
-// no máximo a cada STEAM_AUTO_SYNC_INTERVAL_MS e incremental, só nos jogos que mudaram.
+// Manual: o botão no jogo (na hora) ou "Sincronizar tudo" (em segundo plano, ver
+// `startSteamLibrarySync`). Automática (ao abrir o app e o job do servidor): no máximo a cada
+// STEAM_AUTO_SYNC_INTERVAL_MS e incremental, só nos jogos que mudaram.
+//
+// Limite da Steam: as chamadas passam pela fila da chave (`rate-gate.ts`). Se a Steam pedir pausa,
+// a rodada para na hora (SourceRateLimitedError) em vez de seguir tentando jogo a jogo.
+
+/** Erros que valem para todos os jogos: não adianta continuar a rodada. */
+const stopsTheRound = (error: unknown) =>
+  error instanceof SteamProfilePrivateError ||
+  error instanceof SourceRateLimitedError ||
+  !(error instanceof AppError);
 
 export interface SteamSyncDeps {
   catalog: AchievementCatalog;
@@ -69,7 +85,7 @@ export async function syncSteamGame(
 export async function syncSteamLibrary(
   ctx: ServiceContext,
   deps: SteamSyncDeps,
-  options: { gameIds?: number[] } = {},
+  options: { gameIds?: number[]; onProgress?: (done: number, total: number) => void } = {},
 ): Promise<SteamLibrarySync> {
   const profile = requireSteamProfile(ctx);
   const owned = new Map(
@@ -78,17 +94,19 @@ export async function syncSteamLibrary(
   const only = options.gameIds && new Set(options.gameIds);
   const items = listLibrary(ctx).filter((item) => !only || only.has(item.gameId));
   const games: SteamGameSync[] = [];
-  for (const item of items) {
+  options.onProgress?.(0, items.length);
+  for (const [index, item] of items.entries()) {
     try {
       // Um de cada vez, de propósito: a Steam e o IGDB têm limite de requisições.
       // oxlint-disable-next-line no-await-in-loop
       const result = await syncOne(ctx, deps, profile, item, await locate(ctx, deps, item), owned);
       if (result.appId !== null) games.push(result);
     } catch (error) {
-      // Perfil privado vale para todos os jogos: não adianta continuar.
-      if (error instanceof SteamProfilePrivateError || !(error instanceof AppError)) throw error;
-      games.push({ ...emptyResult(item), error: error.message });
+      // Perfil privado ou a Steam pedindo pausa valem para todos os jogos.
+      if (stopsTheRound(error)) throw error;
+      games.push({ ...emptyResult(item), error: (error as AppError).message });
     }
+    options.onProgress?.(index + 1, items.length);
   }
   logSync(ctx, games);
   // Acabou de passar por tudo: a automática não precisa rodar logo em seguida.
@@ -170,7 +188,7 @@ async function syncOne(
   }
 
   // Sem o jogo na conta, a Steam pode não ter dados; só pergunta se já segue a lista.
-  const unlocked = steamSet ? await deps.steamUser.getUnlocked(profile.steamId, appId) : null;
+  const unlocked = steamSet ? await unlockedOf(deps, profile, appId, Boolean(game)) : null;
   ctx.db.transaction((tx) => {
     if (steamSet && unlocked && unlocked.length > 0) {
       const ids = new Map(
@@ -214,6 +232,25 @@ async function syncOne(
 }
 
 /**
+ * Os desbloqueios do jogador no app. Num app fora da conta (outra plataforma, a lista ligada à
+ * mão), a Steam responde "Profile is not public" mesmo com o perfil público: a lista de jogos da
+ * conta já veio, então ali é só "sem dados desse jogo", e a rodada segue.
+ */
+async function unlockedOf(
+  deps: SteamSyncDeps,
+  profile: SteamProfile,
+  appId: number,
+  owned: boolean,
+) {
+  try {
+    return await deps.steamUser.getUnlocked(profile.steamId, appId);
+  } catch (error) {
+    if (!owned && error instanceof SteamProfilePrivateError) return null;
+    throw error;
+  }
+}
+
+/**
  * Rodada automática (ao abrir o app e o job do servidor). Pula se não há perfil ou se rodou há
  * menos de `minIntervalMs` (padrão STEAM_AUTO_SYNC_INTERVAL_MS). Uma chamada traz as horas da conta inteira; as conquistas só são
  * buscadas nos jogos que mudaram (ver `changedSinceSync`). Erros não estouram: ficam no estado.
@@ -227,6 +264,11 @@ export async function autoSyncSteam(
   const profile = deps.steamUser.enabled ? getSteamProfile(ctx) : null;
   const skipped: SteamAutoSync = { status: "skipped", games: [], newUnlocks: 0, state: previous };
   if (!profile) return skipped;
+  // A Steam pediu pausa: nem chama, e o relógio não anda (roda de novo depois da pausa). Com o
+  // "Sincronizar tudo" rodando para este perfil, também não há o que fazer agora.
+  if (deps.steamUser.pausedUntil() || getSteamLibrarySyncRun(ctx)?.status === "running") {
+    return skipped;
+  }
   const elapsed = previous ? ctx.now.getTime() - Date.parse(previous.lastRunAt) : Infinity;
   if (elapsed >= 0 && elapsed < minIntervalMs) return skipped;
 
@@ -255,8 +297,8 @@ export async function autoSyncSteam(
         // oxlint-disable-next-line no-await-in-loop
         games.push(await syncOne(ctx, deps, profile, item, located, owned));
       } catch (error) {
-        if (error instanceof SteamProfilePrivateError || !(error instanceof AppError)) throw error;
-        games.push({ ...emptyResult(item), error: error.message });
+        if (stopsTheRound(error)) throw error;
+        games.push({ ...emptyResult(item), error: (error as AppError).message });
       }
     }
     // As horas desses foram conferidas agora, mesmo sem mudar (e a base das sessões avança).
@@ -327,4 +369,108 @@ function logSync(ctx: ServiceContext, games: SteamGameSync[], extra: { auto?: tr
       ...(g.error && { error: g.error }),
     })),
   });
+}
+
+// ---------------------------------------------------------------------------------------------
+// "Sincronizar tudo" em segundo plano
+
+interface RunRecord {
+  run: SteamLibrarySyncRun;
+  promise: Promise<void>;
+}
+
+/**
+ * A última rodada completa de cada perfil, em memória (some num restart, e tudo bem: o que foi
+ * sincronizado fica no banco). Por banco, para os testes não se misturarem.
+ */
+const runsByDb = new WeakMap<object, Map<string, RunRecord>>();
+
+function runsOf(ctx: ServiceContext): Map<string, RunRecord> {
+  let runs = runsByDb.get(ctx.db);
+  if (!runs) {
+    runs = new Map();
+    runsByDb.set(ctx.db, runs);
+  }
+  return runs;
+}
+
+/** A rodada em andamento ou a última que terminou (null se não houve desde o boot). */
+export function getSteamLibrarySyncRun(ctx: ServiceContext): SteamLibrarySyncRun | null {
+  const record = runsOf(ctx).get(ctx.userId);
+  return record ? { ...record.run } : null;
+}
+
+/**
+ * Começa o "Sincronizar tudo" em segundo plano e devolve na hora. Se já está rodando para este
+ * perfil, devolve a mesma rodada (clicar duas vezes não dobra as chamadas à Steam). Sem perfil
+ * ligado ou com a Steam em pausa, falha já aqui.
+ */
+export function startSteamLibrarySync(
+  ctx: ServiceContext,
+  deps: SteamSyncDeps,
+  /** Só esses jogos (as conquistas dos recém-importados pelo MCP). */
+  options: { gameIds?: number[] } = {},
+): SteamLibrarySyncRun {
+  const runs = runsOf(ctx);
+  const current = runs.get(ctx.userId);
+  if (current?.run.status === "running") return { ...current.run };
+  requireSteamProfile(ctx);
+  const until = deps.steamUser.pausedUntil();
+  if (until) throw new SourceRateLimitedError("a Steam", until);
+
+  const run: SteamLibrarySyncRun = {
+    status: "running",
+    startedAt: new Date().toISOString(),
+    finishedAt: null,
+    done: 0,
+    total: 0,
+    result: null,
+    error: null,
+  };
+  const promise = (async () => {
+    try {
+      run.result = await syncSteamLibrary(ctx, deps, {
+        gameIds: options.gameIds,
+        onProgress: (done, total) => {
+          run.done = done;
+          run.total = total;
+        },
+      });
+      run.status = "done";
+    } catch (error) {
+      run.status = "failed";
+      run.error = error instanceof AppError ? error.message : "Não foi possível falar com a Steam";
+      if (!(error instanceof AppError)) console.error("Sincronizar tudo (Steam):", error);
+      if (error instanceof AppError) {
+        // Aparece nos Ajustes como o erro da sincronização (ex.: a pausa pedida pela Steam).
+        const state = getAutoSyncState(ctx);
+        setAutoSyncState(ctx, {
+          lastRunAt: state?.lastRunAt ?? ctx.now.toISOString(),
+          lastError: { message: error.message, at: new Date().toISOString() },
+        });
+      }
+    } finally {
+      run.finishedAt = new Date().toISOString();
+    }
+  })();
+  runs.set(ctx.userId, { run, promise });
+  return { ...run };
+}
+
+/** Espera a rodada deste perfil terminar, por até `timeoutMs`, e devolve como ela está. */
+export async function waitForSteamLibrarySync(
+  ctx: ServiceContext,
+  timeoutMs: number,
+): Promise<SteamLibrarySyncRun | null> {
+  const record = runsOf(ctx).get(ctx.userId);
+  if (!record) return null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([
+    record.promise,
+    new Promise((resolve) => {
+      timer = setTimeout(resolve, timeoutMs);
+    }),
+  ]);
+  clearTimeout(timer);
+  return { ...record.run };
 }

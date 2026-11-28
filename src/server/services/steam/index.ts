@@ -2,6 +2,7 @@ import type { Env } from "../../env";
 import { AchievementSourceError, AchievementSourceNotConfiguredError } from "../../errors";
 import type { AchievementSourceApi, FetchedAchievementSet } from "../achievement-sources";
 import { createJsonClient, type FetchFn } from "../http-json";
+import { createRequestGate, type RequestGate } from "../rate-gate";
 
 // Steam Web API: a lista de conquistas de um app (GetSchemaForGame, precisa de chave) e a % de
 // jogadores que desbloqueou cada uma (GetGlobalAchievementPercentagesForApp). Termos: a chave
@@ -12,8 +13,18 @@ const SCHEMA_PATH = "ISteamUserStats/GetSchemaForGame/v2/";
 const PERCENTAGES_PATH = "ISteamUserStats/GetGlobalAchievementPercentagesForApp/v0002/";
 /** Textos em português; o que o jogo não traduziu a Steam devolve no idioma padrão dele. */
 const LANGUAGE = "brazilian";
-/** 100 mil chamadas/dia dão mais de 1 por segundo; 10/s é folgado para o uso do app. */
+/**
+ * 100 mil chamadas/dia dão mais de 1 por segundo; 10/s é folgado para o uso do app. Vale para a
+ * chave inteira: os dois clientes da Steam (listas e conta) dividem a mesma fila (`createSteamGate`).
+ */
 const MIN_INTERVAL_MS = 100;
+
+/** A fila e o disjuntor da chave da Steam, para todos os clientes e perfis da instância. */
+export function createSteamGate(
+  options: { now?: () => number; sleep?: (ms: number) => Promise<unknown> } = {},
+): RequestGate {
+  return createRequestGate({ label: "a Steam", minIntervalMs: MIN_INTERVAL_MS, ...options });
+}
 
 interface RawSchema {
   game?: {
@@ -44,6 +55,7 @@ export interface SteamApiOptions {
   now?: () => number;
   sleep?: (ms: number) => Promise<unknown>;
   minIntervalMs?: number;
+  gate?: RequestGate;
 }
 
 export function createSteamApi(options: SteamApiOptions): AchievementSourceApi {
@@ -52,6 +64,7 @@ export function createSteamApi(options: SteamApiOptions): AchievementSourceApi {
     baseUrl: BASE_URL,
     defaultParams: { key: options.apiKey },
     minIntervalMs: options.minIntervalMs ?? MIN_INTERVAL_MS,
+    gate: options.gate,
     fetch: options.fetch,
     now: options.now,
     sleep: options.sleep,
@@ -122,11 +135,14 @@ export function createDisabledSteamApi(): AchievementSourceApi {
   };
 }
 
-export function createSteamFromEnv(env: Pick<Env, "STEAM_WEB_API_KEY">): AchievementSourceApi {
+export function createSteamFromEnv(
+  env: Pick<Env, "STEAM_WEB_API_KEY">,
+  gate?: RequestGate,
+): AchievementSourceApi {
   const apiKey = env.STEAM_WEB_API_KEY;
   if (!apiKey) {
     console.warn("STEAM_WEB_API_KEY ausente: conquistas da Steam desativadas.");
     return createDisabledSteamApi();
   }
-  return createSteamApi({ apiKey });
+  return createSteamApi({ apiKey, gate });
 }

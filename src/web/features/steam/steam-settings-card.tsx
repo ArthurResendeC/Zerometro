@@ -1,6 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
-import { linkSteamProfileSchema, type SteamAutoSyncState, type SteamProfile } from "@shared/steam";
+import {
+  linkSteamProfileSchema,
+  type SteamAutoSyncState,
+  type SteamLibrarySyncRun,
+  type SteamProfile,
+} from "@shared/steam";
 import { ExternalLink } from "@/components/external-link";
 import { DownloadIcon, PlusIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -89,6 +94,7 @@ function LinkedProfile({
   auto: SteamAutoSyncState | null;
 }) {
   const sync = useSyncSteamLibrary();
+  const [progress, setProgress] = useState<SteamLibrarySyncRun | null>(null);
   const unlink = useUnlinkSteamProfile();
   const [importing, setImporting] = useState(false);
 
@@ -113,8 +119,13 @@ function LinkedProfile({
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button onClick={() => sync.mutate()} disabled={sync.isPending}>
-          <DownloadIcon /> {sync.isPending ? "Sincronizando…" : "Sincronizar tudo"}
+        <Button onClick={() => sync.mutate({ onProgress: setProgress })} disabled={sync.isPending}>
+          <DownloadIcon />{" "}
+          {!sync.isPending
+            ? "Sincronizar tudo"
+            : progress?.total
+              ? `Sincronizando… ${progress.done}/${progress.total}`
+              : "Sincronizando…"}
         </Button>
         <Button variant="secondary" onClick={() => setImporting(true)}>
           <PlusIcon /> Importar jogos
@@ -125,9 +136,10 @@ function LinkedProfile({
       </div>
       <AutoSyncStatus auto={auto} />
       <p className="text-xs text-muted-foreground">
-        "Sincronizar tudo" passa pelos jogos da biblioteca que estão na sua conta, um de cada vez.
-        Para um jogo só, use o botão na página dele. "Importar jogos" mostra os da sua conta que
-        ainda não estão aqui, para você escolher quais entram.
+        "Sincronizar tudo" passa pelos jogos da biblioteca que estão na sua conta, um de cada vez,
+        no ritmo que a Steam aceita; roda no servidor, então dá para fechar a página. Para um jogo
+        só, use o botão na página dele. "Importar jogos" mostra os da sua conta que ainda não estão
+        aqui, para você escolher quais entram.
       </p>
       <SteamImportDialog open={importing} onOpenChange={setImporting} />
     </div>

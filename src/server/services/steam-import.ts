@@ -8,6 +8,7 @@ import {
   suggestedImportStatus,
 } from "../../shared/steam";
 import { achievementSets, games, libraryEntries, userAchievementSets } from "../db/schema";
+import { SourceRateLimitedError } from "../errors";
 import { ensureSetOrNull } from "./achievements";
 import type { ServiceContext } from "./context";
 import { saveGame } from "./games";
@@ -202,9 +203,16 @@ export async function importSteamGames(
 
   if (deps.catalog.enabled.steam) {
     for (const { gameId, appId } of otherApp) {
-      // Raro (o IGDB costuma ter o mesmo app); um de cada vez por causa do limite da Steam.
-      // oxlint-disable-next-line no-await-in-loop
-      const set = await ensureSetOrNull(deps.catalog, "steam", String(appId));
+      let set;
+      try {
+        // Raro (o IGDB costuma ter o mesmo app); um de cada vez por causa do limite da Steam.
+        // oxlint-disable-next-line no-await-in-loop
+        set = await ensureSetOrNull(deps.catalog, "steam", String(appId));
+      } catch (error) {
+        // Os jogos já entraram: com a Steam em pausa, as listas ficam para depois.
+        if (error instanceof SourceRateLimitedError) break;
+        throw error;
+      }
       if (!set) continue;
       ctx.db
         .insert(userAchievementSets)
