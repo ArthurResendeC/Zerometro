@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { groupSectionsSchema } from "./group-sections";
+import { soundPackIds } from "./items";
 import { BLEND_WEIGHT, ratingModeSchema, ratingWeightsSchema } from "./ratings";
+import { DEFAULT_THEME, themeIds } from "./themes";
 
 // Preferências do usuário (guardadas no `kv`), compartilhadas por API, frontend e MCP.
 
@@ -34,6 +36,10 @@ export const settingsSchema = z.object({
   shareWithGroup: z.boolean(),
   /** O que os amigos veem no /amigo (só as seções fora do padrão; veja `isSectionShared`). */
   groupSections: groupSectionsSchema,
+  /** Tema da interface (só um que o usuário tenha; veja `user_items`). */
+  themeId: z.enum(themeIds),
+  /** Pacote de sons; null = o do tema. */
+  soundPackId: z.enum(soundPackIds).nullable(),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 
@@ -45,6 +51,8 @@ export const DEFAULT_SETTINGS: Settings = {
   ratingCustomWeights: null,
   shareWithGroup: true,
   groupSections: {},
+  themeId: DEFAULT_THEME,
+  soundPackId: null,
 };
 
 export const updateSettingsSchema = settingsSchema

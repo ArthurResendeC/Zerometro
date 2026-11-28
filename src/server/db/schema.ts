@@ -22,6 +22,7 @@ import {
 import { inviteKinds, userRoles } from "../../shared/auth";
 import { achievementSources, achievementUnlockOrigins } from "../../shared/achievements";
 import { progressGoals } from "../../shared/completions";
+import { itemKinds, itemSources } from "../../shared/items";
 import type { CriterionWeights } from "../../shared/rating-criteria";
 import { ratingPresets } from "../../shared/rating-criteria";
 import { type CriterionNotes, ratingModes, type RatingScores } from "../../shared/ratings";
@@ -477,6 +478,25 @@ export const activityLog = sqliteTable(
   (t) => [index("activity_log_created_at_idx").on(t.createdAt)],
 );
 
+/**
+ * Itens de personalização que o usuário tem (temas, pacotes de som). O que é de graça (o tema
+ * base e o pacote dele) não tem linha. Um item por usuário: ganhar de novo não duplica.
+ */
+export const userItems = sqliteTable(
+  "user_items",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: userId(),
+    kind: text("kind", { enum: itemKinds }).notNull(),
+    itemId: text("item_id").notNull(),
+    source: text("source", { enum: itemSources }).notNull(),
+    /** Quando ganhou/comprou (ISO UTC). */
+    acquiredAt: text("acquired_at").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("user_items_user_kind_item_idx").on(t.userId, t.kind, t.itemId)],
+);
+
 /** Chave-valor para estado interno (token do IGDB, ajustes por usuário em `settings:<userId>`). */
 export const kv = sqliteTable("kv", {
   key: text("key").primaryKey(),
@@ -518,6 +538,7 @@ export type PlaySession = typeof playSessions.$inferSelect;
 export type NewPlaySession = typeof playSessions.$inferInsert;
 export type Completion = typeof completions.$inferSelect;
 export type Objective = typeof objectives.$inferSelect;
+export type UserItem = typeof userItems.$inferSelect;
 export type Rating = typeof ratings.$inferSelect;
 export type AchievementSet = typeof achievementSets.$inferSelect;
 export type Achievement = typeof achievements.$inferSelect;

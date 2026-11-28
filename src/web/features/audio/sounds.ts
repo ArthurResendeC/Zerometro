@@ -1,12 +1,26 @@
-import { sfxr } from "jsfxr";
-import definitions from "./zerometro-sfx.json";
+import { type SfxrDefinition, sfxr } from "jsfxr";
+import { DEFAULT_SOUND_PACK, type SoundPackId } from "@shared/items";
+import cartucho from "./packs/cartucho.json";
 
-// Efeitos sonoros 8 bits, sintetizados no navegador pelo jsfxr a partir do JSON (nada de .wav no repo).
-// Cada som é gerado uma vez só, no primeiro play, e o AudioBuffer fica em cache na memória.
+// Efeitos sonoros sintetizados no navegador pelo jsfxr a partir de um pacote JSON (nada de .wav no
+// repo). Cada tema tem o seu pacote (packs/<id>.json); o do tema base vai no bundle e os outros
+// chegam sob demanda. Cada som é gerado uma vez por pacote, no primeiro play, e fica em cache.
 
-export type SoundName = keyof typeof definitions;
+export const soundNames = [
+  "session-start",
+  "session-stop",
+  "game-finished",
+  "streak-milestone",
+  "goal-reached",
+  "roulette-tick",
+  "roulette-win",
+] as const;
+export type SoundName = (typeof soundNames)[number];
 
-/** Nome de cada som na tela de ajustes (o Record garante que nenhum som do JSON fique de fora). */
+/** Um pacote: a definição jsfxr de cada som. */
+export type SoundPack = Record<SoundName, SfxrDefinition>;
+
+/** Nome de cada som na tela de ajustes. */
 export const soundLabels: Record<SoundName, string> = {
   "session-start": "Começou a jogar",
   "session-stop": "Parou de jogar",
@@ -17,7 +31,32 @@ export const soundLabels: Record<SoundName, string> = {
   "roulette-win": "Roleta escolheu",
 };
 
-export const soundNames = Object.keys(soundLabels) as SoundName[];
+/** Carregadores dos pacotes (o do tema base já está no bundle). */
+export const soundPackLoaders: Record<SoundPackId, () => Promise<SoundPack>> = {
+  cartucho: () => Promise.resolve(cartucho),
+  minimal: () => import("./packs/minimal.json").then((m) => m.default),
+  "ladrao-fantasma": () => import("./packs/ladrao-fantasma.json").then((m) => m.default),
+};
+
+let activePackId: SoundPackId = DEFAULT_SOUND_PACK;
+let definitions: SoundPack = cartucho;
+
+/**
+ * Troca o pacote ativo. Até o novo chegar, os sons seguem no anterior; se ele não carregar
+ * (offline, por exemplo), fica o anterior.
+ */
+export async function setSoundPack(id: SoundPackId): Promise<void> {
+  if (id === activePackId) return;
+  activePackId = id;
+  try {
+    const pack = await soundPackLoaders[id]();
+    if (activePackId !== id) return; // trocou de novo enquanto carregava
+    definitions = pack;
+    buffers.clear();
+  } catch (error) {
+    reportAudioError(error);
+  }
+}
 
 interface AudioOutput {
   context: AudioContext;

@@ -384,6 +384,55 @@ Os dois ficam escondidos atrás de uma flag de desenvolvimento até a loja exist
 **Fase 3: infraestrutura.** `themes.ts`, `ThemeProvider`, script contra piscada, `user_items`, pacotes de som e
 os testes de completude e contraste.
 
+> **Fase 3: feita.** O registro, o script contra piscada e os testes de contraste já tinham saído na
+> fase 2. Esta fase ligou o tema à conta e à posse.
+>
+> - **Posse:**
+>   - tabela `user_items (user_id, kind, item_id, source, acquired_at)`, migration `0017_itens`;
+>   - `kind` vale `theme` ou `sound_pack`; `source` vale `purchase`, `badge`, `gift`, `founder` ou `grant`;
+>   - o tema base e o pacote dele são grátis e não têm linha;
+>   - ganhar um tema traz o pacote de som dele, e ganhar de novo não duplica;
+>   - serviço em `services/items.ts`, catálogo compartilhado em `shared/items.ts`.
+> - **API:**
+>   - `GET /api/me/items`: os itens do perfil, incluindo os grátis;
+>   - `POST /api/admin/users/:id/items` `{ kind, itemId }`: o admin concede, com `source: "grant"`.
+>     Até a loja abrir, é o único jeito de ganhar um tema. A loja e as insígnias vão chamar o mesmo
+>     `grantItem` com outra `source`.
+> - **Na conta:**
+>   - `settings.themeId` e `settings.soundPackId` (null = o pacote do tema);
+>   - o servidor recusa o que o perfil não tem, com 403 `item_not_owned`;
+>   - ao ler, um item que o perfil perdeu volta ao padrão.
+> - **No cliente:**
+>   - o `ThemeSync` (em `features/theme/`, montado no layout logado) aplica o tema e os sons da conta
+>     quando os ajustes chegam, inclusive vindo de outro aparelho;
+>   - `lib/theme.ts` separa o tema da conta de uma **prévia** (`startPreview`/`endPreview`). A prévia
+>     fica por cima até ser encerrada, sobrevive ao recarregar e não mexe na conta. A loja vai usar
+>     o mesmo mecanismo;
+>   - no tema base, nada fica guardado no aparelho.
+> - **Ajustes:**
+>   - o card **Aparência** lista os temas e pacotes que o perfil tem e salva na conta. Ele some
+>     enquanto o perfil só tem o tema base;
+>   - o card de prévia (só fora de produção) usa a prévia.
+> - **Sons:**
+>   - pacotes em `features/audio/packs/<id>.json`: `cartucho` (o de antes), `minimal` (senoides suaves)
+>     e `ladrao-fantasma` (dente de serra seco, ruído na roleta);
+>   - `SoundName` é uma lista explícita;
+>   - `setSoundPack` troca o pacote e limpa o cache de buffers;
+>   - um teste confere que todo pacote tem todos os sons e que cada um sintetiza algo curto.
+>
+>   Como o build não divide o código, os três pacotes vão no bundle (~15 KB). O carregamento já é
+>   assíncrono para quando houver divisão.
+>
+> - **Verificação:**
+>   - fluxo de ponta a ponta no navegador com 15 checagens, todas passando: concessão, card,
+>     tema salvo, aplicado antes da primeira pintura, outro aparelho, prévia e volta ao base;
+>   - o tema base segue igual pixel a pixel.
+> - **Ainda fica para depois:**
+>   - modo claro, já que só o Cartucho define, e ainda sem escolha na interface;
+>   - recap por tema;
+>   - revisão tela a tela de cada tema;
+>   - concessão de temas pela interface do admin (hoje é só pela API).
+
 **Fase 4: loja v1** (depende da economia), com pré-visualização e cerca de 6 temas.
 
 **Fase 5: camadas ricas** (`ThemeCopy` e celebrações) nos temas Lendários.
