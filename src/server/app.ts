@@ -21,6 +21,7 @@ import { createStatsRoutes } from "./routes/stats";
 import { createProfileRoutes } from "./routes/profile";
 import { createSteamRoutes } from "./routes/steam";
 import { createTimerRoutes } from "./routes/timer";
+import { createAdminRoutes, createMeRoutes } from "./routes/users";
 import { toSession } from "./services/users";
 import type { AchievementCatalog } from "./services/achievement-catalog";
 import type { Clock } from "./services/context";
@@ -90,6 +91,8 @@ export function createApp(deps: AppDeps) {
       .route("/settings", createSettingsRoutes(deps))
       .route("/steam", createSteamRoutes(deps))
       .route("/timer", createTimerRoutes(deps))
+      .route("/me", createMeRoutes(deps))
+      .route("/admin", createAdminRoutes(deps))
   );
 }
 

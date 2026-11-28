@@ -1,12 +1,17 @@
 // Perfis da instância: login por @apelido e senha, convites de uso único e o que a sessão mostra.
 // O `owner` (admin) também entra com o ZEROMETRO_TOKEN, para o primeiro acesso e emergências.
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, max } from "drizzle-orm";
 import {
   type AcceptResetInput,
   type AcceptSignupInput,
   type AuthSession,
   type Avatar,
+  type ChangePasswordInput,
+  type InviteStatus,
+  type InviteSummary,
+  type UpdateMeInput,
+  type UserSummary,
   avatars,
   DEFAULT_AVATAR,
   type InviteKind,
@@ -14,9 +19,10 @@ import {
   OWNER_ID,
 } from "../../shared/auth";
 import type { Db, DbOrTx } from "../db/client";
-import { invites, user, type User } from "../db/schema";
+import { invites, playSessions, user, type User } from "../db/schema";
 import { AppError, ConflictError, NotFoundError } from "../errors";
 import { logActivity } from "./activity";
+import type { ServiceContext } from "./context";
 
 export const INVITE_TTL_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -218,4 +224,128 @@ export function getOwner(db: DbOrTx): AuthUser {
   const owner = getActiveUser(db, OWNER_ID);
   if (!owner) throw new NotFoundError("O admin da instância não existe");
   return owner;
+}
+
+/** Muda nome e avatar do próprio perfil. */
+export function updateProfile(ctx: ServiceContext, patch: UpdateMeInput): AuthUser {
+  ctx.db.update(user).set(patch).where(eq(user.id, ctx.userId)).run();
+  logActivity(ctx.db, ctx, "user.update", patch);
+  return getActiveUser(ctx.db, ctx.userId)!;
+}
+
+/**
+ * Troca a senha (a atual é obrigatória para quem já tem uma) e derruba os outros aparelhos:
+ * quem chamou recebe o perfil na versão nova, para reemitir o próprio cookie.
+ */
+export async function changePassword(
+  ctx: ServiceContext,
+  input: ChangePasswordInput,
+): Promise<AuthUser> {
+  const me = getActiveUser(ctx.db, ctx.userId);
+  if (!me) throw new NotFoundError("Perfil não encontrado");
+  if (me.passwordHash) {
+    const ok = await Bun.password.verify(input.current ?? "", me.passwordHash);
+    if (!ok) throw new AppError(403, "wrong_password", "A senha atual não confere");
+  }
+  setPassword(ctx.db, ctx.userId, await hashPassword(input.password));
+  logActivity(ctx.db, ctx, "user.password_change", {});
+  return getActiveUser(ctx.db, ctx.userId)!;
+}
+
+/** "Sair de todos os aparelhos": os cookies e os conectores de antes param de valer. */
+export function signOutEverywhere(ctx: ServiceContext): AuthUser {
+  bumpSessionVersion(ctx.db, ctx.userId);
+  logActivity(ctx.db, ctx, "user.sign_out_everywhere", {});
+  return getActiveUser(ctx.db, ctx.userId)!;
+}
+
+/** Todos os perfis (para o admin), do mais antigo ao mais novo. */
+export function listUsers({ db }: Pick<ServiceContext, "db">): UserSummary[] {
+  const lastPlayed = db
+    .select({ userId: playSessions.userId, last: max(playSessions.playedOn).as("last") })
+    .from(playSessions)
+    .groupBy(playSessions.userId)
+    .as("last_played");
+  return db
+    .select({ row: user, last: lastPlayed.last })
+    .from(user)
+    .leftJoin(lastPlayed, eq(lastPlayed.userId, user.id))
+    .orderBy(asc(user.createdAt))
+    .all()
+    .map(({ row, last }) => ({
+      userId: row.id,
+      name: row.name,
+      handle: row.handle,
+      avatar: isAvatar(row.avatar) ? row.avatar : DEFAULT_AVATAR,
+      role: row.role,
+      disabled: row.disabledAt !== null,
+      createdAt: row.createdAt.toISOString(),
+      lastPlayedOn: last ?? null,
+    }));
+}
+
+/** Os convites e links de redefinição, dos mais novos aos mais velhos. */
+export function listInvites({ db, now }: Pick<ServiceContext, "db" | "now">): InviteSummary[] {
+  const rows = db.select().from(invites).orderBy(desc(invites.id)).all();
+  const people = new Map(
+    db
+      .select({ id: user.id, name: user.name, handle: user.handle })
+      .from(user)
+      .all()
+      .map((p) => [p.id, { name: p.name, handle: p.handle }]),
+  );
+  const at = now.toISOString();
+  return rows.map((row) => {
+    const status: InviteStatus = row.usedAt
+      ? "used"
+      : row.revokedAt
+        ? "revoked"
+        : row.expiresAt <= at
+          ? "expired"
+          : "pending";
+    const who = row.kind === "reset" ? row.targetUserId : row.usedBy;
+    return {
+      id: row.id,
+      kind: row.kind,
+      note: row.note,
+      status,
+      createdAt: row.createdAt,
+      expiresAt: row.expiresAt,
+      user: (who && people.get(who)) || null,
+    };
+  });
+}
+
+/** Revoga um convite ainda não usado. */
+export function revokeInvite(ctx: ServiceContext, id: number): void {
+  const row = ctx.db.select().from(invites).where(eq(invites.id, id)).get();
+  if (!row) throw new NotFoundError("Convite não encontrado");
+  if (row.usedAt) throw new ConflictError("Este convite já foi usado");
+  if (row.revokedAt) return;
+  ctx.db.update(invites).set({ revokedAt: ctx.now.toISOString() }).where(eq(invites.id, id)).run();
+  logActivity(ctx.db, ctx, "invite.revoke", { inviteId: id });
+}
+
+/**
+ * Suspende (ou reativa) um perfil: suspenso não entra, os conectores param e ele some do grupo;
+ * os dados ficam. O admin não se suspende.
+ */
+export function setUserDisabled(ctx: ServiceContext, userId: string, disabled: boolean): void {
+  const row = ctx.db.select({ role: user.role }).from(user).where(eq(user.id, userId)).get();
+  if (!row) throw new NotFoundError("Perfil não encontrado");
+  if (row.role === "admin") throw new ConflictError("Não dá para suspender o admin");
+  ctx.db
+    .update(user)
+    .set({ disabledAt: disabled ? ctx.now.toISOString() : null })
+    .where(eq(user.id, userId))
+    .run();
+  logActivity(ctx.db, ctx, disabled ? "user.disable" : "user.enable", { userId });
+}
+
+/** Link de redefinição de senha para um perfil ativo (o admin manda para a pessoa). */
+export function createResetLink(ctx: ServiceContext, userId: string) {
+  if (!getActiveUser(ctx.db, userId)) throw new NotFoundError("Perfil não encontrado");
+  const created = createInvite(ctx.db, ctx, { kind: "reset", targetUserId: userId });
+  logActivity(ctx.db, ctx, "invite.create", { inviteId: created.id, kind: "reset", userId });
+  return created;
 }

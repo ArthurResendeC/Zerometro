@@ -70,6 +70,8 @@ export interface Auth {
   cookieOptions: (maxAge?: number) => CookieOptions;
   /** Servidor OAuth do MCP (rotas na raiz e o `protect` do /mcp). */
   oauth: OAuthServer;
+  /** URL pública do site (links de convite). */
+  publicUrl: string;
 }
 
 /** O que o cookie identifica: o perfil e a versão da sessão dele. */
@@ -147,6 +149,7 @@ export function createAuth({
       maxAge,
     }),
     oauth: createOAuthServer({ publicUrl, secret, adminToken: token, users, now, log }),
+    publicUrl,
   };
 }
 

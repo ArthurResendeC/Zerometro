@@ -88,3 +88,57 @@ export interface AuthSession {
   /** Já tem senha? O admin pode entrar só pelo token até definir uma. */
   hasPassword: boolean;
 }
+
+/** Mudar nome e avatar (PATCH /api/me). */
+export const updateMeSchema = z
+  .object({ name: displayNameSchema, avatar: z.enum(avatars) })
+  .partial()
+  .refine((patch) => Object.keys(patch).length > 0, "Nada para mudar");
+export type UpdateMeInput = z.infer<typeof updateMeSchema>;
+
+/** Trocar a senha: a atual é obrigatória para quem já tem uma. */
+export const changePasswordSchema = z.object({
+  current: z.string().optional(),
+  password: passwordSchema,
+});
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+export const createInviteSchema = z.object({
+  note: z.string().trim().max(60, "Nota longa demais").optional(),
+});
+export type CreateInviteInput = z.infer<typeof createInviteSchema>;
+
+/** Link de convite ou de redefinição recém-gerado: o código só aparece agora. */
+export interface CreatedInvite {
+  id: number;
+  url: string;
+  expiresAt: string;
+}
+
+/** Um perfil na lista do admin. */
+export interface UserSummary {
+  userId: string;
+  name: string;
+  handle: string | null;
+  avatar: Avatar;
+  role: UserRole;
+  disabled: boolean;
+  /** Entrou na instância (ISO UTC). */
+  createdAt: string;
+  /** Último dia com sessão (YYYY-MM-DD), ou null. */
+  lastPlayedOn: string | null;
+}
+
+export type InviteStatus = "pending" | "used" | "revoked" | "expired";
+
+/** Um convite na lista do admin (sem o código, que não fica guardado). */
+export interface InviteSummary {
+  id: number;
+  kind: InviteKind;
+  note: string | null;
+  status: InviteStatus;
+  createdAt: string;
+  expiresAt: string;
+  /** Quem usou (signup) ou de quem é a redefinição (reset). */
+  user: { name: string; handle: string | null } | null;
+}
