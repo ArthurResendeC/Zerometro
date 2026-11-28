@@ -561,6 +561,13 @@ function progressText(item: LibraryItem, progress: number): string {
   const { progressGoal: goal, progressDone: done, minutesPlayed: played } = item;
   const target = item.progressTargetMinutes;
   if (goal === "none") return "";
+  if (goal === "achievements") {
+    const a = item.achievements;
+    if (!a) return "";
+    return done
+      ? `Todas as ${a.total} conquistas desbloqueadas`
+      : `${a.unlocked} de ${a.total} conquistas`;
+  }
   if (goal === "hours") {
     if (target === null) return "";
     return done

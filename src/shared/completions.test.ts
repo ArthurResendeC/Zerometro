@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { displayStateOf, estimateProgress } from "./completions";
+import { defaultProgressGoal, displayStateOf, estimateProgress } from "./completions";
 
 const ttb = { mainSec: 10 * 3600, extraSec: 20 * 3600, completeSec: 40 * 3600 };
 
@@ -9,6 +9,7 @@ const estimate = (hours: number, fields: Partial<Args> = {}) =>
     minutesPlayed: hours * 60,
     timeToBeat: ttb,
     best: null,
+    achievements: null,
     goal: "main",
     goalMinutes: null,
     ...fields,
@@ -55,6 +56,28 @@ describe("estimateProgress (meta do jogo)", () => {
       goal: "extras",
       done: false,
     });
+  });
+
+  test("meta nas conquistas: a fração desbloqueada, que enche com todas", () => {
+    const achievements = { total: 40, unlocked: 10 };
+    expect(estimate(5, { goal: "achievements", achievements })).toEqual({
+      progress: 0.25,
+      goal: "achievements",
+      targetMinutes: null,
+      done: false,
+    });
+    expect(
+      estimate(5, { goal: "achievements", achievements: { total: 40, unlocked: 40 } }),
+    ).toMatchObject({ progress: 1, done: true });
+    // Sem lista de conquistas, sem barra.
+    expect(estimate(5, { goal: "achievements" }).progress).toBeNull();
+  });
+
+  test("meta padrão: conquistas se o jogo segue uma lista; senão história (sem fim, nenhuma)", () => {
+    expect(defaultProgressGoal("playing", true)).toBe("achievements");
+    expect(defaultProgressGoal("endless", true)).toBe("achievements");
+    expect(defaultProgressGoal("playing", false)).toBe("main");
+    expect(defaultProgressGoal("endless", false)).toBe("none");
   });
 
   test("meta em horas: o alvo do usuário, que enche ao ser alcançado", () => {

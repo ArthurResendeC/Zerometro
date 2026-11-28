@@ -67,14 +67,15 @@ export const ttbByType: Record<CompletionType, keyof TimeToBeat> = {
 };
 
 /**
- * Até onde a barra de progresso mede: um nível de conclusão (pelo tempo do IGDB), um alvo em
- * horas escolhido pelo usuário ou nenhum (sem barra).
+ * Até onde a barra de progresso mede: as conquistas da Steam/RA, um nível de conclusão (pelo
+ * tempo do IGDB), um alvo em horas escolhido pelo usuário ou nenhum (sem barra).
  */
-export const progressGoals = [...completionTypes, "hours", "none"] as const;
+export const progressGoals = ["achievements", ...completionTypes, "hours", "none"] as const;
 export const progressGoalSchema = z.enum(progressGoals);
 export type ProgressGoal = z.infer<typeof progressGoalSchema>;
 
 export const progressGoalLabels: Record<ProgressGoal, string> = {
+  achievements: "Conquistas",
   ...completionTypeLabels,
   hours: "Horas",
   none: "Sem barra",
@@ -88,9 +89,12 @@ export const progressGoalMinutesSchema = z
   .min(60, "A meta precisa ter pelo menos 1h")
   .max(MAX_GOAL_MINUTES, "A meta pode ter até 9999h");
 
-/** Sem meta escolhida: a história; jogo sem fim, sem barra. */
-export const defaultProgressGoal = (status: GameStatus): ProgressGoal =>
-  status === "endless" ? "none" : "main";
+/**
+ * Sem meta escolhida: as conquistas, se o jogo segue uma lista; senão a história (jogo sem fim,
+ * sem barra).
+ */
+export const defaultProgressGoal = (status: GameStatus, hasAchievements: boolean): ProgressGoal =>
+  hasAchievements ? "achievements" : status === "endless" ? "none" : "main";
 
 /**
  * Sem marcar a conclusão, a barra para aqui: passar do tempo do IGDB não é zerar (cada um joga
@@ -99,17 +103,20 @@ export const defaultProgressGoal = (status: GameStatus): ProgressGoal =>
 export const MAX_UNCONFIRMED_PROGRESS = 0.99;
 
 export interface ProgressEstimate {
-  /** 0..1; null sem barra (meta "none" ou sem tempo do IGDB para a meta). */
+  /** 0..1; null sem barra (meta "none", sem conquistas ou sem tempo do IGDB para a meta). */
   progress: number | null;
   goal: ProgressGoal;
-  /** Minutos da meta: as horas escolhidas ou o tempo do IGDB; null sem tempo. */
+  /** Minutos da meta: as horas escolhidas ou o tempo do IGDB; null sem tempo (e nas conquistas). */
   targetMinutes: number | null;
-  /** Meta cumprida: conclusão marcada no nível da meta (ou acima) ou as horas alcançadas. */
+  /**
+   * Meta cumprida: todas as conquistas, conclusão marcada no nível da meta (ou acima) ou as
+   * horas alcançadas.
+   */
   done: boolean;
 }
 
 /**
- * Progresso rumo à meta. Num nível de conclusão, a barra só enche quando a conclusão é marcada
+ * Progresso rumo à meta. Nas conquistas, a fração desbloqueada. Num nível de conclusão, a barra só enche quando a conclusão é marcada
  * (mesmo zerando mais rápido que o IGDB) e, sem ela, não passa de 99%. Em horas, enche ao
  * alcançar o alvo. A meta nunca muda sozinha (zerar a história não troca a barra para os extras).
  */
@@ -117,16 +124,29 @@ export function estimateProgress({
   minutesPlayed,
   timeToBeat,
   best,
+  achievements,
   goal,
   goalMinutes,
 }: {
   minutesPlayed: number;
   timeToBeat: TimeToBeat | null;
   best: CompletionType | null;
+  /** Das listas que o jogo segue; null se não segue nenhuma. */
+  achievements: { total: number; unlocked: number } | null;
   goal: ProgressGoal;
   goalMinutes: number | null;
 }): ProgressEstimate {
   if (goal === "none") return { progress: null, goal, targetMinutes: null, done: false };
+  if (goal === "achievements") {
+    if (!achievements?.total) return { progress: null, goal, targetMinutes: null, done: false };
+    const { total, unlocked } = achievements;
+    return {
+      progress: Math.min(1, unlocked / total),
+      goal,
+      targetMinutes: null,
+      done: unlocked >= total,
+    };
+  }
   if (goal === "hours") {
     if (!goalMinutes) return { progress: null, goal, targetMinutes: null, done: false };
     return {
@@ -157,8 +177,9 @@ export const completionBadgeLabels: Record<CompletionType, string> = {
   full: "100%",
 };
 
-/** "45% da história", "60% rumo à história + extras", "80% rumo ao 100%", "50% da meta". */
+/** "30% das conquistas", "45% da história", "60% rumo à história + extras", "50% da meta"… */
 export const progressTargetLabels: Record<ProgressGoal, string> = {
+  achievements: "das conquistas",
   main: "da história",
   extras: "rumo à história + extras",
   full: "rumo ao 100%",

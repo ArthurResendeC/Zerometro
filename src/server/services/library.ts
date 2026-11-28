@@ -297,11 +297,20 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
       entry.playtimeSource === "steam" && steamPlaytime
         ? steamPlaytime.minutes
         : minutes + entry.priorMinutes;
+    const achievementsSummary = row.achievementsTotal
+      ? {
+          total: row.achievementsTotal,
+          unlocked: row.achievementsUnlocked ?? 0,
+          points: row.achievementsPoints ?? 0,
+          pointsUnlocked: row.achievementsPointsUnlocked ?? 0,
+        }
+      : null;
     const estimate = estimateProgress({
       minutesPlayed,
       timeToBeat,
       best,
-      goal: entry.progressGoal ?? defaultProgressGoal(entry.status),
+      achievements: achievementsSummary,
+      goal: entry.progressGoal ?? defaultProgressGoal(entry.status, achievementsSummary !== null),
       goalMinutes: entry.progressGoalMinutes,
     });
     const onSteam =
@@ -329,14 +338,7 @@ function selectItems({ db, userId }: UserScope, filters: SQL[]): LibraryItem[] {
       objectives: row.objectivesTotal
         ? { total: row.objectivesTotal, unlocked: row.objectivesUnlocked ?? 0 }
         : null,
-      achievements: row.achievementsTotal
-        ? {
-            total: row.achievementsTotal,
-            unlocked: row.achievementsUnlocked ?? 0,
-            points: row.achievementsPoints ?? 0,
-            pointsUnlocked: row.achievementsPointsUnlocked ?? 0,
-          }
-        : null,
+      achievements: achievementsSummary,
       platformPlayed: entry.platformPlayed,
       emulatedOn: entry.emulatedOn,
       startedAt: entry.startedAt,

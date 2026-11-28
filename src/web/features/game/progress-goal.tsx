@@ -28,7 +28,7 @@ function parseHours(text: string): number | null {
 }
 
 /**
- * Até onde a barra mede: a meta padrão do status, um nível de conclusão, um alvo em horas ou
+ * Até onde a barra mede: a meta padrão, as conquistas, um nível de conclusão, um alvo em horas ou
  * nenhum. Salva ao escolher (as horas, ao confirmar). Remonte com `key={item.updatedAt}`.
  */
 export function ProgressGoalControl({ item }: { item: LibraryItem }) {
@@ -40,7 +40,7 @@ export function ProgressGoalControl({ item }: { item: LibraryItem }) {
   const savedMinutes = item.progressGoal === "hours" ? item.progressTargetMinutes : null;
   const [hours, setHours] = useState(savedMinutes ? String(savedMinutes / 60) : "");
   const minutes = parseHours(hours);
-  const defaultGoal = defaultProgressGoal(item.status);
+  const defaultGoal = defaultProgressGoal(item.status, item.achievements !== null);
 
   function choose(next: Choice) {
     setChoice(next);
@@ -55,8 +55,8 @@ export function ProgressGoalControl({ item }: { item: LibraryItem }) {
     update.mutate({ progressGoal: "hours", progressGoalMinutes: minutes });
   }
 
-  const noTime =
-    item.progress === null && item.progressGoal !== "none" && item.progressGoal !== "hours";
+  const noTime = item.progress === null && ["main", "extras", "full"].includes(item.progressGoal);
+  const noAchievements = item.progress === null && item.progressGoal === "achievements";
 
   return (
     <form className="space-y-2" onSubmit={saveHours}>
@@ -106,6 +106,12 @@ export function ProgressGoalControl({ item }: { item: LibraryItem }) {
       {noTime && (
         <p className="text-xs text-muted-foreground">
           O IGDB não tem tempo para essa meta: escolha uma meta em horas para ver a barra.
+        </p>
+      )}
+      {noAchievements && (
+        <p className="text-xs text-muted-foreground">
+          O jogo não segue nenhuma lista de conquistas: vincule uma na aba Conquistas para ver a
+          barra.
         </p>
       )}
     </form>

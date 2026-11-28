@@ -79,15 +79,18 @@ export interface LibraryItem {
   lastNote: LastSessionNote | null;
   /** Data da primeira sessão registrada (o "comecei a jogar" usa quando `startedAt` está vazio). */
   firstPlayedOn: string | null;
-  /** 0..1 rumo a `progressGoal`; null sem barra (meta "none" ou sem tempo para a meta). */
+  /** 0..1 rumo a `progressGoal`; null sem barra (meta "none", sem conquistas ou sem tempo). */
   progress: number | null;
-  /** Meta da barra: a escolhida ou, sem escolha, a padrão do status (história; Sem fim, nenhuma). */
+  /**
+   * Meta da barra: a escolhida ou, sem escolha, a padrão (as conquistas, se o jogo segue uma
+   * lista; senão a história, e Sem fim fica sem barra).
+   */
   progressGoal: ProgressGoal;
-  /** O usuário escolheu a meta (senão ela segue o status). */
+  /** O usuário escolheu a meta (senão segue a padrão). */
   progressGoalCustom: boolean;
   /** Minutos da meta: as horas escolhidas ou o tempo do IGDB; null sem tempo. */
   progressTargetMinutes: number | null;
-  /** Meta cumprida (conclusão marcada no nível da meta, ou as horas alcançadas). */
+  /** Meta cumprida (todas as conquistas, conclusão no nível da meta ou as horas alcançadas). */
   progressDone: boolean;
 }
 

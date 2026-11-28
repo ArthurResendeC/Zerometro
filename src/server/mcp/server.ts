@@ -229,10 +229,10 @@ function gameSummary(item: LibraryItem) {
     },
     /** Progresso rumo à meta (null = sem barra). Sem a conclusão marcada, não passa de 99%. */
     progressPercent: item.progress === null ? null : Math.round(item.progress * 100),
-    /** Meta da barra: main/extras/full (pelo tempo do IGDB), hours (alvo do usuário) ou none. */
+    /** Meta da barra: achievements (conquistas), main/extras/full (tempo do IGDB), hours ou none. */
     progressGoal: item.progressGoal,
     progressGoalLabel: progressGoalLabels[item.progressGoal],
-    /** false = a meta padrão do status (história; sem fim = none). */
+    /** false = a meta padrão (conquistas, se segue uma lista; senão história, e sem fim = none). */
     progressGoalCustom: item.progressGoalCustom,
     progressTargetMinutes: item.progressTargetMinutes,
     progressDone: item.progressDone,
@@ -1192,7 +1192,7 @@ export function createMcpServer(deps: McpDeps, userId: string): McpServer {
     {
       title: "Meta da barra de progresso",
       description:
-        'Define até onde a barra de progresso de um jogo mede ("quero fazer o 100% do Hollow Knight", "minha meta no Tarkov é 500h", "esconde a barra do Fortnite"). goal: main = história (padrão), extras = história + extras, full = 100% (essas pelo tempo do IGDB, e a barra só enche ao marcar a conclusão com mark_completed), hours = alvo em horas do usuário (passe hours), none = sem barra (padrão do status endless), default = volta para a meta padrão do status. A meta nunca muda sozinha.',
+        'Define até onde a barra de progresso de um jogo mede ("quero fazer o 100% do Hollow Knight", "minha meta no Tarkov é 500h", "esconde a barra do Fortnite"). goal: achievements = conquistas desbloqueadas das listas Steam/RA que o jogo segue (padrão quando segue alguma), main = história (padrão sem conquistas), extras = história + extras, full = 100% (essas pelo tempo do IGDB, e a barra só enche ao marcar a conclusão com mark_completed), hours = alvo em horas do usuário (passe hours), none = sem barra (padrão do status endless sem conquistas), default = volta para a meta padrão. A meta nunca muda sozinha.',
       inputSchema: z.object({
         game: gameRefSchema,
         goal: z.enum([...progressGoals, "default"]),
