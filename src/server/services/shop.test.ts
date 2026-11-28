@@ -37,18 +37,46 @@ function withCoins(hours: number): ServiceContext {
   return ctx;
 }
 
+/** Ids dos temas na vitrine. */
+function themeIdsInShop(ctx: ServiceContext): string[] {
+  return getShop(ctx)
+    .items.filter((i) => i.kind === "theme")
+    .map((i) => i.id);
+}
+
 describe("vitrine", () => {
   test("temas e pacotes à venda com preço e posse; o grátis só aparece porque é de todos", () => {
     const shop = getShop(withCoins(0));
     expect(shop.balance).toBe(0);
-    expect(shop.items.map((i) => [i.kind, i.id, i.price, i.owned])).toEqual([
+    const rows = shop.items.map((i) => [i.kind, i.id, i.price, i.owned]);
+    expect(rows.slice(0, 4)).toEqual([
       ["theme", "cartucho", null, true],
       ["theme", "minimal", 250, false],
       ["theme", "ladrao-fantasma", 400, false],
+      ["theme", "fosforo", 250, false],
+    ]);
+    expect(rows).toContainEqual(["theme", "alto-contraste", null, true]);
+    expect(rows.slice(-3)).toEqual([
       ["sound_pack", "cartucho", null, true],
       ["sound_pack", "minimal", 80, false],
       ["sound_pack", "ladrao-fantasma", 80, false],
     ]);
+  });
+
+  test("exclusivos fora da vitrine; os sazonais só na temporada (no fuso do perfil)", () => {
+    const november = withCoins(0); // TEST_NOW é 19/11
+    expect(themeIdsInShop(november)).not.toContain("platina");
+    expect(themeIdsInShop(november)).not.toContain("abobora");
+    expect(themeIdsInShop(november)).not.toContain("noite-feliz");
+
+    // 01/12 às 02h UTC ainda é 30/11 em São Paulo; às 04h UTC já é dezembro lá.
+    const lateNovember = { ...november, now: new Date("2026-12-01T02:00:00.000Z") };
+    expect(themeIdsInShop(lateNovember)).not.toContain("noite-feliz");
+    const december = { ...november, now: new Date("2026-12-01T04:00:00.000Z") };
+    expect(themeIdsInShop(december)).toContain("noite-feliz");
+    expect(() => purchaseItem(november, { kind: "theme", itemId: "noite-feliz" })).toThrow(
+      new ConflictError("Noite Feliz não está à venda"),
+    );
   });
 });
 

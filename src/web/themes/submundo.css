@@ -1,0 +1,158 @@
+/* Tema Submundo (icônico, homenagem aos roguelikes da mitologia grega): vermelho de brasa e
+   dourado no escuro, bordas douradas com gregas, brasas subindo do fundo. Títulos em Forum
+   (letra de inscrição romana) e texto em Spectral. */
+
+:root[data-theme="submundo"] {
+  /* Tipografia */
+  --body-font: "Spectral", ui-serif, Georgia, serif;
+  --display-font: "Forum", ui-serif, Georgia, serif;
+  --text-xs: 14px;
+  --text-xs--line-height: 18px;
+  --text-sm: 15px;
+  --text-sm--line-height: 22px;
+  --text-base: 16px;
+  --text-base--line-height: 24px;
+  --text-lg: 19px;
+  --text-lg--line-height: 27px;
+  --text-xl: 22px;
+  --text-xl--line-height: 30px;
+  --text-2xl: 28px;
+  --text-2xl--line-height: 35px;
+  --display-xl: 40px;
+  --display-xl-lh: 44px;
+  --display-lg: 31px;
+  --display-lg-lh: 36px;
+  --display-md: 22px;
+  --display-md-lh: 27px;
+  --display-sm: 17px;
+  --display-sm-lh: 21px;
+  --display-xs: 13px;
+  --display-xs-lh: 16px;
+  --display-xs-tracking: 0.16em;
+  --display-weight: 400;
+  --display-style: normal;
+  --btn-sm-size: 15px;
+  --btn-sm-lh: 18px;
+  --btn-lg-size: 19px;
+  --btn-lg-lh: 24px;
+
+  /* Forma: anel dourado de 2px, bisel nos botões, brilho de brasa embaixo */
+  --radius: 0px;
+  --control-radius: 0px;
+  --frame-offset: 0px;
+  --frame-spread: 2px;
+  --frame-thin-offset: 0px;
+  --frame-thin-spread: 1px;
+  --drop: 0 10px 26px -10px #000, 0 0 22px -8px rgb(255 90 54 / 0.45);
+  --bevel-size: 3px;
+  --sunken-size: 0px;
+  --press-translate: 0 2px;
+  --rule: 1px;
+  --rule-thick: 2px;
+  --frame-gap: 2px;
+  --drop-gap: 6px;
+  --inner-line: 1px;
+  --focus-width: 2px;
+  --focus-offset: 4px;
+
+  /* Textura: o calor do fundo do mundo e brasas espalhadas */
+  --page-texture:
+    radial-gradient(90% 45% at 50% 112%, rgb(255 90 54 / 0.24), transparent 70%),
+    radial-gradient(circle, rgb(255 160 80 / 0.22) 1px, transparent 1.6px),
+    radial-gradient(circle, rgb(255 90 54 / 0.16) 1px, transparent 1.6px);
+  --page-texture-size: 100% 100%, 73px 97px, 131px 59px;
+  --overlay-texture: none;
+  /* Faixa dourada em ritmo de grega (traço longo, traço curto) */
+  --card-ridge: repeating-linear-gradient(
+    90deg,
+    var(--border) 0 8px,
+    transparent 8px 10px,
+    var(--border) 10px 12px,
+    transparent 12px 14px
+  );
+  --xp-gap: 1px;
+  /* Chama */
+  --menu-cursor-width: 10px;
+  --menu-cursor-height: 14px;
+  --menu-cursor-shape: polygon(50% 0, 85% 45%, 75% 100%, 25% 100%, 15% 45%, 35% 30%);
+
+  /* Movimento */
+  --ease-ui: cubic-bezier(0.3, 0.7, 0.2, 1);
+  --ease-reveal: ease-out;
+  --ease-progress: cubic-bezier(0.3, 0.7, 0.2, 1);
+  --animate-blink: zm-submundo-flame 1.2s ease-in-out infinite;
+}
+
+:root[data-theme="submundo"] body {
+  background-attachment: fixed;
+}
+:root[data-theme="submundo"] :is(.display-xl, .display-lg, .display-md) {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-shadow: 0 0 16px rgb(255 90 54 / 0.35);
+}
+
+@keyframes zm-submundo-flame {
+  50% {
+    opacity: 0.55;
+    transform: scaleY(0.85);
+  }
+}
+
+:root[data-theme="submundo"][data-mode="dark"] {
+  --background: #120608;
+  --foreground: #f7e6d4;
+  --card: #1e0c0d;
+  --card-foreground: #f7e6d4;
+  --popover: #241011;
+  --popover-foreground: #f7e6d4;
+  --primary: #ff5a36;
+  --primary-foreground: #1a0500;
+  --primary-shade: #b8321b;
+  --secondary: #2c1414;
+  --secondary-foreground: #f7e6d4;
+  --muted: #261112;
+  --muted-foreground: #c4a594;
+  --accent: #3a1717;
+  --accent-foreground: #f7e6d4;
+  --destructive: #ff4d6d;
+  --destructive-foreground: #1a0006;
+  --border: #b8863b;
+  --input: #8a6330;
+  --ring: #ffd36b;
+  --pixel-shadow: #000000;
+  --info: #6fd6c2;
+  --chart-1: #ff5a36;
+  --chart-2: #e8b84a;
+  --chart-3: #6fd6c2;
+  --chart-4: #8fd36b;
+  --chart-5: #c58bff;
+  --status-playing: #ff5a36;
+  --status-playing-foreground: #1a0500;
+  --status-endless: #ff8ac2;
+  --status-endless-foreground: #260a18;
+  --status-finished: #8fd36b;
+  --status-finished-foreground: #0b1606;
+  --status-backlog: #6fd6c2;
+  --status-backlog-foreground: #031612;
+  --status-wishlist: #c58bff;
+  --status-wishlist-foreground: #16082a;
+  --status-paused: #e8b84a;
+  --status-paused-foreground: #1a1203;
+  --status-dropped: #9a7f72;
+  --status-dropped-foreground: #120608;
+  --score-good: #8fd36b;
+  --score-good-foreground: #0b1606;
+  --score-mixed: #e8b84a;
+  --score-mixed-foreground: #1a1203;
+  --score-bad: #ff4d6d;
+  --score-bad-foreground: #1a0006;
+  --heat-0: #261112;
+  --heat-1: #4a1510;
+  --heat-2: #8a2414;
+  --heat-3: #d9431f;
+  --heat-4: #ffb070;
+  --flame: #ff5a36;
+  --flame-core: #ffd36b;
+  --coin: #e8b84a;
+}

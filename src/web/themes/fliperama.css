@@ -1,0 +1,88 @@
+/* Tema Fliperama (retrô): gabinete de arcade no escuro. Fontes pixeladas do tema base, moldura em
+   degrau na cor neon e, no lugar da sombra dura, o brilho do neon. Grade de chão sintética no fundo. */
+
+:root[data-theme="fliperama"] {
+  /* Forma: o degrau do Cartucho, com brilho em vez de sombra */
+  --drop:
+    0 0 14px -2px color-mix(in srgb, var(--border) 70%, transparent),
+    0 0 32px -8px color-mix(in srgb, var(--primary) 55%, transparent);
+  --bevel-size: 3px;
+  --press-translate: 0 3px;
+  --drop-gap: 8px;
+
+  /* Textura: grade neon no fundo e varredura na sobreposição */
+  --page-texture:
+    radial-gradient(90% 50% at 50% 0%, rgb(255 43 214 / 0.16), transparent 70%),
+    linear-gradient(0deg, rgb(34 230 255 / 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(34 230 255 / 0.07) 1px, transparent 1px);
+  --page-texture-size: 100% 100%, 40px 40px, 40px 40px;
+  --card-ridge: repeating-linear-gradient(90deg, var(--primary) 0 4px, var(--border) 4px 8px);
+}
+
+:root[data-theme="fliperama"] body {
+  background-attachment: fixed;
+}
+/* Letreiro: títulos com halo neon. */
+:root[data-theme="fliperama"] :is(.display-xl, .display-lg, .display-md) {
+  text-shadow:
+    0 0 8px color-mix(in srgb, var(--primary) 80%, transparent),
+    0 0 22px color-mix(in srgb, var(--primary) 45%, transparent);
+}
+
+:root[data-theme="fliperama"][data-mode="dark"] {
+  --background: #07040f;
+  --foreground: #f3eaff;
+  --card: #120a24;
+  --card-foreground: #f3eaff;
+  --popover: #160c2c;
+  --popover-foreground: #f3eaff;
+  --primary: #ff2bd6;
+  --primary-foreground: #1a0016;
+  --primary-shade: #a3148a;
+  --secondary: #1f1238;
+  --secondary-foreground: #f3eaff;
+  --muted: #1a0f33;
+  --muted-foreground: #b59fd8;
+  --accent: #2a1650;
+  --accent-foreground: #f3eaff;
+  --destructive: #ff5d6c;
+  --destructive-foreground: #1a0004;
+  --border: #22e6ff;
+  --input: #22e6ff;
+  --ring: #fff04a;
+  --pixel-shadow: #000000;
+  --info: #22e6ff;
+  --chart-1: #ff2bd6;
+  --chart-2: #22e6ff;
+  --chart-3: #fff04a;
+  --chart-4: #4dff88;
+  --chart-5: #a97bff;
+  --status-playing: #ff2bd6;
+  --status-playing-foreground: #1a0016;
+  --status-endless: #ff8a3d;
+  --status-endless-foreground: #1f0c00;
+  --status-finished: #4dff88;
+  --status-finished-foreground: #00170a;
+  --status-backlog: #22e6ff;
+  --status-backlog-foreground: #00171a;
+  --status-wishlist: #a97bff;
+  --status-wishlist-foreground: #12052a;
+  --status-paused: #fff04a;
+  --status-paused-foreground: #1a1700;
+  --status-dropped: #8a7aa8;
+  --status-dropped-foreground: #07040f;
+  --score-good: #4dff88;
+  --score-good-foreground: #00170a;
+  --score-mixed: #fff04a;
+  --score-mixed-foreground: #1a1700;
+  --score-bad: #ff5d6c;
+  --score-bad-foreground: #1a0004;
+  --heat-0: #1a0f33;
+  --heat-1: #4a0a40;
+  --heat-2: #8a0f75;
+  --heat-3: #d61fb3;
+  --heat-4: #ff8ae9;
+  --flame: #ff2bd6;
+  --flame-core: #22e6ff;
+  --coin: #fff04a;
+}

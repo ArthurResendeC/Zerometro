@@ -1,0 +1,156 @@
+/* Tema Pedra Antiga (icônico, homenagem à tecnologia ancestral dos jogos de exploração em mundo
+   aberto): ardósia escura com traços turquesa que brilham, pontos de circuito ao fundo, cantos
+   discretos e Exo 2 em tudo. */
+
+:root[data-theme="pedra-antiga"] {
+  /* Tipografia */
+  --body-font: "Exo 2", ui-sans-serif, system-ui, sans-serif;
+  --display-font: "Exo 2", ui-sans-serif, system-ui, sans-serif;
+  --text-xs: 13px;
+  --text-xs--line-height: 17px;
+  --text-sm: 15px;
+  --text-sm--line-height: 20px;
+  --text-base: 16px;
+  --text-base--line-height: 23px;
+  --text-lg: 18px;
+  --text-lg--line-height: 26px;
+  --text-xl: 21px;
+  --text-xl--line-height: 28px;
+  --text-2xl: 27px;
+  --text-2xl--line-height: 32px;
+  --display-xl: 32px;
+  --display-xl-lh: 38px;
+  --display-lg: 25px;
+  --display-lg-lh: 30px;
+  --display-md: 18px;
+  --display-md-lh: 24px;
+  --display-sm: 14px;
+  --display-sm-lh: 19px;
+  --display-xs: 12px;
+  --display-xs-lh: 16px;
+  --display-xs-tracking: 0.14em;
+  --display-weight: 600;
+  --display-style: normal;
+  --btn-sm-size: 13px;
+  --btn-sm-lh: 18px;
+  --btn-lg-size: 16px;
+  --btn-lg-lh: 22px;
+
+  /* Forma: linha turquesa de 1px e um halo de energia em volta */
+  --radius: 6px;
+  --control-radius: 4px;
+  --frame-offset: 0px;
+  --frame-spread: 1px;
+  --frame-thin-offset: 0px;
+  --frame-thin-spread: 1px;
+  --drop: 0 0 22px -6px rgb(79 227 240 / 0.4), 0 10px 24px -12px #000;
+  --bevel-size: 0px;
+  --sunken-size: 0px;
+  --press-translate: 0 1px;
+  --rule: 1px;
+  --rule-thick: 2px;
+  --frame-gap: 1px;
+  --drop-gap: 6px;
+  --inner-line: 1px;
+  --focus-width: 2px;
+  --focus-offset: 3px;
+
+  /* Textura: pontos de circuito e um brilho azul vindo do alto */
+  --page-texture:
+    radial-gradient(70% 40% at 50% -5%, rgb(79 227 240 / 0.12), transparent 70%),
+    radial-gradient(circle, rgb(79 227 240 / 0.1) 1px, transparent 1.6px);
+  --page-texture-size: 100% 100%, 22px 22px;
+  --overlay-texture: none;
+  --card-ridge: linear-gradient(
+    90deg,
+    transparent,
+    var(--primary) 30%,
+    var(--primary) 70%,
+    transparent
+  );
+  --xp-gap: 2px;
+  --menu-cursor-width: 9px;
+  --menu-cursor-height: 12px;
+  --menu-cursor-shape: polygon(0 0, 100% 50%, 0 100%, 25% 50%);
+
+  /* Movimento */
+  --ease-ui: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-reveal: ease-out;
+  --ease-progress: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-blink: zm-pedra-glow 1.8s ease-in-out infinite;
+  --animate-flicker: none;
+}
+
+:root[data-theme="pedra-antiga"] body {
+  background-attachment: fixed;
+}
+/* O traço que acende: brilho turquesa nos títulos. */
+:root[data-theme="pedra-antiga"] :is(.display-xl, .display-lg, .display-md) {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-shadow: 0 0 14px rgb(79 227 240 / 0.45);
+}
+
+@keyframes zm-pedra-glow {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+:root[data-theme="pedra-antiga"][data-mode="dark"] {
+  --background: #0a1216;
+  --foreground: #e3f4f6;
+  --card: #101c22;
+  --card-foreground: #e3f4f6;
+  --popover: #13222a;
+  --popover-foreground: #e3f4f6;
+  --primary: #4fe3f0;
+  --primary-foreground: #021417;
+  --primary-shade: #2a9aa6;
+  --secondary: #16262e;
+  --secondary-foreground: #e3f4f6;
+  --muted: #132128;
+  --muted-foreground: #8fb0b8;
+  --accent: #183039;
+  --accent-foreground: #e3f4f6;
+  --destructive: #ff8a4c;
+  --destructive-foreground: #1a0800;
+  --border: #2b6b75;
+  --input: #2b6b75;
+  --ring: #ffb347;
+  --pixel-shadow: #000000;
+  --info: #4fe3f0;
+  --chart-1: #4fe3f0;
+  --chart-2: #ffb347;
+  --chart-3: #9be86b;
+  --chart-4: #c99bff;
+  --chart-5: #ff7aa8;
+  --status-playing: #4fe3f0;
+  --status-playing-foreground: #021417;
+  --status-endless: #ff7aa8;
+  --status-endless-foreground: #22050f;
+  --status-finished: #9be86b;
+  --status-finished-foreground: #0a1704;
+  --status-backlog: #6fb6ff;
+  --status-backlog-foreground: #03111f;
+  --status-wishlist: #c99bff;
+  --status-wishlist-foreground: #150a24;
+  --status-paused: #ffd36b;
+  --status-paused-foreground: #1a1403;
+  --status-dropped: #7f969c;
+  --status-dropped-foreground: #0a1216;
+  --score-good: #9be86b;
+  --score-good-foreground: #0a1704;
+  --score-mixed: #ffd36b;
+  --score-mixed-foreground: #1a1403;
+  --score-bad: #ff6b5a;
+  --score-bad-foreground: #1a0402;
+  --heat-0: #132128;
+  --heat-1: #0f3a40;
+  --heat-2: #146a73;
+  --heat-3: #23a8b4;
+  --heat-4: #8ff5ff;
+  --flame: #ff8a4c;
+  --flame-core: #ffd36b;
+  --coin: #ffd36b;
+}

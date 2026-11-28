@@ -19,7 +19,8 @@ describe("/api/shop", () => {
 
     const shop = (await (await request("/api/shop")).json()) as Shop;
     expect(shop.balance).toBe(0);
-    expect(shop.items.filter((i) => i.price !== null)).toHaveLength(4);
+    // Em novembro (relógio de teste): 17 temas à venda (sem os exclusivos nem os sazonais) + 2 pacotes.
+    expect(shop.items.filter((i) => i.price !== null)).toHaveLength(19);
 
     const poor = await request("/api/shop/purchase", json({ kind: "theme", itemId: "minimal" }));
     expect(poor.status).toBe(409);

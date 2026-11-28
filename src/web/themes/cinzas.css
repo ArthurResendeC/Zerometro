@@ -1,0 +1,147 @@
+/* Tema Cinzas (icônico, homenagem aos RPGs de ação sombrios): ouro velho no quase preto, títulos
+   gravados em Cinzel, texto em EB Garamond, linhas finas e movimento sem pressa. */
+
+:root[data-theme="cinzas"] {
+  /* Tipografia: a Garamond tem olho pequeno, por isso a escala é um pouco maior */
+  --body-font: "EB Garamond", ui-serif, Georgia, serif;
+  --display-font: "Cinzel", ui-serif, Georgia, serif;
+  --text-xs: 14px;
+  --text-xs--line-height: 18px;
+  --text-sm: 16px;
+  --text-sm--line-height: 22px;
+  --text-base: 17px;
+  --text-base--line-height: 24px;
+  --text-lg: 20px;
+  --text-lg--line-height: 26px;
+  --text-xl: 23px;
+  --text-xl--line-height: 30px;
+  --text-2xl: 29px;
+  --text-2xl--line-height: 34px;
+  --display-xl: 34px;
+  --display-xl-lh: 42px;
+  --display-lg: 27px;
+  --display-lg-lh: 34px;
+  --display-md: 19px;
+  --display-md-lh: 26px;
+  --display-sm: 15px;
+  --display-sm-lh: 20px;
+  --display-xs: 12px;
+  --display-xs-lh: 16px;
+  --display-xs-tracking: 0.16em;
+  --display-weight: 500;
+  --display-style: normal;
+  --btn-sm-size: 13px;
+  --btn-sm-lh: 18px;
+  --btn-lg-size: 16px;
+  --btn-lg-lh: 22px;
+
+  /* Forma: linha dourada fina, dialogs com linha dupla, sombra funda */
+  --radius: 0px;
+  --control-radius: 0px;
+  --frame-offset: 0px;
+  --frame-spread: 1px;
+  --frame-thin-offset: 0px;
+  --frame-thin-spread: 1px;
+  --drop: 0 12px 30px -10px rgb(0 0 0 / 0.95);
+  --bevel-size: 0px;
+  --sunken-size: 0px;
+  --press-translate: 0 1px;
+  --rule: 1px;
+  --rule-thick: 1px;
+  --frame-gap: 1px;
+  --drop-gap: 6px;
+  --inner-line: 1px;
+  --focus-width: 1px;
+  --focus-offset: 4px;
+
+  /* Textura: escuridão nas bordas e a brasa de uma fogueira lá embaixo */
+  --page-texture:
+    radial-gradient(60% 40% at 50% 110%, rgb(224 120 42 / 0.14), transparent 70%),
+    radial-gradient(ellipse at 50% 30%, transparent 45%, rgb(0 0 0 / 0.6) 100%);
+  --page-texture-size: auto;
+  --overlay-texture: none;
+  --card-ridge: linear-gradient(90deg, transparent, var(--primary), transparent);
+  --xp-gap: 0px;
+  --menu-cursor-width: 8px;
+  --menu-cursor-height: 8px;
+  --menu-cursor-shape: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+
+  /* Movimento: lento; o cursor arde como brasa */
+  --ease-ui: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-reveal: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-progress: cubic-bezier(0.4, 0, 0.2, 1);
+  --animate-blink: zm-cinzas-ember 2.6s ease-in-out infinite;
+  --animate-flicker: none;
+}
+
+:root[data-theme="cinzas"] body {
+  background-attachment: fixed;
+}
+:root[data-theme="cinzas"] :is(.display-xl, .display-lg, .display-md) {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+@keyframes zm-cinzas-ember {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+:root[data-theme="cinzas"][data-mode="dark"] {
+  --background: #0c0b09;
+  --foreground: #e6dcc3;
+  --card: #15130f;
+  --card-foreground: #e6dcc3;
+  --popover: #1a1813;
+  --popover-foreground: #e6dcc3;
+  --primary: #c9a54a;
+  --primary-foreground: #140f03;
+  --primary-shade: #8a6f2a;
+  --secondary: #221f19;
+  --secondary-foreground: #e6dcc3;
+  --muted: #1d1a15;
+  --muted-foreground: #a39a85;
+  --accent: #2a2419;
+  --accent-foreground: #e6dcc3;
+  --destructive: #d9604f;
+  --destructive-foreground: #1a0503;
+  --border: #5e5032;
+  --input: #5e5032;
+  --ring: #e8c873;
+  --pixel-shadow: #000000;
+  --info: #8fb3c9;
+  --chart-1: #c9a54a;
+  --chart-2: #8fb3c9;
+  --chart-3: #d9604f;
+  --chart-4: #9cbf73;
+  --chart-5: #a888c9;
+  --status-playing: #c9a54a;
+  --status-playing-foreground: #140f03;
+  --status-endless: #d98a6a;
+  --status-endless-foreground: #1f0d06;
+  --status-finished: #9cbf73;
+  --status-finished-foreground: #0e1407;
+  --status-backlog: #8fb3c9;
+  --status-backlog-foreground: #0a141a;
+  --status-wishlist: #b39ad6;
+  --status-wishlist-foreground: #150f1f;
+  --status-paused: #e0c070;
+  --status-paused-foreground: #1a1404;
+  --status-dropped: #8a8272;
+  --status-dropped-foreground: #0c0b09;
+  --score-good: #9cbf73;
+  --score-good-foreground: #0e1407;
+  --score-mixed: #e0c070;
+  --score-mixed-foreground: #1a1404;
+  --score-bad: #d9604f;
+  --score-bad-foreground: #1a0503;
+  --heat-0: #1d1a15;
+  --heat-1: #4d3a16;
+  --heat-2: #7a5d22;
+  --heat-3: #b38f35;
+  --heat-4: #e8cc7a;
+  --flame: #e0782a;
+  --flame-core: #ffd27a;
+  --coin: #e0c070;
+}

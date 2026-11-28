@@ -438,6 +438,33 @@ os testes de completude e contraste.
 > **Fase 4: feita**, com os 2 temas que já existiam, mais os pacotes de som avulsos. Detalhes em
 > `docs/gamificacao/economia.md` (seção Loja). Mais temas do catálogo do §4 entram aos poucos:
 > cada um é um CSS, uma entrada no registro e um preço.
+>
+> **Catálogo ampliado (28/11/2026):** mais 19 temas, todos só com tokens e ganchos de `data-slot`,
+> sem mudar componentes. A loja agrupa por categoria.
+>
+> - **Retrô:** Fósforo (monitor de tubo verde), Tijolinho (4 tons do portátil, só paleta),
+>   Fliperama (neon e brilho no lugar da sombra), Janela Azul (caixas de menu de RPG em degradê).
+> - **Modernos:** Minimal Claro (só paleta; divide forma e fonte com o Minimal num seletor
+>   `:is()`), Alto Contraste (grátis, Atkinson Hyperlegible, foco de 4px, nada pisca), Caderno
+>   (papel pautado, serifada).
+> - **Inspirados em jogos:** Costa Neon (pôr do sol tropical, vidro fosco, pílulas), Cinzas, Reino
+>   Esquecido, Noite Neon (painel 9-slice com cantos cortados), Submundo, Pedra Antiga, Mesa de
+>   Cartas, Fazendinha e Ilha.
+> - **Exclusivos:** Platina (não se compra; vai ser prêmio de insígnia), Abóbora e Noite Feliz
+>   (sazonais, campo `season`).
+>
+> **Regra de propriedade intelectual:** homenagem é só paleta, forma e atitude. Nada de nome de
+> jogo, logo, arte, personagem, som ou fonte do jogo (fontes sempre do Google Fonts, com licença
+> livre). Exemplo: a Pricedown dos GTAs antigos tem licença desktop gratuita, mas ela proíbe
+> webfont e uso em app; só valeria um gráfico estático já desenhado, sem a fonte.
+>
+> **Ainda fica para depois:**
+>
+> - temas claros e escuros do mesmo tema na interface (hoje cada um usa o primeiro modo; por isso
+>   o Minimal Claro é um tema à parte);
+> - pacotes de som próprios dos temas novos (hoje usam o pacote mais parecido: `themeSoundPack`);
+> - microtexto e celebrações (fase 5), que fariam o "Zerado!" com cara de missão cumprida no
+>   Costa Neon ou o "Você desistiu" no Cinzas.
 
 **Fase 5: camadas ricas** (`ThemeCopy` e celebrações) nos temas Lendários.
 

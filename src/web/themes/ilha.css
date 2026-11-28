@@ -1,0 +1,146 @@
+/* Tema Ilha (icônico, claro, homenagem aos simuladores de vida numa ilha): pastel, bolinhas no
+   fundo, tudo bem redondo, botões em pílula que afundam e quicam. Nunito em tudo. */
+
+:root[data-theme="ilha"] {
+  /* Tipografia */
+  --body-font: "Nunito", ui-rounded, ui-sans-serif, system-ui, sans-serif;
+  --display-font: "Nunito", ui-rounded, ui-sans-serif, system-ui, sans-serif;
+  --text-xs: 13px;
+  --text-xs--line-height: 18px;
+  --text-sm: 15px;
+  --text-sm--line-height: 21px;
+  --text-base: 16px;
+  --text-base--line-height: 24px;
+  --text-lg: 18px;
+  --text-lg--line-height: 26px;
+  --text-xl: 21px;
+  --text-xl--line-height: 29px;
+  --text-2xl: 27px;
+  --text-2xl--line-height: 33px;
+  --display-xl: 34px;
+  --display-xl-lh: 40px;
+  --display-lg: 27px;
+  --display-lg-lh: 32px;
+  --display-md: 19px;
+  --display-md-lh: 25px;
+  --display-sm: 15px;
+  --display-sm-lh: 20px;
+  --display-xs: 12px;
+  --display-xs-lh: 16px;
+  --display-xs-tracking: 0.08em;
+  --display-weight: 900;
+  --display-style: normal;
+  --btn-sm-size: 14px;
+  --btn-sm-lh: 18px;
+  --btn-lg-size: 17px;
+  --btn-lg-lh: 22px;
+
+  /* Forma: cantos de 22px, pílulas, contorno suave e a "base" embaixo de cada peça */
+  --radius: 22px;
+  --control-radius: 999px;
+  --frame-offset: 0px;
+  --frame-spread: 2px;
+  --frame-thin-offset: 0px;
+  --frame-thin-spread: 2px;
+  --drop: 0 5px 0 0 var(--pixel-shadow);
+  --bevel-size: 3px;
+  --sunken-size: 0px;
+  --press-translate: 0 4px;
+  --rule: 2px;
+  --rule-thick: 2px;
+  --frame-gap: 2px;
+  --drop-gap: 7px;
+  --inner-line: 0px;
+  --focus-width: 3px;
+  --focus-offset: 4px;
+
+  /* Textura: bolinhas em duas camadas desencontradas */
+  --page-texture:
+    radial-gradient(circle, rgb(13 127 110 / 0.09) 4px, transparent 4.5px),
+    radial-gradient(circle, rgb(242 155 56 / 0.09) 4px, transparent 4.5px);
+  --page-texture-size: 36px 36px;
+  --overlay-texture: none;
+  --card-ridge: repeating-linear-gradient(90deg, var(--primary) 0 6px, transparent 6px 12px);
+  --xp-gap: 3px;
+  --menu-cursor-width: 10px;
+  --menu-cursor-height: 10px;
+  --menu-cursor-shape: circle(50%);
+
+  /* Movimento: com mola */
+  --ease-ui: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-reveal: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-progress: cubic-bezier(0.34, 1.2, 0.64, 1);
+  --animate-blink: zm-ilha-bounce 1.2s ease-in-out infinite;
+  --animate-flicker: none;
+}
+
+/* A segunda camada de bolinhas fica no meio da primeira. */
+:root[data-theme="ilha"] body {
+  background-position:
+    0 0,
+    18px 18px;
+}
+
+@keyframes zm-ilha-bounce {
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+:root[data-theme="ilha"][data-mode="light"] {
+  --background: #f7f1df;
+  --foreground: #4a3f2f;
+  --card: #fffcf2;
+  --card-foreground: #4a3f2f;
+  --popover: #fffcf2;
+  --popover-foreground: #4a3f2f;
+  --primary: #0b7465;
+  --primary-foreground: #ffffff;
+  --primary-shade: #075a4e;
+  --secondary: #f1e8cc;
+  --secondary-foreground: #4a3f2f;
+  --muted: #f1e8cc;
+  --muted-foreground: #74654d;
+  --accent: #e3f3ec;
+  --accent-foreground: #4a3f2f;
+  --destructive: #c43a4f;
+  --destructive-foreground: #ffffff;
+  --border: #e0d2ac;
+  --input: #d1c196;
+  --ring: #f29b38;
+  --pixel-shadow: #dccfa8;
+  --info: #1a6aa3;
+  --chart-1: #0d7f6e;
+  --chart-2: #f29b38;
+  --chart-3: #5b8ee6;
+  --chart-4: #e66b9a;
+  --chart-5: #9a7be0;
+  --status-playing: #0d7f6e;
+  --status-playing-foreground: #ffffff;
+  --status-endless: #c2407a;
+  --status-endless-foreground: #ffffff;
+  --status-finished: #357a22;
+  --status-finished-foreground: #ffffff;
+  --status-backlog: #1a6aa3;
+  --status-backlog-foreground: #ffffff;
+  --status-wishlist: #7d55c7;
+  --status-wishlist-foreground: #ffffff;
+  --status-paused: #f5c33b;
+  --status-paused-foreground: #4a3f2f;
+  --status-dropped: #74684f;
+  --status-dropped-foreground: #ffffff;
+  --score-good: #357a22;
+  --score-good-foreground: #ffffff;
+  --score-mixed: #f5c33b;
+  --score-mixed-foreground: #4a3f2f;
+  --score-bad: #c43a4f;
+  --score-bad-foreground: #ffffff;
+  --heat-0: #f1e8cc;
+  --heat-1: #c8ead9;
+  --heat-2: #86d1b4;
+  --heat-3: #2fae90;
+  --heat-4: #0d7f6e;
+  --flame: #f2803a;
+  --flame-core: #ffd54a;
+  --coin: #855c00;
+}

@@ -1,7 +1,8 @@
 /* Tema Minimal (moderno): cantos arredondados, moldura em anel de 1px, sombra suave, Inter.
    Prova do contrato no extremo oposto ao Cartucho: nenhum pixel, nenhum degrau. */
 
-:root[data-theme="minimal"] {
+/* O Minimal Claro (minimal-claro.css) usa a mesma forma e tipografia; só as cores mudam. */
+:root:is([data-theme="minimal"], [data-theme="minimal-claro"]) {
   /* Tipografia */
   --body-font: "Inter", ui-sans-serif, system-ui, sans-serif;
   --display-font: "Inter", ui-sans-serif, system-ui, sans-serif;

@@ -1,0 +1,183 @@
+/* Tema Noite Feliz (exclusivo, sazonal: Natal): verde pinheiro, vermelho de laço e dourado,
+   neve caindo devagar no fundo, faixa de bengala doce nos cards. Títulos em Mountains of
+   Christmas; botões e rótulos pequenos na Quicksand, legível em tamanho pequeno. */
+
+:root[data-theme="noite-feliz"] {
+  /* Tipografia */
+  --body-font: "Quicksand", ui-rounded, ui-sans-serif, system-ui, sans-serif;
+  --display-font: "Mountains of Christmas", ui-serif, Georgia, serif;
+  --text-xs: 13px;
+  --text-xs--line-height: 18px;
+  --text-sm: 15px;
+  --text-sm--line-height: 21px;
+  --text-base: 16px;
+  --text-base--line-height: 23px;
+  --text-lg: 18px;
+  --text-lg--line-height: 26px;
+  --text-xl: 21px;
+  --text-xl--line-height: 29px;
+  --text-2xl: 27px;
+  --text-2xl--line-height: 33px;
+  --display-xl: 44px;
+  --display-xl-lh: 48px;
+  --display-lg: 34px;
+  --display-lg-lh: 38px;
+  --display-md: 25px;
+  --display-md-lh: 30px;
+  --display-sm: 15px;
+  --display-sm-lh: 20px;
+  --display-xs: 12px;
+  --display-xs-lh: 16px;
+  --display-xs-tracking: 0.08em;
+  --display-weight: 700;
+  --display-style: normal;
+  --btn-sm-size: 14px;
+  --btn-sm-lh: 18px;
+  --btn-lg-size: 17px;
+  --btn-lg-lh: 22px;
+
+  /* Forma: fita dourada de 2px, cantos de 14px e pílulas */
+  --radius: 14px;
+  --control-radius: 999px;
+  --frame-offset: 0px;
+  --frame-spread: 2px;
+  --frame-thin-offset: 0px;
+  --frame-thin-spread: 1px;
+  --drop: 0 10px 24px -10px #000, 0 0 20px -8px rgb(255 211 107 / 0.35);
+  --bevel-size: 3px;
+  --sunken-size: 0px;
+  --press-translate: 0 2px;
+  --rule: 2px;
+  --rule-thick: 2px;
+  --frame-gap: 2px;
+  --drop-gap: 6px;
+  --inner-line: 0px;
+  --focus-width: 3px;
+  --focus-offset: 4px;
+
+  /* Textura: a neve fica numa camada própria (body::before, abaixo), que desce sem repintar a
+     página. Os blocos medem 110, 66 e 165px: todos dividem 330, o passo do laço. */
+  --page-texture: radial-gradient(70% 40% at 50% 110%, rgb(255 211 107 / 0.1), transparent 70%);
+  --page-texture-size: auto;
+  --nf-snow:
+    radial-gradient(circle, rgb(255 255 255 / 0.55) 1.5px, transparent 2px) 0 0 / 110px 110px,
+    radial-gradient(circle, rgb(255 255 255 / 0.35) 1px, transparent 1.5px) 23px 41px / 66px 66px,
+    radial-gradient(circle, rgb(255 255 255 / 0.2) 2px, transparent 2.5px) 71px 12px / 165px 165px;
+  --overlay-texture: none;
+  /* Bengala doce */
+  --card-ridge: repeating-linear-gradient(45deg, var(--primary) 0 5px, #ffffff 5px 10px);
+  --xp-gap: 2px;
+  /* Estrela */
+  --menu-cursor-width: 14px;
+  --menu-cursor-height: 14px;
+  --menu-cursor-shape: polygon(
+    50% 0,
+    61% 35%,
+    98% 35%,
+    68% 57%,
+    79% 91%,
+    50% 70%,
+    21% 91%,
+    32% 57%,
+    2% 35%,
+    39% 35%
+  );
+
+  /* Movimento: a estrela cintila */
+  --ease-ui: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-reveal: ease-out;
+  --ease-progress: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-blink: zm-natal-twinkle 1.4s ease-in-out infinite;
+  --animate-flicker: none;
+}
+
+/* A neve cai (a regra de reduced-motion do styles.css a deixa parada). Só transform: não repinta. */
+:root[data-theme="noite-feliz"] body {
+  background-attachment: fixed;
+}
+:root[data-theme="noite-feliz"] body::before {
+  content: "";
+  position: fixed;
+  inset: -330px 0 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--nf-snow);
+  animation: zm-natal-snow 30s linear infinite;
+  will-change: transform;
+}
+:root[data-theme="noite-feliz"] :is(.display-sm, .display-xs) {
+  font-family: var(--body-font);
+}
+:root[data-theme="noite-feliz"] :is(.display-xl, .display-lg, .display-md) {
+  text-shadow: 0 0 16px rgb(255 211 107 / 0.35);
+}
+
+@keyframes zm-natal-snow {
+  to {
+    transform: translateY(330px);
+  }
+}
+@keyframes zm-natal-twinkle {
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+}
+
+:root[data-theme="noite-feliz"][data-mode="dark"] {
+  --background: #06140e;
+  --foreground: #f3fbf6;
+  --card: #0d241a;
+  --card-foreground: #f3fbf6;
+  --popover: #102c20;
+  --popover-foreground: #f3fbf6;
+  --primary: #ff4d5a;
+  --primary-foreground: #1a0003;
+  --primary-shade: #b81f2c;
+  --secondary: #143326;
+  --secondary-foreground: #f3fbf6;
+  --muted: #112c20;
+  --muted-foreground: #a9c9b8;
+  --accent: #173b2b;
+  --accent-foreground: #f3fbf6;
+  --destructive: #ff6b6b;
+  --destructive-foreground: #1a0303;
+  --border: #c9a54a;
+  --input: #6f8f5a;
+  --ring: #ffd36b;
+  --pixel-shadow: #000000;
+  --info: #8fd6ff;
+  --chart-1: #ff5a63;
+  --chart-2: #ffd36b;
+  --chart-3: #6fd68f;
+  --chart-4: #8fd6ff;
+  --chart-5: #ffffff;
+  --status-playing: #ff5a63;
+  --status-playing-foreground: #1a0003;
+  --status-endless: #ff9ac8;
+  --status-endless-foreground: #26061a;
+  --status-finished: #6fd68f;
+  --status-finished-foreground: #03140a;
+  --status-backlog: #8fd6ff;
+  --status-backlog-foreground: #02121c;
+  --status-wishlist: #c9a6ff;
+  --status-wishlist-foreground: #140a26;
+  --status-paused: #ffd36b;
+  --status-paused-foreground: #1a1403;
+  --status-dropped: #7f9a8c;
+  --status-dropped-foreground: #06140e;
+  --score-good: #6fd68f;
+  --score-good-foreground: #03140a;
+  --score-mixed: #ffd36b;
+  --score-mixed-foreground: #1a1403;
+  --score-bad: #ff6b6b;
+  --score-bad-foreground: #1a0303;
+  --heat-0: #112c20;
+  --heat-1: #4a1418;
+  --heat-2: #8a1f28;
+  --heat-3: #d42532;
+  --heat-4: #ff9aa0;
+  --flame: #ff5a63;
+  --flame-core: #ffd36b;
+  --coin: #ffd36b;
+}

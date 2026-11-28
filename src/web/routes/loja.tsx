@@ -1,7 +1,7 @@
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { isSoundPackId, type ShopItem } from "@shared/items";
-import { isThemeId, themes } from "@shared/themes";
+import { isThemeId, themeCategories, themeCategoryLabels, themes } from "@shared/themes";
 import { CoinIcon, PlayIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -19,7 +19,14 @@ export const Route = createFileRoute("/loja")({
 
 function ShopPage() {
   const { data: shop } = useSuspenseQuery(shopQuery());
-  const themeItems = shop.items.filter((i) => i.kind === "theme");
+  const themeGroups = themeCategories
+    .map((category) => ({
+      category,
+      items: shop.items.filter(
+        (i) => i.kind === "theme" && isThemeId(i.id) && themes[i.id].category === category,
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
   const packItems = shop.items.filter((i) => i.kind === "sound_pack");
 
   return (
@@ -42,16 +49,20 @@ function ShopPage() {
         </Link>
       </div>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="display-xs text-muted-foreground">Temas</h2>
-        <ul className="grid gap-4 sm:grid-cols-2">
-          {themeItems.map((item) => (
-            <li key={item.id} className="min-w-0">
-              <ThemeCard item={item} balance={shop.balance} />
-            </li>
-          ))}
-        </ul>
-      </section>
+      {themeGroups.map(({ category, items }) => (
+        <section key={category} className="flex flex-col gap-3">
+          <h2 className="display-xs text-muted-foreground">
+            Temas · {themeCategoryLabels[category]}
+          </h2>
+          <ul className="grid gap-4 sm:grid-cols-2">
+            {items.map((item) => (
+              <li key={item.id} className="min-w-0">
+                <ThemeCard item={item} balance={shop.balance} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
 
       <section className="flex flex-col gap-3">
         <h2 className="display-xs text-muted-foreground">Sons</h2>

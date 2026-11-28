@@ -1,0 +1,135 @@
+/* Tema Alto Contraste (moderno, acessibilidade, grátis): preto, branco e amarelo, letra maior,
+   fonte feita para leitura fácil (Atkinson Hyperlegible), foco bem grosso e nada piscando. */
+
+:root[data-theme="alto-contraste"] {
+  /* Tipografia: corpo maior que o normal, títulos em negrito sem caixa alta forçada */
+  --body-font: "Atkinson Hyperlegible", ui-sans-serif, system-ui, sans-serif;
+  --display-font: "Atkinson Hyperlegible", ui-sans-serif, system-ui, sans-serif;
+  --text-xs: 15px;
+  --text-xs--line-height: 20px;
+  --text-sm: 17px;
+  --text-sm--line-height: 24px;
+  --text-base: 18px;
+  --text-base--line-height: 27px;
+  --text-lg: 21px;
+  --text-lg--line-height: 29px;
+  --text-xl: 24px;
+  --text-xl--line-height: 32px;
+  --text-2xl: 30px;
+  --text-2xl--line-height: 38px;
+  --display-xl: 36px;
+  --display-xl-lh: 42px;
+  --display-lg: 29px;
+  --display-lg-lh: 35px;
+  --display-md: 21px;
+  --display-md-lh: 28px;
+  --display-sm: 17px;
+  --display-sm-lh: 22px;
+  --display-xs: 15px;
+  --display-xs-lh: 20px;
+  --display-xs-case: none;
+  --display-xs-tracking: 0.02em;
+  --display-weight: 700;
+  --display-style: normal;
+  --btn-sm-size: 16px;
+  --btn-sm-lh: 20px;
+  --btn-lg-size: 19px;
+  --btn-lg-lh: 24px;
+
+  /* Forma: anel branco de 2px, cantos discretos, sem sombra nem bisel */
+  --radius: 4px;
+  --control-radius: 4px;
+  --frame-offset: 0px;
+  --frame-spread: 2px;
+  --frame-thin-offset: 0px;
+  --frame-thin-spread: 2px;
+  --drop: 0 0 #0000;
+  --bevel-size: 0px;
+  --sunken-size: 0px;
+  --press-translate: 0 1px;
+  --rule: 2px;
+  --rule-thick: 3px;
+  --frame-gap: 2px;
+  --drop-gap: 2px;
+  --inner-line: 0px;
+  --focus-width: 4px;
+  --focus-offset: 3px;
+
+  /* Textura: nenhuma */
+  --overlay-texture: none;
+  --card-ridge: linear-gradient(var(--foreground), var(--foreground));
+  --xp-gap: 2px;
+  --menu-cursor-width: 8px;
+  --menu-cursor-height: 14px;
+  --menu-cursor-shape: inset(0);
+
+  /* Movimento: rápido e sem piscar */
+  --ease-ui: linear;
+  --ease-reveal: linear;
+  --ease-progress: linear;
+  --animate-blink: none;
+  --animate-flicker: none;
+}
+
+/* Links sempre sublinhados. */
+:root[data-theme="alto-contraste"] a:not([data-slot="button"]):hover {
+  text-decoration: underline;
+}
+
+:root[data-theme="alto-contraste"][data-mode="dark"] {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #0d0d0d;
+  --card-foreground: #ffffff;
+  --popover: #0d0d0d;
+  --popover-foreground: #ffffff;
+  --primary: #ffe600;
+  --primary-foreground: #000000;
+  --primary-shade: #ffe600;
+  --secondary: #1f1f1f;
+  --secondary-foreground: #ffffff;
+  --muted: #1a1a1a;
+  --muted-foreground: #e0e0e0;
+  --accent: #2b2b00;
+  --accent-foreground: #ffffff;
+  --destructive: #ff7070;
+  --destructive-foreground: #000000;
+  --border: #ffffff;
+  --input: #ffffff;
+  --ring: #00e5ff;
+  --pixel-shadow: #000000;
+  --info: #66e0ff;
+  --chart-1: #ffe600;
+  --chart-2: #00e5ff;
+  --chart-3: #ff70d4;
+  --chart-4: #5cff7a;
+  --chart-5: #ffffff;
+  --status-playing: #ffe600;
+  --status-playing-foreground: #000000;
+  --status-endless: #ff8ad8;
+  --status-endless-foreground: #000000;
+  --status-finished: #5cff7a;
+  --status-finished-foreground: #000000;
+  --status-backlog: #66e0ff;
+  --status-backlog-foreground: #000000;
+  --status-wishlist: #d6b3ff;
+  --status-wishlist-foreground: #000000;
+  --status-paused: #ffb000;
+  --status-paused-foreground: #000000;
+  --status-dropped: #d0d0d0;
+  --status-dropped-foreground: #000000;
+  --score-good: #5cff7a;
+  --score-good-foreground: #000000;
+  --score-mixed: #ffe600;
+  --score-mixed-foreground: #000000;
+  --score-bad: #ff7070;
+  --score-bad-foreground: #000000;
+  --heat-0: #262626;
+  --heat-1: #5c5200;
+  --heat-2: #a39300;
+  --heat-3: #e0cb00;
+  --heat-4: #fff6a0;
+  --flame: #ffb000;
+  --flame-core: #ffe600;
+  --coin: #ffe600;
+}

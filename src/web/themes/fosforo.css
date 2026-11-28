@@ -1,0 +1,119 @@
+/* Tema Fósforo (retrô): monitor de tubo monocromático. Tudo em VT323 (a do tema base), verde
+   fosforescente no preto, linhas de varredura por cima da página e um brilho leve no texto. */
+
+:root[data-theme="fosforo"] {
+  /* Tipografia: a VT323 também nos títulos, maior e em caixa alta */
+  --display-font: "VT323", ui-monospace, monospace;
+  --display-xl: 46px;
+  --display-xl-lh: 44px;
+  --display-lg: 38px;
+  --display-lg-lh: 38px;
+  --display-md: 28px;
+  --display-md-lh: 30px;
+  --display-sm: 23px;
+  --display-sm-lh: 24px;
+  --display-xs: 20px;
+  --display-xs-lh: 22px;
+  --display-xs-tracking: 0.06em;
+  --display-weight: 400;
+  --display-style: normal;
+  --btn-sm-size: 21px;
+  --btn-sm-lh: 22px;
+  --btn-lg-size: 26px;
+  --btn-lg-lh: 28px;
+
+  /* Forma: anel de 2px, sem degrau nem bisel; a "sombra" é o brilho do fósforo */
+  --radius: 0px;
+  --control-radius: 0px;
+  --frame-offset: 0px;
+  --frame-spread: 2px;
+  --frame-thin-offset: 0px;
+  --frame-thin-spread: 1px;
+  --drop: 0 0 16px -2px color-mix(in srgb, var(--primary) 45%, transparent);
+  --bevel-size: 0px;
+  --sunken-size: 0px;
+  --press-translate: 0 2px;
+  --frame-gap: 2px;
+  --drop-gap: 6px;
+  --inner-line: 2px;
+
+  /* Textura: varredura na página inteira, com o canto escurecido do tubo */
+  --page-texture:
+    repeating-linear-gradient(0deg, transparent 0 2px, rgb(0 0 0 / 0.28) 2px 3px),
+    radial-gradient(ellipse at center, transparent 55%, rgb(0 0 0 / 0.55) 100%);
+  --page-texture-size: auto;
+  --card-ridge: repeating-linear-gradient(90deg, var(--primary) 0 6px, transparent 6px 10px);
+  --xp-gap: 2px;
+  /* Cursor de bloco, como num terminal */
+  --menu-cursor-width: 9px;
+  --menu-cursor-height: 16px;
+  --menu-cursor-shape: inset(0);
+}
+
+/* O brilho do fósforo: no texto todo, mais forte nos títulos. */
+:root[data-theme="fosforo"] body {
+  text-shadow: 0 0 5px color-mix(in srgb, currentColor 45%, transparent);
+  background-attachment: fixed;
+}
+:root[data-theme="fosforo"] :is(.display-xl, .display-lg, .display-md) {
+  text-transform: uppercase;
+  text-shadow: 0 0 10px color-mix(in srgb, currentColor 60%, transparent);
+}
+
+:root[data-theme="fosforo"][data-mode="dark"] {
+  --background: #030a05;
+  --foreground: #8dffb0;
+  --card: #06140a;
+  --card-foreground: #8dffb0;
+  --popover: #081a0e;
+  --popover-foreground: #8dffb0;
+  --primary: #39ff7a;
+  --primary-foreground: #001a08;
+  --primary-shade: #1a9e45;
+  --secondary: #0b2a14;
+  --secondary-foreground: #8dffb0;
+  --muted: #0a2211;
+  --muted-foreground: #4fcf78;
+  --accent: #0e3318;
+  --accent-foreground: #b8ffcc;
+  --destructive: #ff6b5a;
+  --destructive-foreground: #1a0402;
+  --border: #2a9e50;
+  --input: #2a9e50;
+  --ring: #ffd23f;
+  --pixel-shadow: #000000;
+  --info: #5fe0ff;
+  --chart-1: #39ff7a;
+  --chart-2: #1fbf55;
+  --chart-3: #ffd23f;
+  --chart-4: #c8ff6a;
+  --chart-5: #ff9a5a;
+  --status-playing: #39ff7a;
+  --status-playing-foreground: #001a08;
+  --status-endless: #7dffd9;
+  --status-endless-foreground: #00170f;
+  --status-finished: #c8ff6a;
+  --status-finished-foreground: #101a00;
+  --status-backlog: #5fe0ff;
+  --status-backlog-foreground: #00141a;
+  --status-wishlist: #b8ffcc;
+  --status-wishlist-foreground: #04170a;
+  --status-paused: #ffd23f;
+  --status-paused-foreground: #1a1400;
+  --status-dropped: #3f9e5e;
+  --status-dropped-foreground: #010a04;
+  --score-good: #39ff7a;
+  --score-good-foreground: #001a08;
+  --score-mixed: #ffd23f;
+  --score-mixed-foreground: #1a1400;
+  --score-bad: #ff6b5a;
+  --score-bad-foreground: #1a0402;
+  --heat-0: #0a2211;
+  --heat-1: #0f4a22;
+  --heat-2: #157a35;
+  --heat-3: #22c45a;
+  --heat-4: #8dffb0;
+  --flame: #39ff7a;
+  --flame-core: #e6ffe9;
+  --coin: #ffd23f;
+}

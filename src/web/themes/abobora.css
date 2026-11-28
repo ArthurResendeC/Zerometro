@@ -1,0 +1,168 @@
+/* Tema Abóbora (exclusivo, sazonal: Halloween): laranja de abóbora, roxo de bruxa e verde de
+   poção, névoa roxa, cursor de morcego e chama verde na ofensiva. Títulos em Creepster; botões e
+   rótulos pequenos ficam na Grandstander, que é legível em tamanho pequeno. */
+
+:root[data-theme="abobora"] {
+  /* Tipografia */
+  --body-font: "Grandstander", ui-rounded, ui-sans-serif, system-ui, sans-serif;
+  --display-font: "Creepster", "Grandstander", ui-sans-serif, sans-serif;
+  --text-xs: 13px;
+  --text-xs--line-height: 18px;
+  --text-sm: 15px;
+  --text-sm--line-height: 21px;
+  --text-base: 16px;
+  --text-base--line-height: 23px;
+  --text-lg: 19px;
+  --text-lg--line-height: 26px;
+  --text-xl: 22px;
+  --text-xl--line-height: 29px;
+  --text-2xl: 28px;
+  --text-2xl--line-height: 34px;
+  --display-xl: 46px;
+  --display-xl-lh: 50px;
+  --display-lg: 36px;
+  --display-lg-lh: 40px;
+  --display-md: 25px;
+  --display-md-lh: 30px;
+  --display-sm: 15px;
+  --display-sm-lh: 20px;
+  --display-xs: 12px;
+  --display-xs-lh: 16px;
+  --display-xs-tracking: 0.06em;
+  --display-style: normal;
+  --btn-sm-size: 14px;
+  --btn-sm-lh: 18px;
+  --btn-lg-size: 17px;
+  --btn-lg-lh: 22px;
+
+  /* Forma */
+  --radius: 12px;
+  --control-radius: 10px;
+  --frame-offset: 0px;
+  --frame-spread: 2px;
+  --frame-thin-offset: 0px;
+  --frame-thin-spread: 1px;
+  --drop: 0 6px 0 0 #000, 0 0 24px -8px rgb(140 255 90 / 0.35);
+  --bevel-size: 3px;
+  --sunken-size: 0px;
+  --press-translate: 0 3px;
+  --rule: 2px;
+  --rule-thick: 2px;
+  --frame-gap: 2px;
+  --drop-gap: 8px;
+  --inner-line: 0px;
+  --focus-width: 3px;
+  --focus-offset: 4px;
+
+  /* Textura: névoa roxa e as estrelas da noite */
+  --page-texture:
+    radial-gradient(80% 50% at 50% 110%, rgb(140 70 220 / 0.25), transparent 70%),
+    radial-gradient(circle, rgb(255 255 255 / 0.14) 1px, transparent 1.5px),
+    radial-gradient(circle, rgb(140 255 90 / 0.1) 1px, transparent 1.5px);
+  --page-texture-size: 100% 100%, 83px 83px, 47px 61px;
+  --overlay-texture: none;
+  --card-ridge: repeating-linear-gradient(90deg, var(--primary) 0 8px, #6a3fa0 8px 16px);
+  --xp-gap: 2px;
+  /* Morcego */
+  --menu-cursor-width: 18px;
+  --menu-cursor-height: 10px;
+  --menu-cursor-shape: polygon(
+    0 20%,
+    20% 45%,
+    35% 25%,
+    45% 40%,
+    50% 15%,
+    55% 40%,
+    65% 25%,
+    80% 45%,
+    100% 20%,
+    88% 80%,
+    68% 65%,
+    50% 100%,
+    32% 65%,
+    12% 80%
+  );
+
+  /* Movimento: com um tremido assustado */
+  --ease-ui: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --ease-reveal: ease-out;
+  --ease-progress: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-blink: zm-abobora-flap 0.7s ease-in-out infinite;
+}
+
+:root[data-theme="abobora"] body {
+  background-attachment: fixed;
+}
+/* A Creepster só nos títulos grandes; botões e rótulos ficam legíveis. */
+:root[data-theme="abobora"] :is(.display-sm, .display-xs) {
+  font-family: var(--body-font);
+  font-weight: 700;
+}
+:root[data-theme="abobora"] :is(.display-xl, .display-lg, .display-md) {
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 18px rgb(255 138 31 / 0.4);
+}
+
+@keyframes zm-abobora-flap {
+  50% {
+    transform: scaleY(0.6);
+  }
+}
+
+:root[data-theme="abobora"][data-mode="dark"] {
+  --background: #0f0a14;
+  --foreground: #f6ecff;
+  --card: #1c1326;
+  --card-foreground: #f6ecff;
+  --popover: #22172d;
+  --popover-foreground: #f6ecff;
+  --primary: #ff8a1f;
+  --primary-foreground: #1a0b00;
+  --primary-shade: #b85a08;
+  --secondary: #2a1d38;
+  --secondary-foreground: #f6ecff;
+  --muted: #241a31;
+  --muted-foreground: #bba6d1;
+  --accent: #33244a;
+  --accent-foreground: #f6ecff;
+  --destructive: #ff4d6d;
+  --destructive-foreground: #1a0006;
+  --border: #6a3fa0;
+  --input: #6a3fa0;
+  --ring: #8cff5a;
+  --pixel-shadow: #000000;
+  --info: #8cff5a;
+  --chart-1: #ff8a1f;
+  --chart-2: #8cff5a;
+  --chart-3: #b37dff;
+  --chart-4: #ffd24a;
+  --chart-5: #ff6fae;
+  --status-playing: #ff8a1f;
+  --status-playing-foreground: #1a0b00;
+  --status-endless: #ff6fae;
+  --status-endless-foreground: #2a0716;
+  --status-finished: #8cff5a;
+  --status-finished-foreground: #0c1a04;
+  --status-backlog: #6fd3ff;
+  --status-backlog-foreground: #001a24;
+  --status-wishlist: #b37dff;
+  --status-wishlist-foreground: #160a26;
+  --status-paused: #ffd24a;
+  --status-paused-foreground: #1a1400;
+  --status-dropped: #8f82a3;
+  --status-dropped-foreground: #0f0a14;
+  --score-good: #8cff5a;
+  --score-good-foreground: #0c1a04;
+  --score-mixed: #ffd24a;
+  --score-mixed-foreground: #1a1400;
+  --score-bad: #ff4d6d;
+  --score-bad-foreground: #1a0006;
+  --heat-0: #241a31;
+  --heat-1: #4a2608;
+  --heat-2: #8a4408;
+  --heat-3: #e06d10;
+  --heat-4: #ffb36b;
+  --flame: #8cff5a;
+  --flame-core: #e6ffd9;
+  --coin: #ffd24a;
+}

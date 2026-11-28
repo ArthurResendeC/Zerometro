@@ -5,13 +5,15 @@ import { createTestContext, createTestUser } from "../testing";
 import { grantItem, listItems, ownedIds, ownsItem } from "./items";
 
 describe("itens", () => {
-  test("todo mundo tem o tema base e o pacote de som dele, sem linha no banco", () => {
+  test("todo mundo tem o tema base, o pacote de som dele e o Alto Contraste, sem linha no banco", () => {
     const ctx = createTestContext();
     expect(listItems(ctx)).toEqual([
       { kind: "theme", itemId: "cartucho", source: null, acquiredAt: null },
+      { kind: "theme", itemId: "alto-contraste", source: null, acquiredAt: null },
       { kind: "sound_pack", itemId: "cartucho", source: null, acquiredAt: null },
     ]);
     expect(ownsItem(ctx, "theme", "cartucho")).toBe(true);
+    expect(ownsItem(ctx, "theme", "alto-contraste")).toBe(true);
     expect(ownsItem(ctx, "theme", "minimal")).toBe(false);
     expect(ctx.db.select().from(userItems).all()).toEqual([]);
   });
@@ -23,7 +25,7 @@ describe("itens", () => {
     });
     expect(ownsItem(ctx, "theme", "minimal")).toBe(true);
     expect(ownsItem(ctx, "sound_pack", "minimal")).toBe(true);
-    expect([...ownedIds(ctx, "theme")]).toEqual(["cartucho", "minimal"]);
+    expect([...ownedIds(ctx, "theme")]).toEqual(["cartucho", "alto-contraste", "minimal"]);
     expect(listItems(ctx).at(-1)).toEqual({
       kind: "sound_pack",
       itemId: "minimal",

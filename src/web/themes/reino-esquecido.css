@@ -1,0 +1,150 @@
+/* Tema Reino Esquecido (icônico, homenagem aos metroidvanias desenhados à mão): um reino
+   subterrâneo em preto azulado e branco pálido, molduras finas com linha dupla, névoa ao fundo,
+   títulos em Marcellus SC e texto em Alegreya Sans. */
+
+:root[data-theme="reino-esquecido"] {
+  /* Tipografia */
+  --body-font: "Alegreya Sans", ui-sans-serif, system-ui, sans-serif;
+  --display-font: "Marcellus SC", ui-serif, Georgia, serif;
+  --text-xs: 13px;
+  --text-xs--line-height: 18px;
+  --text-sm: 15px;
+  --text-sm--line-height: 21px;
+  --text-base: 16px;
+  --text-base--line-height: 23px;
+  --text-lg: 19px;
+  --text-lg--line-height: 26px;
+  --text-xl: 22px;
+  --text-xl--line-height: 29px;
+  --text-2xl: 28px;
+  --text-2xl--line-height: 34px;
+  --display-xl: 36px;
+  --display-xl-lh: 42px;
+  --display-lg: 28px;
+  --display-lg-lh: 34px;
+  --display-md: 20px;
+  --display-md-lh: 26px;
+  --display-sm: 16px;
+  --display-sm-lh: 21px;
+  --display-xs: 13px;
+  --display-xs-lh: 17px;
+  --display-xs-case: none;
+  --display-xs-tracking: 0.12em;
+  --display-weight: 400;
+  --display-style: normal;
+  --btn-sm-size: 14px;
+  --btn-sm-lh: 18px;
+  --btn-lg-size: 17px;
+  --btn-lg-lh: 22px;
+
+  /* Forma: linha fina pálida, canto quase reto, linha dupla nos dialogs */
+  --radius: 2px;
+  --control-radius: 2px;
+  --frame-offset: 0px;
+  --frame-spread: 1px;
+  --frame-thin-offset: 0px;
+  --frame-thin-spread: 1px;
+  --drop: 0 16px 34px -14px #000, 0 0 18px -6px rgb(223 232 245 / 0.18);
+  --bevel-size: 0px;
+  --sunken-size: 0px;
+  --press-translate: 0 1px;
+  --rule: 1px;
+  --rule-thick: 1px;
+  --frame-gap: 1px;
+  --drop-gap: 6px;
+  --inner-line: 1px;
+  --focus-width: 1px;
+  --focus-offset: 4px;
+
+  /* Textura: névoa azulada vinda de cima e de baixo */
+  --page-texture:
+    radial-gradient(60% 40% at 15% 0%, rgb(140 170 220 / 0.12), transparent 70%),
+    radial-gradient(55% 40% at 90% 100%, rgb(140 170 220 / 0.08), transparent 70%);
+  --page-texture-size: auto;
+  --overlay-texture: none;
+  --card-ridge: repeating-linear-gradient(90deg, var(--primary) 0 2px, transparent 2px 8px);
+  --xp-gap: 0px;
+  /* Ponta de agulha */
+  --menu-cursor-width: 14px;
+  --menu-cursor-height: 8px;
+  --menu-cursor-shape: polygon(0 50%, 30% 15%, 100% 50%, 30% 85%);
+
+  /* Movimento: macio, como flutuar */
+  --ease-ui: cubic-bezier(0.3, 0.7, 0.2, 1);
+  --ease-reveal: ease-out;
+  --ease-progress: cubic-bezier(0.3, 0.7, 0.2, 1);
+  --animate-blink: zm-reino-glow 2.2s ease-in-out infinite;
+  --animate-flicker: none;
+}
+
+:root[data-theme="reino-esquecido"] body {
+  background-attachment: fixed;
+}
+:root[data-theme="reino-esquecido"] :is(.display-xl, .display-lg) {
+  letter-spacing: 0.06em;
+  text-shadow: 0 0 18px rgb(223 232 245 / 0.25);
+}
+
+@keyframes zm-reino-glow {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+:root[data-theme="reino-esquecido"][data-mode="dark"] {
+  --background: #070a11;
+  --foreground: #e8eef7;
+  --card: #0f141f;
+  --card-foreground: #e8eef7;
+  --popover: #131a28;
+  --popover-foreground: #e8eef7;
+  --primary: #dfe8f5;
+  --primary-foreground: #0a0e17;
+  --primary-shade: #9aa9c2;
+  --secondary: #182031;
+  --secondary-foreground: #e8eef7;
+  --muted: #141b29;
+  --muted-foreground: #9aa7bd;
+  --accent: #1b2436;
+  --accent-foreground: #e8eef7;
+  --destructive: #ff8f6b;
+  --destructive-foreground: #1a0700;
+  --border: #56627a;
+  --input: #56627a;
+  --ring: #8fd0ff;
+  --pixel-shadow: #000000;
+  --info: #8fd0ff;
+  --chart-1: #dfe8f5;
+  --chart-2: #8fd0ff;
+  --chart-3: #ffb36b;
+  --chart-4: #8ee0b5;
+  --chart-5: #c3a6ff;
+  --status-playing: #8fd0ff;
+  --status-playing-foreground: #04121c;
+  --status-endless: #ffb36b;
+  --status-endless-foreground: #1f0f02;
+  --status-finished: #8ee0b5;
+  --status-finished-foreground: #04160c;
+  --status-backlog: #a8b8d8;
+  --status-backlog-foreground: #0a0e17;
+  --status-wishlist: #c3a6ff;
+  --status-wishlist-foreground: #140a26;
+  --status-paused: #f0d78a;
+  --status-paused-foreground: #1a1404;
+  --status-dropped: #76829a;
+  --status-dropped-foreground: #05070c;
+  --score-good: #8ee0b5;
+  --score-good-foreground: #04160c;
+  --score-mixed: #f0d78a;
+  --score-mixed-foreground: #1a1404;
+  --score-bad: #ff8f6b;
+  --score-bad-foreground: #1a0700;
+  --heat-0: #141b29;
+  --heat-1: #1f2e4a;
+  --heat-2: #33507e;
+  --heat-3: #5f88c2;
+  --heat-4: #c6dcff;
+  --flame: #9fd8ff;
+  --flame-core: #ffffff;
+  --coin: #f0d78a;
+}

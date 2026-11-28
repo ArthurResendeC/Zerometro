@@ -4,6 +4,25 @@
    tema base, então a ordem dos arquivos não importa). Registro em src/shared/themes.ts. */
 @import "./themes/minimal.css";
 @import "./themes/ladrao-fantasma.css";
+@import "./themes/minimal-claro.css";
+@import "./themes/fosforo.css";
+@import "./themes/tijolinho.css";
+@import "./themes/fliperama.css";
+@import "./themes/janela-azul.css";
+@import "./themes/alto-contraste.css";
+@import "./themes/caderno.css";
+@import "./themes/costa-neon.css";
+@import "./themes/cinzas.css";
+@import "./themes/reino-esquecido.css";
+@import "./themes/noite-neon.css";
+@import "./themes/submundo.css";
+@import "./themes/pedra-antiga.css";
+@import "./themes/mesa-de-cartas.css";
+@import "./themes/fazendinha.css";
+@import "./themes/ilha.css";
+@import "./themes/platina.css";
+@import "./themes/abobora.css";
+@import "./themes/noite-feliz.css";
 
 /* Zerômetro — Direção A · Cartucho NES, o tema base. Claro em :root, escuro em [data-mode="dark"]
    (o principal). Contrato de temas: docs/gamificacao/temas-contrato.md. Um tema sobrescreve, em

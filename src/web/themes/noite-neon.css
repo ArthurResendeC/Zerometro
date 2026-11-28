@@ -1,0 +1,172 @@
+/* Tema Noite Neon (icônico, homenagem ao cyberpunk): amarelo de alerta e ciano no escuro, cards
+   com cantos cortados (9-slice, como o Ladrão Fantasma), botões chanfrados, grade ao fundo e
+   títulos com falha cromática. Rajdhani em tudo. */
+
+:root[data-theme="noite-neon"] {
+  /* Tipografia */
+  --body-font: "Rajdhani", "Arial Narrow", ui-sans-serif, sans-serif;
+  --display-font: "Rajdhani", "Arial Narrow", ui-sans-serif, sans-serif;
+  --text-xs: 14px;
+  --text-xs--line-height: 18px;
+  --text-sm: 16px;
+  --text-sm--line-height: 21px;
+  --text-base: 17px;
+  --text-base--line-height: 24px;
+  --text-lg: 20px;
+  --text-lg--line-height: 26px;
+  --text-xl: 23px;
+  --text-xl--line-height: 28px;
+  --text-2xl: 30px;
+  --text-2xl--line-height: 34px;
+  --display-xl: 42px;
+  --display-xl-lh: 44px;
+  --display-lg: 32px;
+  --display-lg-lh: 36px;
+  --display-md: 22px;
+  --display-md-lh: 26px;
+  --display-sm: 16px;
+  --display-sm-lh: 20px;
+  --display-xs: 13px;
+  --display-xs-lh: 16px;
+  --display-xs-tracking: 0.16em;
+  --display-weight: 700;
+  --display-style: normal;
+  --btn-sm-size: 15px;
+  --btn-sm-lh: 18px;
+  --btn-lg-size: 19px;
+  --btn-lg-lh: 24px;
+
+  /* Forma: anel de 1px e sombra vermelha dura deslocada */
+  --radius: 0px;
+  --control-radius: 0px;
+  --frame-offset: 0px;
+  --frame-spread: 1px;
+  --frame-thin-offset: 0px;
+  --frame-thin-spread: 1px;
+  --drop: 4px 4px 0 0 #ff2a55;
+  --bevel-size: 0px;
+  --sunken-size: 0px;
+  --press-translate: 3px 3px;
+  --rule: 1px;
+  --rule-thick: 2px;
+  --frame-gap: 1px;
+  --drop-gap: 6px;
+  --inner-line: 0px;
+  --focus-width: 2px;
+  --focus-offset: 4px;
+
+  /* Textura: grade ciano e uma varredura fina na sobreposição */
+  --page-texture:
+    linear-gradient(0deg, rgb(0 240 255 / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(0 240 255 / 0.05) 1px, transparent 1px);
+  --page-texture-size: 32px 32px;
+  --overlay-texture: repeating-linear-gradient(
+    0deg,
+    transparent 0 3px,
+    rgb(0 240 255 / 0.08) 3px 4px
+  );
+  --card-ridge: repeating-linear-gradient(90deg, var(--primary) 0 10px, transparent 10px 14px);
+  --xp-gap: 2px;
+  --menu-cursor-width: 10px;
+  --menu-cursor-height: 12px;
+  --menu-cursor-shape: polygon(0 0, 100% 50%, 0 100%);
+
+  /* Movimento: seco */
+  --ease-ui: cubic-bezier(0.8, 0, 0.2, 1);
+  --ease-reveal: cubic-bezier(0.8, 0, 0.2, 1);
+  --ease-progress: cubic-bezier(0.8, 0, 0.2, 1);
+
+  /* Painel 9-slice: fundo escuro, contorno ciano, canto de cima à esquerda e de baixo à direita
+     cortados, e um traço amarelo no topo. Cantos de 24px fixos; as bordas esticam. */
+  --nn-panel: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2796%27 height=%2796%27 viewBox=%270 0 96 96%27%3E%3Cpolygon points=%2716,1 95,1 95,80 80,95 1,95 1,16%27 fill=%27%2312121c%27 stroke=%27%2300f0ff%27 stroke-width=%271.5%27/%3E%3Cpolyline points=%2716,1 40,1%27 stroke=%27%23fcee0a%27 stroke-width=%273%27/%3E%3C/svg%3E");
+}
+
+:root[data-theme="noite-neon"]
+  :is([data-slot="card"], [data-slot="dialog-content"], [data-slot="alert-dialog-content"]) {
+  background-color: transparent;
+  box-shadow: none;
+  border-style: solid;
+  border-width: 0;
+  border-image: var(--nn-panel) 24 fill / 24px / 0 stretch;
+}
+
+/* Botões cheios com os cantos chanfrados. Os de contorno ficam retos: o recorte cortaria a
+   moldura, que é box-shadow por fora da caixa. */
+:root[data-theme="noite-neon"]
+  [data-slot="button"]:is([data-variant="default"], [data-variant="destructive"]) {
+  clip-path: polygon(
+    10px 0,
+    100% 0,
+    100% calc(100% - 10px),
+    calc(100% - 10px) 100%,
+    0 100%,
+    0 10px
+  );
+}
+
+/* Títulos em caixa alta com a falha: vermelho e ciano deslocados. */
+:root[data-theme="noite-neon"] :is(.display-xl, .display-lg, .display-md) {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-shadow:
+    -2px 0 rgb(255 42 85 / 0.85),
+    2px 0 rgb(0 240 255 / 0.7);
+}
+
+:root[data-theme="noite-neon"][data-mode="dark"] {
+  --background: #08080e;
+  --foreground: #e8f6ff;
+  --card: #12121c;
+  --card-foreground: #e8f6ff;
+  --popover: #14141f;
+  --popover-foreground: #e8f6ff;
+  --primary: #fcee0a;
+  --primary-foreground: #0a0a00;
+  --primary-shade: #b8ad00;
+  --secondary: #1b1b29;
+  --secondary-foreground: #e8f6ff;
+  --muted: #16161f;
+  --muted-foreground: #8fa3b8;
+  --accent: #232333;
+  --accent-foreground: #e8f6ff;
+  --destructive: #ff2a55;
+  --destructive-foreground: #0a0008;
+  --border: #00f0ff;
+  --input: #00b8c4;
+  --ring: #00f0ff;
+  --pixel-shadow: #000000;
+  --info: #00f0ff;
+  --chart-1: #fcee0a;
+  --chart-2: #00f0ff;
+  --chart-3: #ff2a55;
+  --chart-4: #3dff8f;
+  --chart-5: #b46bff;
+  --status-playing: #fcee0a;
+  --status-playing-foreground: #0a0a00;
+  --status-endless: #ff2a55;
+  --status-endless-foreground: #0a0008;
+  --status-finished: #3dff8f;
+  --status-finished-foreground: #00140a;
+  --status-backlog: #00f0ff;
+  --status-backlog-foreground: #00181a;
+  --status-wishlist: #b46bff;
+  --status-wishlist-foreground: #12002a;
+  --status-paused: #ffb000;
+  --status-paused-foreground: #1a1000;
+  --status-dropped: #6f7e90;
+  --status-dropped-foreground: #050508;
+  --score-good: #3dff8f;
+  --score-good-foreground: #00140a;
+  --score-mixed: #fcee0a;
+  --score-mixed-foreground: #0a0a00;
+  --score-bad: #ff2a55;
+  --score-bad-foreground: #0a0008;
+  --heat-0: #16161f;
+  --heat-1: #2b2a05;
+  --heat-2: #6b6500;
+  --heat-3: #c4b800;
+  --heat-4: #fff36b;
+  --flame: #ff2a55;
+  --flame-core: #fcee0a;
+  --coin: #fcee0a;
+}

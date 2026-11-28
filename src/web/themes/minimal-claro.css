@@ -1,0 +1,64 @@
+/* Tema Minimal Claro (moderno, paleta): o Minimal de dia. Forma, tipografia e movimento vêm de
+   minimal.css (o seletor de lá inclui este tema); aqui ficam as cores e uma sombra mais leve. */
+
+:root[data-theme="minimal-claro"] {
+  --drop: 0 10px 28px -14px rgb(22 24 40 / 0.28), 0 2px 6px -2px rgb(22 24 40 / 0.12);
+}
+
+:root[data-theme="minimal-claro"][data-mode="light"] {
+  --background: #f5f6f8;
+  --foreground: #16181d;
+  --card: #ffffff;
+  --card-foreground: #16181d;
+  --popover: #ffffff;
+  --popover-foreground: #16181d;
+  --primary: #4f5bd5;
+  --primary-foreground: #ffffff;
+  --primary-shade: #3a45b8;
+  --secondary: #eceef2;
+  --secondary-foreground: #16181d;
+  --muted: #eceef2;
+  --muted-foreground: #5d6270;
+  --accent: #e9ebf7;
+  --accent-foreground: #16181d;
+  --destructive: #c8283c;
+  --destructive-foreground: #ffffff;
+  --border: #dfe2e8;
+  --input: #d3d7df;
+  --ring: #4f5bd5;
+  --pixel-shadow: #1b1e26;
+  --info: #0b6fb0;
+  --chart-1: #4f5bd5;
+  --chart-2: #0b8fd0;
+  --chart-3: #d99a00;
+  --chart-4: #1f9a5a;
+  --chart-5: #a04fd5;
+  --status-playing: #4f5bd5;
+  --status-playing-foreground: #ffffff;
+  --status-endless: #c02675;
+  --status-endless-foreground: #ffffff;
+  --status-finished: #187a47;
+  --status-finished-foreground: #ffffff;
+  --status-backlog: #0b6fb0;
+  --status-backlog-foreground: #ffffff;
+  --status-wishlist: #7a3fbf;
+  --status-wishlist-foreground: #ffffff;
+  --status-paused: #e8b416;
+  --status-paused-foreground: #1c1a29;
+  --status-dropped: #5d6270;
+  --status-dropped-foreground: #ffffff;
+  --score-good: #187a47;
+  --score-good-foreground: #ffffff;
+  --score-mixed: #e8b416;
+  --score-mixed-foreground: #1c1a29;
+  --score-bad: #c8283c;
+  --score-bad-foreground: #ffffff;
+  --heat-0: #eceef2;
+  --heat-1: #d4d8fb;
+  --heat-2: #a3abf5;
+  --heat-3: #6b76e6;
+  --heat-4: #3a45b8;
+  --flame: #ff6a2b;
+  --flame-core: #ffb627;
+  --coin: #8a6400;
+}

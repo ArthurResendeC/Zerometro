@@ -1,0 +1,150 @@
+/* Tema Caderno (moderno, claro): diário de jogos. Papel pautado com a margem vermelha, tinta azul,
+   texto em Lora e títulos em Fraunces. Combina com as notas e a linha do tempo. */
+
+:root[data-theme="caderno"] {
+  /* Tipografia */
+  --body-font: "Lora", ui-serif, Georgia, serif;
+  --display-font: "Fraunces", ui-serif, Georgia, serif;
+  --text-xs: 13px;
+  --text-xs--line-height: 18px;
+  --text-sm: 15px;
+  --text-sm--line-height: 22px;
+  --text-base: 16px;
+  --text-base--line-height: 24px;
+  --text-lg: 19px;
+  --text-lg--line-height: 27px;
+  --text-xl: 22px;
+  --text-xl--line-height: 30px;
+  --text-2xl: 28px;
+  --text-2xl--line-height: 34px;
+  --display-xl: 36px;
+  --display-xl-lh: 42px;
+  --display-lg: 28px;
+  --display-lg-lh: 34px;
+  --display-md: 20px;
+  --display-md-lh: 26px;
+  --display-sm: 16px;
+  --display-sm-lh: 21px;
+  --display-xs: 12px;
+  --display-xs-lh: 16px;
+  --display-xs-tracking: 0.1em;
+  --display-weight: 700;
+  --display-style: normal;
+  --btn-sm-size: 14px;
+  --btn-sm-lh: 18px;
+  --btn-lg-size: 16px;
+  --btn-lg-lh: 22px;
+
+  /* Forma: folha com canto de 4px, linha fina e sombra de papel sobre a mesa */
+  --radius: 4px;
+  --control-radius: 4px;
+  --frame-offset: 0px;
+  --frame-spread: 1px;
+  --frame-thin-offset: 0px;
+  --frame-thin-spread: 1px;
+  --drop: 0 1px 0 0 rgb(59 50 34 / 0.12), 0 8px 18px -10px rgb(59 50 34 / 0.45);
+  --bevel-size: 0px;
+  --sunken-size: 0px;
+  --press-translate: 0 1px;
+  --rule: 1px;
+  --rule-thick: 2px;
+  --frame-gap: 1px;
+  --drop-gap: 6px;
+  --inner-line: 1px;
+  --focus-width: 2px;
+  --focus-offset: 3px;
+
+  /* Textura: pauta azul e a margem vermelha do caderno */
+  --page-texture:
+    linear-gradient(90deg, transparent 47px, rgb(200 40 60 / 0.28) 47px 48px, transparent 48px),
+    repeating-linear-gradient(180deg, transparent 0 31px, rgb(36 69 168 / 0.13) 31px 32px);
+  --page-texture-size: auto;
+  --overlay-texture: none;
+  /* Picote da folha */
+  --card-ridge: repeating-linear-gradient(90deg, var(--border) 0 6px, transparent 6px 12px);
+  --xp-gap: 0px;
+  --menu-cursor-width: 10px;
+  --menu-cursor-height: 10px;
+  --menu-cursor-shape: polygon(0 0, 100% 50%, 0 100%, 30% 50%);
+
+  /* Movimento: suave */
+  --ease-ui: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-reveal: ease-out;
+  --ease-progress: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-blink: zm-caderno-pulse 1.8s ease-in-out infinite;
+  --animate-flicker: none;
+}
+
+/* Títulos com um grifo de marca-texto. */
+:root[data-theme="caderno"] h1:is(.display-xl, .display-lg) {
+  background-image: linear-gradient(
+    transparent 62%,
+    rgb(255 214 64 / 0.55) 62% 92%,
+    transparent 92%
+  );
+  width: fit-content;
+}
+
+@keyframes zm-caderno-pulse {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+:root[data-theme="caderno"][data-mode="light"] {
+  --background: #f4efe3;
+  --foreground: #1d1b2e;
+  --card: #fffdf7;
+  --card-foreground: #1d1b2e;
+  --popover: #fffdf7;
+  --popover-foreground: #1d1b2e;
+  --primary: #2445a8;
+  --primary-foreground: #ffffff;
+  --primary-shade: #17307a;
+  --secondary: #ebe4d2;
+  --secondary-foreground: #1d1b2e;
+  --muted: #ebe4d2;
+  --muted-foreground: #5a5569;
+  --accent: #e6ecfa;
+  --accent-foreground: #1d1b2e;
+  --destructive: #b3262f;
+  --destructive-foreground: #ffffff;
+  --border: #c2b79e;
+  --input: #a89c80;
+  --ring: #2445a8;
+  --pixel-shadow: #3b3222;
+  --info: #2445a8;
+  --chart-1: #2445a8;
+  --chart-2: #8fa3e0;
+  --chart-3: #c99a12;
+  --chart-4: #2b6e3a;
+  --chart-5: #7a3fa8;
+  --status-playing: #2445a8;
+  --status-playing-foreground: #ffffff;
+  --status-endless: #a8246e;
+  --status-endless-foreground: #ffffff;
+  --status-finished: #2b6e3a;
+  --status-finished-foreground: #ffffff;
+  --status-backlog: #0b6a80;
+  --status-backlog-foreground: #ffffff;
+  --status-wishlist: #6b3fa8;
+  --status-wishlist-foreground: #ffffff;
+  --status-paused: #e0ae1c;
+  --status-paused-foreground: #1d1b2e;
+  --status-dropped: #6b6577;
+  --status-dropped-foreground: #ffffff;
+  --score-good: #2b6e3a;
+  --score-good-foreground: #ffffff;
+  --score-mixed: #e0ae1c;
+  --score-mixed-foreground: #1d1b2e;
+  --score-bad: #b3262f;
+  --score-bad-foreground: #ffffff;
+  --heat-0: #ebe4d2;
+  --heat-1: #c9d3f0;
+  --heat-2: #8fa3e0;
+  --heat-3: #4a66c4;
+  --heat-4: #1c3688;
+  --flame: #d9541c;
+  --flame-core: #f0b429;
+  --coin: #7a5c00;
+}

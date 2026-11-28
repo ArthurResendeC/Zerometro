@@ -1,0 +1,134 @@
+/* Tema Fazendinha (icônico, claro, homenagem aos simuladores de fazenda): mesa de tábuas,
+   cards de pergaminho com moldura de madeira, tons quentes de fim de tarde. Títulos em Pixelify
+   Sans e texto em Merriweather. */
+
+:root[data-theme="fazendinha"] {
+  /* Tipografia */
+  --body-font: "Merriweather", ui-serif, Georgia, serif;
+  --display-font: "Pixelify Sans", ui-monospace, monospace;
+  --text-xs: 12px;
+  --text-xs--line-height: 18px;
+  --text-sm: 14px;
+  --text-sm--line-height: 21px;
+  --text-base: 15px;
+  --text-base--line-height: 23px;
+  --text-lg: 18px;
+  --text-lg--line-height: 26px;
+  --text-xl: 21px;
+  --text-xl--line-height: 29px;
+  --text-2xl: 26px;
+  --text-2xl--line-height: 33px;
+  --display-xl: 36px;
+  --display-xl-lh: 40px;
+  --display-lg: 28px;
+  --display-lg-lh: 32px;
+  --display-md: 20px;
+  --display-md-lh: 24px;
+  --display-sm: 16px;
+  --display-sm-lh: 20px;
+  --display-xs: 13px;
+  --display-xs-lh: 16px;
+  --display-xs-tracking: 0.05em;
+  --display-weight: 700;
+  --display-style: normal;
+  --btn-sm-size: 15px;
+  --btn-sm-lh: 18px;
+  --btn-lg-size: 18px;
+  --btn-lg-lh: 22px;
+
+  /* Forma: moldura de madeira de 3px, cantos de 6px, bisel e sombra curta */
+  --radius: 6px;
+  --control-radius: 6px;
+  --frame-offset: 0px;
+  --frame-spread: 3px;
+  --frame-thin-offset: 0px;
+  --frame-thin-spread: 2px;
+  --drop: 0 4px 0 0 rgb(74 42 16 / 0.4);
+  --bevel-size: 4px;
+  --sunken-size: 3px;
+  --press-translate: 0 3px;
+  --rule: 2px;
+  --rule-thick: 3px;
+  --frame-gap: 3px;
+  --drop-gap: 7px;
+  --inner-line: 2px;
+  --focus-width: 3px;
+  --focus-offset: 5px;
+
+  /* Textura: tábuas de madeira (juntas e veios) */
+  --page-texture:
+    repeating-linear-gradient(0deg, transparent 0 46px, rgb(110 60 20 / 0.18) 46px 48px),
+    repeating-linear-gradient(0deg, transparent 0 9px, rgb(110 60 20 / 0.05) 9px 10px),
+    repeating-linear-gradient(90deg, transparent 0 237px, rgb(110 60 20 / 0.12) 237px 239px);
+  --page-texture-size: auto;
+  --overlay-texture: none;
+  --card-ridge: repeating-linear-gradient(90deg, var(--border) 0 6px, transparent 6px 10px);
+  --xp-gap: 2px;
+  --menu-cursor-width: 12px;
+  --menu-cursor-height: 12px;
+  /* Folhinha */
+  --menu-cursor-shape: polygon(0 50%, 40% 0, 100% 50%, 40% 100%);
+
+  /* Movimento: o degrau dos sprites, mas um pouco mais macio */
+  --ease-ui: steps(3);
+  --ease-reveal: steps(5);
+  --ease-progress: steps(12);
+}
+
+:root[data-theme="fazendinha"][data-mode="light"] {
+  --background: #e9c891;
+  --foreground: #3b2311;
+  --card: #fbe8c0;
+  --card-foreground: #3b2311;
+  --popover: #fdf0d2;
+  --popover-foreground: #3b2311;
+  --primary: #8a3a0f;
+  --primary-foreground: #ffffff;
+  --primary-shade: #5e2608;
+  --secondary: #f0d39c;
+  --secondary-foreground: #3b2311;
+  --muted: #f0d6a4;
+  --muted-foreground: #6b4a2a;
+  --accent: #f5dcaa;
+  --accent-foreground: #3b2311;
+  --destructive: #9e1f28;
+  --destructive-foreground: #ffffff;
+  --border: #8a4b1f;
+  --input: #8a4b1f;
+  --ring: #165a8a;
+  --pixel-shadow: #4a2a10;
+  --info: #165a8a;
+  --chart-1: #b8541c;
+  --chart-2: #2f7d3a;
+  --chart-3: #165a8a;
+  --chart-4: #c99a12;
+  --chart-5: #8a3f9e;
+  --status-playing: #b8541c;
+  --status-playing-foreground: #ffffff;
+  --status-endless: #b0306a;
+  --status-endless-foreground: #ffffff;
+  --status-finished: #2f7d3a;
+  --status-finished-foreground: #ffffff;
+  --status-backlog: #165a8a;
+  --status-backlog-foreground: #ffffff;
+  --status-wishlist: #7a3f9e;
+  --status-wishlist-foreground: #ffffff;
+  --status-paused: #e0b02a;
+  --status-paused-foreground: #3b2311;
+  --status-dropped: #7a6650;
+  --status-dropped-foreground: #ffffff;
+  --score-good: #2f7d3a;
+  --score-good-foreground: #ffffff;
+  --score-mixed: #e0b02a;
+  --score-mixed-foreground: #3b2311;
+  --score-bad: #b3262f;
+  --score-bad-foreground: #ffffff;
+  --heat-0: #f0d6a4;
+  --heat-1: #c8d98a;
+  --heat-2: #8fbf5a;
+  --heat-3: #4f9a3a;
+  --heat-4: #2a6a22;
+  --flame: #e06a1a;
+  --flame-core: #ffcf3a;
+  --coin: #5f4800;
+}

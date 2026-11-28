@@ -1,0 +1,143 @@
+/* Tema Janela Azul (retrô): as caixas de menu dos RPGs clássicos. Cards e dialogs em degradê
+   azul com borda branca e cantos levemente arredondados, fonte bitmap japonesa (DotGothic16) e o
+   cursor de mão apontando para o item. */
+
+:root[data-theme="janela-azul"] {
+  /* Tipografia: DotGothic16 em tudo, no tamanho de uma fonte comum */
+  --body-font: "DotGothic16", ui-monospace, monospace;
+  --display-font: "DotGothic16", ui-monospace, monospace;
+  --text-xs: 13px;
+  --text-xs--line-height: 18px;
+  --text-sm: 15px;
+  --text-sm--line-height: 21px;
+  --text-base: 16px;
+  --text-base--line-height: 24px;
+  --text-lg: 19px;
+  --text-lg--line-height: 26px;
+  --text-xl: 22px;
+  --text-xl--line-height: 29px;
+  --text-2xl: 28px;
+  --text-2xl--line-height: 34px;
+  --display-xl: 34px;
+  --display-xl-lh: 40px;
+  --display-lg: 27px;
+  --display-lg-lh: 32px;
+  --display-md: 20px;
+  --display-md-lh: 26px;
+  --display-sm: 16px;
+  --display-sm-lh: 20px;
+  --display-xs: 13px;
+  --display-xs-lh: 16px;
+  --display-xs-tracking: 0.08em;
+  --display-weight: 400;
+  --display-style: normal;
+  --btn-sm-size: 14px;
+  --btn-sm-lh: 18px;
+  --btn-lg-size: 18px;
+  --btn-lg-lh: 22px;
+
+  /* Forma: borda branca de 2px, canto de 6px e sombra curta embaixo */
+  --radius: 6px;
+  --control-radius: 4px;
+  --frame-offset: 0px;
+  --frame-spread: 2px;
+  --frame-thin-offset: 0px;
+  --frame-thin-spread: 1px;
+  --drop: 0 4px 0 0 rgb(0 0 0 / 0.55);
+  --bevel-size: 3px;
+  --sunken-size: 0px;
+  --press-translate: 0 2px;
+  --rule: 2px;
+  --rule-thick: 2px;
+  --frame-gap: 2px;
+  --drop-gap: 6px;
+  --inner-line: 0px;
+
+  /* Textura: só as estrelas do céu noturno ao fundo */
+  --page-texture:
+    radial-gradient(circle, rgb(255 255 255 / 0.18) 1px, transparent 1.5px),
+    radial-gradient(circle, rgb(255 255 255 / 0.1) 1px, transparent 1.5px);
+  --page-texture-size: 90px 90px, 53px 53px;
+  --overlay-texture: none;
+  --card-ridge: linear-gradient(90deg, transparent, #ffffff 20%, #ffffff 80%, transparent);
+  --xp-gap: 1px;
+  /* Cursor de mão (o dedo aponta para a direita) */
+  --menu-cursor-width: 16px;
+  --menu-cursor-height: 12px;
+  --menu-cursor-shape: polygon(
+    0 25%,
+    30% 25%,
+    30% 0,
+    50% 0,
+    50% 25%,
+    100% 25%,
+    100% 50%,
+    55% 50%,
+    55% 100%,
+    0 100%
+  );
+}
+
+/* A janela: degradê azul de cima para baixo, atrás do conteúdo. */
+:root[data-theme="janela-azul"]
+  :is([data-slot="card"], [data-slot="dialog-content"], [data-slot="alert-dialog-content"]) {
+  background-image: linear-gradient(180deg, #2f4cc4 0%, #1a2f9e 45%, #0e1f78 100%);
+}
+
+:root[data-theme="janela-azul"][data-mode="dark"] {
+  --background: #050a24;
+  --foreground: #ffffff;
+  --card: #1a2f9e;
+  --card-foreground: #ffffff;
+  --popover: #1a2f9e;
+  --popover-foreground: #ffffff;
+  --primary: #f4f4ff;
+  --primary-foreground: #10228a;
+  --primary-shade: #9aa6e0;
+  --secondary: #24399f;
+  --secondary-foreground: #ffffff;
+  --muted: #13247e;
+  --muted-foreground: #d4dcff;
+  --accent: #2c45b8;
+  --accent-foreground: #ffffff;
+  --destructive: #ff8a8a;
+  --destructive-foreground: #1a0303;
+  --border: #ffffff;
+  --input: #c8d0f5;
+  --ring: #ffe066;
+  --pixel-shadow: #000000;
+  --info: #9ee6ff;
+  --chart-1: #ffe066;
+  --chart-2: #9ee6ff;
+  --chart-3: #ff9e9e;
+  --chart-4: #9effa8;
+  --chart-5: #e0b0ff;
+  --status-playing: #ffe066;
+  --status-playing-foreground: #1a1400;
+  --status-endless: #ffa8d8;
+  --status-endless-foreground: #2a0718;
+  --status-finished: #9effa8;
+  --status-finished-foreground: #041a08;
+  --status-backlog: #9ee6ff;
+  --status-backlog-foreground: #02141a;
+  --status-wishlist: #e0b0ff;
+  --status-wishlist-foreground: #1a0a26;
+  --status-paused: #ffc266;
+  --status-paused-foreground: #1a0e00;
+  --status-dropped: #b4bce0;
+  --status-dropped-foreground: #0a1030;
+  --score-good: #9effa8;
+  --score-good-foreground: #041a08;
+  --score-mixed: #ffe066;
+  --score-mixed-foreground: #1a1400;
+  --score-bad: #ff8a8a;
+  --score-bad-foreground: #1a0303;
+  --heat-0: #13247e;
+  --heat-1: #2a45c0;
+  --heat-2: #4f6fe8;
+  --heat-3: #8fa8ff;
+  --heat-4: #e6ecff;
+  --flame: #ffb347;
+  --flame-core: #ffe066;
+  --coin: #ffe066;
+}

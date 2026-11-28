@@ -1,0 +1,149 @@
+/* Tema Platina (exclusivo, prêmio de quem platina): prata polida no grafite, brilho metálico no
+   topo dos cards e no botão principal, troféus dourados. Sora em tudo. */
+
+:root[data-theme="platina"] {
+  /* Tipografia */
+  --body-font: "Sora", ui-sans-serif, system-ui, sans-serif;
+  --display-font: "Sora", ui-sans-serif, system-ui, sans-serif;
+  --text-xs: 12px;
+  --text-xs--line-height: 16px;
+  --text-sm: 14px;
+  --text-sm--line-height: 20px;
+  --text-base: 15px;
+  --text-base--line-height: 22px;
+  --text-lg: 17px;
+  --text-lg--line-height: 26px;
+  --text-xl: 20px;
+  --text-xl--line-height: 28px;
+  --text-2xl: 26px;
+  --text-2xl--line-height: 32px;
+  --display-xl: 32px;
+  --display-xl-lh: 38px;
+  --display-lg: 24px;
+  --display-lg-lh: 30px;
+  --display-md: 17px;
+  --display-md-lh: 24px;
+  --display-sm: 14px;
+  --display-sm-lh: 20px;
+  --display-xs: 11px;
+  --display-xs-lh: 16px;
+  --display-xs-tracking: 0.16em;
+  --display-weight: 700;
+  --display-style: normal;
+  --btn-sm-size: 13px;
+  --btn-sm-lh: 18px;
+  --btn-lg-size: 15px;
+  --btn-lg-lh: 22px;
+
+  /* Forma */
+  --radius: 10px;
+  --control-radius: 8px;
+  --frame-offset: 0px;
+  --frame-spread: 1px;
+  --frame-thin-offset: 0px;
+  --frame-thin-spread: 1px;
+  --drop: 0 16px 36px -16px rgb(0 0 0 / 0.85), 0 2px 6px -2px rgb(0 0 0 / 0.5);
+  --bevel-size: 0px;
+  --sunken-size: 0px;
+  --press-translate: 0 1px;
+  --rule: 1px;
+  --rule-thick: 1px;
+  --frame-gap: 1px;
+  --drop-gap: 4px;
+  --inner-line: 0px;
+  --focus-width: 2px;
+  --focus-offset: 3px;
+
+  /* Textura: um reflexo frio no alto da página */
+  --page-texture: radial-gradient(80% 45% at 50% -10%, rgb(217 225 238 / 0.1), transparent 70%);
+  --page-texture-size: auto;
+  --overlay-texture: none;
+  --card-ridge: linear-gradient(90deg, #8e9ab0, #f4f7fc 50%, #8e9ab0);
+  --xp-gap: 0px;
+  --menu-cursor-width: 8px;
+  --menu-cursor-height: 8px;
+  --menu-cursor-shape: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+
+  /* Movimento */
+  --ease-ui: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-reveal: ease-out;
+  --ease-progress: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-blink: zm-platina-shine 1.8s ease-in-out infinite;
+  --animate-flicker: none;
+}
+
+:root[data-theme="platina"] body {
+  background-attachment: fixed;
+}
+/* O metal: reflexo no topo dos cards e o botão principal escovado. */
+:root[data-theme="platina"]
+  :is([data-slot="card"], [data-slot="dialog-content"], [data-slot="alert-dialog-content"]) {
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.05), transparent 120px);
+}
+:root[data-theme="platina"] [data-slot="button"][data-variant="default"] {
+  background-image: linear-gradient(180deg, #f4f7fc 0%, #d9e1ee 45%, #b9c3d4 100%);
+}
+
+@keyframes zm-platina-shine {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+:root[data-theme="platina"][data-mode="dark"] {
+  --background: #0b0d12;
+  --foreground: #eef2f8;
+  --card: #141821;
+  --card-foreground: #eef2f8;
+  --popover: #181d28;
+  --popover-foreground: #eef2f8;
+  --primary: #d9e1ee;
+  --primary-foreground: #10141c;
+  --primary-shade: #8e9ab0;
+  --secondary: #1e2330;
+  --secondary-foreground: #eef2f8;
+  --muted: #1a1f2a;
+  --muted-foreground: #9aa3b5;
+  --accent: #222838;
+  --accent-foreground: #eef2f8;
+  --destructive: #ff6b7a;
+  --destructive-foreground: #1a0004;
+  --border: #3a4253;
+  --input: #3a4253;
+  --ring: #8fc7ff;
+  --pixel-shadow: #000000;
+  --info: #8fc7ff;
+  --chart-1: #d9e1ee;
+  --chart-2: #8fc7ff;
+  --chart-3: #e6c46a;
+  --chart-4: #7fe0a8;
+  --chart-5: #c3a6ff;
+  --status-playing: #8fc7ff;
+  --status-playing-foreground: #03111f;
+  --status-endless: #ff9ac8;
+  --status-endless-foreground: #26061a;
+  --status-finished: #e6c46a;
+  --status-finished-foreground: #1a1404;
+  --status-backlog: #a9b6cc;
+  --status-backlog-foreground: #0b0d12;
+  --status-wishlist: #c3a6ff;
+  --status-wishlist-foreground: #140a26;
+  --status-paused: #f0d27a;
+  --status-paused-foreground: #1a1404;
+  --status-dropped: #77819a;
+  --status-dropped-foreground: #0b0d12;
+  --score-good: #7fe0a8;
+  --score-good-foreground: #04160c;
+  --score-mixed: #f0d27a;
+  --score-mixed-foreground: #1a1404;
+  --score-bad: #ff6b7a;
+  --score-bad-foreground: #1a0004;
+  --heat-0: #1a1f2a;
+  --heat-1: #283247;
+  --heat-2: #45536f;
+  --heat-3: #8293b3;
+  --heat-4: #e6edf8;
+  --flame: #8fc7ff;
+  --flame-core: #ffffff;
+  --coin: #e6c46a;
+}

@@ -17,6 +17,7 @@ describe("itens e tema na conta", () => {
 
     expect((await items(await joao.request("/api/me/items"))).map((i) => i.itemId)).toEqual([
       "cartucho",
+      "alto-contraste",
       "cartucho",
     ]);
     const refused = await joao.request("/api/settings", send("PATCH", { themeId: "minimal" }));
@@ -37,6 +38,7 @@ describe("itens e tema na conta", () => {
 
     expect(await items(await joao.request("/api/me/items"))).toMatchObject([
       { kind: "theme", itemId: "cartucho" },
+      { kind: "theme", itemId: "alto-contraste" },
       { kind: "sound_pack", itemId: "cartucho" },
       { kind: "theme", itemId: "minimal", source: "grant" },
       { kind: "sound_pack", itemId: "minimal", source: "grant" },

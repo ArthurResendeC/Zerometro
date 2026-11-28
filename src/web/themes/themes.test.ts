@@ -94,6 +94,24 @@ describe.each([...themeIds])("tema %s", (id) => {
     expect(failures).toEqual([]);
   });
 
+  test.each([...def.modes])("cores de destaque legíveis como texto no modo %s", (mode) => {
+    // primary, info, destructive e coin também viram texto (avisos, timer, links, saldo) no
+    // fundo da página e dos cards. Exceções anteriores a este teste: o vermelho do Ladrão
+    // Fantasma (a identidade dele) e a moeda do Cartucho claro (modo que ainda não se escolhe).
+    const known = new Set(["ladrao-fantasma:primary", "cartucho:coin"]);
+    const c = colors(id, mode);
+    const failures = ["primary", "info", "destructive", "coin"]
+      .filter((token) => !known.has(`${id}:${token}`))
+      .flatMap((token) =>
+        ["background", "card"].map((bg) => ({
+          pair: `${token} / ${bg}`,
+          ratio: Math.round(contrast(c.get(`--${token}`)!, c.get(`--${bg}`)!) * 100) / 100,
+        })),
+      )
+      .filter((r) => r.ratio < 4.5);
+    expect(failures).toEqual([]);
+  });
+
   test("tem cor da barra do navegador em cada modo", () => {
     for (const mode of def.modes) expect(def.themeColor[mode]).toMatch(/^#[\da-f]{6}$/i);
   });

@@ -1,0 +1,61 @@
+/* Tema Tijolinho (retrô, paleta): só os quatro tons de verde-oliva da telinha do portátil de 1989.
+   Forma, fontes e movimento são os do Cartucho; os tons extras ficam só nos gráficos e no
+   calor, onde quatro tons não bastam para separar as séries. */
+
+:root[data-theme="tijolinho"][data-mode="light"] {
+  --background: #9bbc0f;
+  --foreground: #0f380f;
+  --card: #8bac0f;
+  --card-foreground: #0f380f;
+  --popover: #8bac0f;
+  --popover-foreground: #0f380f;
+  --primary: #0f380f;
+  --primary-foreground: #9bbc0f;
+  --primary-shade: #306230;
+  --secondary: #8bac0f;
+  --secondary-foreground: #0f380f;
+  --muted: #8bac0f;
+  --muted-foreground: #0f380f;
+  --accent: #0f380f;
+  --accent-foreground: #9bbc0f;
+  --destructive: #0f380f;
+  --destructive-foreground: #9bbc0f;
+  --border: #306230;
+  --input: #306230;
+  --ring: #0f380f;
+  --pixel-shadow: #0f380f;
+  --info: #0f380f;
+  --chart-1: #0f380f;
+  --chart-2: #306230;
+  --chart-3: #557a18;
+  --chart-4: #1f4a1f;
+  --chart-5: #6f9420;
+  --status-playing: #0f380f;
+  --status-playing-foreground: #9bbc0f;
+  --status-endless: #0f380f;
+  --status-endless-foreground: #9bbc0f;
+  --status-finished: #0f380f;
+  --status-finished-foreground: #9bbc0f;
+  --status-backlog: #8bac0f;
+  --status-backlog-foreground: #0f380f;
+  --status-wishlist: #8bac0f;
+  --status-wishlist-foreground: #0f380f;
+  --status-paused: #8bac0f;
+  --status-paused-foreground: #0f380f;
+  --status-dropped: #8bac0f;
+  --status-dropped-foreground: #0f380f;
+  --score-good: #0f380f;
+  --score-good-foreground: #9bbc0f;
+  --score-mixed: #8bac0f;
+  --score-mixed-foreground: #0f380f;
+  --score-bad: #0f380f;
+  --score-bad-foreground: #9bbc0f;
+  --heat-0: #8bac0f;
+  --heat-1: #6f9420;
+  --heat-2: #4e7a26;
+  --heat-3: #306230;
+  --heat-4: #0f380f;
+  --flame: #0f380f;
+  --flame-core: #306230;
+  --coin: #0f380f;
+}

@@ -1,0 +1,166 @@
+/* Tema Costa Neon (icônico): pôr do sol tropical dos anos 80. Degradê rosa e laranja, ciano de
+   piscina, vidro fosco nos cards, cantos bem arredondados e botões em pílula. Títulos em Bebas Neue
+   e corpo em Manrope. Só a estética: sem nomes, logos, artes ou fontes de nenhum jogo. */
+
+:root[data-theme="costa-neon"] {
+  /* Tipografia */
+  --body-font: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --display-font: "Bebas Neue", "Arial Narrow", Impact, sans-serif;
+  --text-xs: 12px;
+  --text-xs--line-height: 16px;
+  --text-sm: 14px;
+  --text-sm--line-height: 20px;
+  --text-base: 15px;
+  --text-base--line-height: 22px;
+  --text-lg: 17px;
+  --text-lg--line-height: 26px;
+  --text-xl: 20px;
+  --text-xl--line-height: 28px;
+  --text-2xl: 26px;
+  --text-2xl--line-height: 32px;
+  --display-xl: 50px;
+  --display-xl-lh: 50px;
+  --display-lg: 38px;
+  --display-lg-lh: 40px;
+  --display-md: 26px;
+  --display-md-lh: 28px;
+  --display-sm: 20px;
+  --display-sm-lh: 22px;
+  --display-xs: 15px;
+  --display-xs-lh: 18px;
+  --display-xs-tracking: 0.1em;
+  --display-weight: 400;
+  --display-style: normal;
+  --btn-sm-size: 17px;
+  --btn-sm-lh: 20px;
+  --btn-lg-size: 22px;
+  --btn-lg-lh: 26px;
+
+  /* Forma: cantos de 18px, pílulas, anel de 1px e sombra rosada difusa */
+  --radius: 18px;
+  --control-radius: 999px;
+  --frame-offset: 0px;
+  --frame-spread: 1px;
+  --frame-thin-offset: 0px;
+  --frame-thin-spread: 1px;
+  --drop: 0 18px 40px -18px rgb(255 79 154 / 0.5), 0 2px 8px -2px rgb(0 0 0 / 0.5);
+  --bevel-size: 0px;
+  --sunken-size: 0px;
+  --press-translate: 0 1px;
+  --rule: 1px;
+  --rule-thick: 1px;
+  --frame-gap: 1px;
+  --drop-gap: 6px;
+  --inner-line: 0px;
+  --focus-width: 2px;
+  --focus-offset: 3px;
+
+  /* Textura: o céu do fim de tarde (rosa no alto, laranja no canto, ciano do mar embaixo) */
+  --page-texture:
+    radial-gradient(120% 55% at 50% -12%, rgb(255 79 154 / 0.3), transparent 62%),
+    radial-gradient(70% 45% at 100% 0%, rgb(255 154 60 / 0.2), transparent 65%),
+    radial-gradient(80% 50% at 0% 105%, rgb(34 211 238 / 0.16), transparent 65%);
+  --page-texture-size: auto;
+  --overlay-texture: none;
+  --card-ridge: linear-gradient(90deg, #ff4f9a, #ff9a3c, #ffd25a);
+  --xp-gap: 0px;
+  --menu-cursor-width: 8px;
+  --menu-cursor-height: 8px;
+  --menu-cursor-shape: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+
+  /* Movimento: suave, com um pulso no lugar do piscar */
+  --ease-ui: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-reveal: ease-out;
+  --ease-progress: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-blink: zm-costa-pulse 1.6s ease-in-out infinite;
+  --animate-flicker: none;
+
+  --cn-sunset: linear-gradient(100deg, #ff4f9a 0%, #ff7a5c 55%, #ffa04a 100%);
+}
+
+:root[data-theme="costa-neon"] body {
+  background-attachment: fixed;
+}
+
+/* Vidro fosco: o céu aparece atrás dos cards. */
+:root[data-theme="costa-neon"]
+  :is([data-slot="card"], [data-slot="dialog-content"], [data-slot="alert-dialog-content"]) {
+  background-color: color-mix(in srgb, var(--card) 78%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+}
+
+/* Botão principal com o pôr do sol, sem o anel claro em volta. */
+:root[data-theme="costa-neon"] [data-slot="button"][data-variant="default"] {
+  background-image: var(--cn-sunset);
+  --px-frame-color: transparent;
+}
+
+/* Títulos com o brilho rosa do neon. */
+:root[data-theme="costa-neon"] :is(.display-xl, .display-lg) {
+  text-transform: uppercase;
+  text-shadow: 0 0 22px rgb(255 79 154 / 0.45);
+}
+
+@keyframes zm-costa-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+:root[data-theme="costa-neon"][data-mode="dark"] {
+  --background: #120a24;
+  --foreground: #fbefff;
+  --card: #1f1236;
+  --card-foreground: #fbefff;
+  --popover: #24163f;
+  --popover-foreground: #fbefff;
+  --primary: #ff4f9a;
+  --primary-foreground: #1a0612;
+  --primary-shade: #c2306f;
+  --secondary: #2a1846;
+  --secondary-foreground: #fbefff;
+  --muted: #24163d;
+  --muted-foreground: #c3add9;
+  --accent: #33204f;
+  --accent-foreground: #fbefff;
+  --destructive: #ff5d6c;
+  --destructive-foreground: #1a0004;
+  --border: #4a3470;
+  --input: #4a3470;
+  --ring: #22d3ee;
+  --pixel-shadow: #000000;
+  --info: #22d3ee;
+  --chart-1: #ff4f9a;
+  --chart-2: #22d3ee;
+  --chart-3: #ffb347;
+  --chart-4: #4ef0b0;
+  --chart-5: #b18cff;
+  --status-playing: #ff4f9a;
+  --status-playing-foreground: #1a0612;
+  --status-endless: #ffb347;
+  --status-endless-foreground: #221200;
+  --status-finished: #4ef0b0;
+  --status-finished-foreground: #03160e;
+  --status-backlog: #22d3ee;
+  --status-backlog-foreground: #001a20;
+  --status-wishlist: #b18cff;
+  --status-wishlist-foreground: #160a26;
+  --status-paused: #ffd25a;
+  --status-paused-foreground: #1d1503;
+  --status-dropped: #a593bd;
+  --status-dropped-foreground: #130c1f;
+  --score-good: #4ef0b0;
+  --score-good-foreground: #03160e;
+  --score-mixed: #ffd25a;
+  --score-mixed-foreground: #1d1503;
+  --score-bad: #ff5d6c;
+  --score-bad-foreground: #1a0004;
+  --heat-0: #24163d;
+  --heat-1: #4a1a44;
+  --heat-2: #8a2560;
+  --heat-3: #d93d84;
+  --heat-4: #ffa0c8;
+  --flame: #ff7a3d;
+  --flame-core: #ffd25a;
+  --coin: #ffd25a;
+}

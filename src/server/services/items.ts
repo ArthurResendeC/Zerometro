@@ -8,7 +8,7 @@ import {
   type OwnedItem,
   themeSoundPack,
 } from "../../shared/items";
-import { DEFAULT_THEME, isThemeId } from "../../shared/themes";
+import { freeThemeIds, isThemeId } from "../../shared/themes";
 import type { DbOrTx } from "../db/client";
 import { user, userItems } from "../db/schema";
 import { NotFoundError } from "../errors";
@@ -20,7 +20,12 @@ import type { ServiceContext, UserScope } from "./context";
 
 /** Os itens grátis, iguais para todo mundo. */
 const freeItems: OwnedItem[] = [
-  { kind: "theme", itemId: DEFAULT_THEME, source: null, acquiredAt: null },
+  ...freeThemeIds.map((itemId) => ({
+    kind: "theme" as const,
+    itemId,
+    source: null,
+    acquiredAt: null,
+  })),
   { kind: "sound_pack", itemId: DEFAULT_SOUND_PACK, source: null, acquiredAt: null },
 ];
 

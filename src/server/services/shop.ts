@@ -38,7 +38,7 @@ export function getShop(ctx: ServiceContext): Shop {
       id,
       name: themes[id].name,
       description: themes[id].description,
-      price: priceOf("theme", id),
+      price: priceOf("theme", id, ctx.now, ctx.timeZone),
       owned: ownedThemes.has(id),
     })),
     ...soundPackIds.map((id) => ({
@@ -59,7 +59,7 @@ export function getShop(ctx: ServiceContext): Shop {
  */
 export function purchaseItem(ctx: ServiceContext, input: PurchaseInput): Shop {
   const name = itemName(input.kind, input.itemId);
-  const price = priceOf(input.kind, input.itemId);
+  const price = priceOf(input.kind, input.itemId, ctx.now, ctx.timeZone);
   if (price === null) throw new ConflictError(`${name} não está à venda`);
   // Saldo em dia com as sessões e conquistas antes de decidir.
   reconcileWallet(ctx);

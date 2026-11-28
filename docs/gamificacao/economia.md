@@ -57,11 +57,19 @@ como ajuste para todo mundo.
 - **Preços** em `shared/items.ts` (`themePrices`, `soundPackPrices`). `null` quer dizer que o item
   não está à venda (grátis ou exclusivo).
 
-  | Item                 | Preço |
-  | -------------------- | ----- |
-  | Minimal              | 250   |
-  | Ladrão Fantasma      | 400   |
-  | Pacote de som avulso | 80    |
+  | Item                                                         | Preço                    |
+  | ------------------------------------------------------------ | ------------------------ |
+  | Paleta (só cores): Tijolinho, Minimal Claro                  | 150                      |
+  | Completo: Minimal, Fósforo, Fliperama, Janela Azul, Caderno  | 250                      |
+  | Inspirados em jogos: Ladrão Fantasma, Costa Neon e os outros | 400                      |
+  | Sazonais: Abóbora (outubro), Noite Feliz (dezembro)          | 300, só no mês           |
+  | Alto Contraste                                               | grátis para todos        |
+  | Platina                                                      | não se compra (insígnia) |
+  | Pacote de som avulso                                         | 80                       |
+
+  Os sazonais têm `season` no registro e só aparecem à venda nos meses dele, no fuso do perfil
+  (`priceOf(kind, id, now, timeZone)`). Quem comprou fica com o tema o ano todo. O Alto Contraste
+  é de acessibilidade, então entra nos itens grátis (`freeThemeIds`), como o tema base.
 
   Referência: no ritmo do demo rende ~18 moedas por dia, então 250 é cerca de duas semanas.
 
